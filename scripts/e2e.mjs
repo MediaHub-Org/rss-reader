@@ -249,7 +249,7 @@ try {
     <outline type="rss" text="Zeta Feed" title="Zeta Feed" xmlUrl="https://feeds.bbci.co.uk/news/world/rss.xml"/>
     <outline type="rss" text="Alpha Feed" title="Alpha Feed" xmlUrl="https://feeds.bbci.co.uk/news/technology/rss.xml"/>
   </outline>
-  <outline type="rss" text="Duplicate" xmlUrl="https://www.theverge.com/rss/index.xml"/>
+  <outline type="rss" text="The Verge" title="The Verge" xmlUrl="https://www.theverge.com/rss/index.xml"/>
   <outline type="rss" text="Bad" xmlUrl="javascript:alert(1)"/>
 </body></opml>`
   );
@@ -363,13 +363,45 @@ try {
   await targetItem.locator('.feed-row__remove').click();
   await page.waitForSelector('[role="dialog"]:has-text("Unsubscribe")');
   check('Unsubscribe asks for confirmation', true);
-  await page.click('[role="dialog"] .button--danger');
+  await page.keyboard.press('Enter');
   await page.waitForFunction(
     (expected) => document.querySelectorAll('.sidebar .feed-item').length === expected,
     feedsBeforeRemove - 1,
     { timeout: 5000 }
   );
-  check('Feed removed after confirming', true, `${feedsBeforeRemove - 1} feeds left`);
+  check('Feed removed after pressing Enter in confirmation', true, `${feedsBeforeRemove - 1} feeds left`);
+
+  /* ------------------- Manage (select all/none/folder) ----------------- */
+  await page.click('.sidebar__actions .ghost-button:has-text("Manage")');
+  await page.waitForSelector('#panel-manage');
+  await page.click('#panel-manage button:has-text("Select all")');
+  const allCountText = await page.textContent('.manage-toolbar__count');
+  await page.click('#panel-manage button:has-text("Select none")');
+  const noneCountText = await page.textContent('.manage-toolbar__count');
+  check(
+    'Manage tab supports Select all and Select none',
+    /^[1-9]\d* selected$/.test((allCountText || '').trim()) && (noneCountText || '').trim() === '0 selected',
+    `${allCountText?.trim()} → ${noneCountText?.trim()}`
+  );
+
+  await page.click('.manage-folder__delete >> nth=0');
+  const foldersRemaining = await page.locator('.sidebar .folder-group').count();
+  check('Delete folder removes the folder and its feeds', foldersRemaining === 1, `${foldersRemaining} folder left`);
+
+  /* ----------------------- OPML XML live editor ------------------------ */
+  await page.click('#tab-xml');
+  await page.waitForSelector('.opml-editor');
+  const currentXml = await page.inputValue('.opml-editor');
+  const editedXml = currentXml.replace(/title="Fireship"/g, 'title="Fireship Channel"').replace(/text="Fireship"/g, 'text="Fireship Channel"');
+  await page.fill('.opml-editor', editedXml);
+  await page.click('#panel-xml .button--primary:has-text("Apply OPML XML")');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+  const renamedVisible = (await page.locator('.sidebar .feed-row:has-text("Fireship Channel")').count()) === 1;
+  check('OPML XML editor updates titles/folders in place', renamedVisible);
+
+  const toastCount = await page.locator('.toast').count();
+  const errorBannerCount = await page.locator('.banner--error').count();
+  check('Never stacks error banners or multiple toasts', toastCount <= 1 && errorBannerCount === 0, `toasts=${toastCount} banners=${errorBannerCount}`);
 
   await page.screenshot({ path: path.join(SHOTS, '04-final.png') });
 

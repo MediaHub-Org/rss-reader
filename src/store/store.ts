@@ -92,8 +92,9 @@ export class Store {
 
   notify(kind: ToastKind, text: string): void {
     const toast: Toast = { id: ++toastSeq, kind, text };
-    this.update({ toasts: [...this.state.toasts, toast] });
-    setTimeout(() => this.dismissToast(toast.id), kind === 'error' ? 8000 : 4000);
+    // Never stack notifications: show only the latest one and auto-close it.
+    this.update({ toasts: [toast] });
+    setTimeout(() => this.dismissToast(toast.id), 3500);
   }
 
   dismissToast(id: number): void {
@@ -309,7 +310,9 @@ export class Store {
         (feed, index) =>
           new Promise<void>((resolve) => {
             setTimeout(() => {
-              void this.refreshFeed(feed.id, options).finally(resolve);
+              // Individual feed refreshes during a bulk refresh stay silent so
+              // unreachable feeds never spam error banners/toasts.
+              void this.refreshFeed(feed.id, { silent: true }).finally(resolve);
             }, index * REFRESH_STAGGER_MS);
           })
       )
@@ -320,33 +323,83 @@ export class Store {
   removeFeed(feedId: string): void {
     const feed = this.state.feeds.find((f) => f.id === feedId);
     if (!feed) return;
+    this.removeFeeds([feedId], { silent: true });
+    this.notify('success', `Unsubscribed from “${feed.title}”`);
+  }
+
+  /**
+   * Bulk-remove any set of feeds (one, several, all, or an entire folder) in a
+   * single state update and clean up their cached articles.
+   */
+  removeFeeds(feedIds: string[], options: { silent?: boolean } = {}): number {
+    const toRemove = new Set(feedIds);
+    const remaining = this.state.feeds.filter((f) => !toRemove.has(f.id));
+    const removedCount = this.state.feeds.length - remaining.length;
+    if (removedCount === 0) return 0;
+
     const articles = { ...this.state.articles };
-    delete articles[feedId];
     const feedState = { ...this.state.feedState };
-    delete feedState[feedId];
+    for (const id of toRemove) {
+      delete articles[id];
+      delete feedState[id];
+      void removeArticles(id);
+    }
+
+    const activeGone =
+      this.state.ui.activeFeedId !== null && toRemove.has(this.state.ui.activeFeedId);
 
     this.update({
-      feeds: this.state.feeds.filter((f) => f.id !== feedId),
+      feeds: remaining,
       articles,
       feedState,
-      ui:
-        this.state.ui.activeFeedId === feedId
-          ? { ...this.state.ui, activeFeedId: ALL_FEEDS, activeArticleId: null }
-          : this.state.ui,
+      ui: activeGone
+        ? { ...this.state.ui, activeFeedId: ALL_FEEDS, activeArticleId: null }
+        : this.state.ui,
     });
-    void removeArticles(feedId);
     this.schedulePersist();
-    this.notify('success', `Unsubscribed from “${feed.title}”`);
+    if (!options.silent) {
+      this.notify(
+        'success',
+        `Removed ${removedCount} feed${removedCount === 1 ? '' : 's'}`
+      );
+    }
+    return removedCount;
+  }
+
+  /** Delete an entire folder along with all feeds inside it. */
+  removeFolder(folderName: string): number {
+    const target = folderName.trim();
+    const ids = this.state.feeds
+      .filter((f) => (f.folder?.trim() ?? '') === target)
+      .map((f) => f.id);
+    const removed = this.removeFeeds(ids, { silent: true });
+    if (removed > 0) {
+      this.notify(
+        'success',
+        `Removed folder “${target}” (${removed} feed${removed === 1 ? '' : 's'})`
+      );
+    }
+    return removed;
   }
 
   /* ------------------------------ subscriptions --------------------------- */
 
-  /** Merge imported subscriptions, skipping duplicates. Returns counts. */
+  /**
+   * Merge or sync imported subscriptions.
+   * - Existing feeds whose title, folder or siteUrl changed in the OPML are
+   *   updated in place (so editing the OPML XML and re-importing works).
+   * - Unchanged existing feeds are counted as `skipped`.
+   * - With `replace: true` (OPML XML editor), feeds omitted from `incoming`
+   *   are also removed.
+   */
   importFeeds(
-    incoming: Array<{ url: string; title?: string; siteUrl?: string; folder?: string }>
-  ): { added: number; skipped: number } {
-    const existing = new Set(this.state.feeds.map((f) => f.id));
+    incoming: Array<{ url: string; title?: string; siteUrl?: string; folder?: string }>,
+    options: { replace?: boolean } = {}
+  ): { added: number; updated: number; removed: number; skipped: number } {
+    const existingById = new Map(this.state.feeds.map((f) => [f.id, f]));
+    const seen = new Set<string>();
     const added: Feed[] = [];
+    const updatedById = new Map<string, Feed>();
     let skipped = 0;
 
     for (const entry of incoming) {
@@ -356,24 +409,59 @@ export class Store {
         continue;
       }
       const id = feedIdForUrl(validated.url);
-      if (existing.has(id)) {
+      if (seen.has(id)) {
         skipped++;
         continue;
       }
-      existing.add(id);
+      seen.add(id);
+
+      const nextFolder = entry.folder?.trim() || undefined;
+      const prev = existingById.get(id);
+      if (prev) {
+        const nextTitle = entry.title?.trim() || prev.title;
+        const nextSite = entry.siteUrl || prev.siteUrl;
+        const changed =
+          nextTitle !== prev.title ||
+          (nextFolder ?? '') !== (prev.folder?.trim() ?? '') ||
+          nextSite !== prev.siteUrl;
+        if (changed) {
+          updatedById.set(id, {
+            ...prev,
+            title: nextTitle,
+            folder: nextFolder,
+            siteUrl: nextSite,
+          });
+        } else {
+          skipped++;
+        }
+        continue;
+      }
+
       added.push({
         id,
         url: validated.url,
-        title: entry.title || validated.url.replace(/^https?:\/\//, ''),
+        title: entry.title?.trim() || validated.url.replace(/^https?:\/\//, ''),
         siteUrl: entry.siteUrl,
-        folder: entry.folder?.trim() || undefined,
+        folder: nextFolder,
         addedAt: Date.now(),
       });
     }
 
-    if (added.length) {
+    let removed = 0;
+    if (options.replace) {
+      const toRemove = this.state.feeds
+        .filter((f) => !seen.has(f.id))
+        .map((f) => f.id);
+      removed = this.removeFeeds(toRemove, { silent: true });
+    }
+
+    if (added.length || updatedById.size) {
+      const nextFeeds = [
+        ...this.state.feeds.map((f) => updatedById.get(f.id) ?? f),
+        ...added,
+      ];
       this.update({
-        feeds: [...this.state.feeds, ...added],
+        feeds: nextFeeds,
         feedState: {
           ...this.state.feedState,
           ...Object.fromEntries(
@@ -387,7 +475,7 @@ export class Store {
       });
     }
 
-    return { added: added.length, skipped };
+    return { added: added.length, updated: updatedById.size, removed, skipped };
   }
 
   mergeReadIds(readIds: Record<string, true>): number {

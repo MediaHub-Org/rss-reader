@@ -24,9 +24,16 @@ export function Dialog({ open, title, onClose, children, footer, size = 'sm' }: 
     restoreTo.current = document.activeElement as HTMLElement | null;
 
     const panel = panelRef.current;
-    const focusable = panel?.querySelector<HTMLElement>(
-      'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
-    );
+    const focusable =
+      panel?.querySelector<HTMLElement>('[data-autofocus], [autofocus]') ??
+      panel
+        ?.querySelector('.dialog__body, .dialog__footer')
+        ?.querySelector<HTMLElement>(
+          'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
+        ) ??
+      panel?.querySelector<HTMLElement>(
+        'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
+      );
     (focusable ?? panel)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {

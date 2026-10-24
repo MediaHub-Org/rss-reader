@@ -36,10 +36,6 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
   const { visible, sentinelRef, loadMore } = useInfiniteList(articles.length, PAGE_SIZE);
   const slice = articles.slice(0, visible);
 
-  const feedErrors = Object.entries(state.feedState)
-    .filter(([, value]) => value.status === 'error')
-    .map(([feedId, value]) => ({ feedId, message: value.message ?? 'Failed to load.' }));
-
   if (!state.hydrated) {
     return (
       <div className="list list--loading" aria-busy="true" aria-live="polite">
@@ -75,19 +71,6 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
     const searching = state.ui.query.trim().length > 0;
     return (
       <div className="list">
-        {feedErrors.map((error) => (
-          <div className="banner banner--error" role="alert" key={error.feedId}>
-            <span>{error.message}</span>
-            <button
-              type="button"
-              className="ghost-button"
-              onClick={() => void store.refreshFeed(error.feedId)}
-            >
-              <Icon name="refresh" size={14} />
-              Retry
-            </button>
-          </div>
-        ))}
         <div className="empty-state">
           <Icon name={searching ? 'search' : 'inbox'} size={38} />
           <h2>{searching ? 'No matches' : 'Nothing here yet'}</h2>
@@ -103,16 +86,6 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
 
   return (
     <div className="list" role="feed" aria-label="Articles">
-      {feedErrors.map((error) => (
-        <div className="banner banner--error" role="alert" key={error.feedId}>
-          <span>{error.message}</span>
-          <button type="button" className="ghost-button" onClick={() => void store.refreshFeed(error.feedId)}>
-            <Icon name="refresh" size={14} />
-            Retry
-          </button>
-        </div>
-      ))}
-
       <ul className="article-grid">
         {slice.map((article) => (
           <ArticleCard

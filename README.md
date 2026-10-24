@@ -86,7 +86,7 @@ Run the test suites (`npm run dev` for the first, `npm run build && npm run prev
 for the second):
 
 ```bash
-npm run test:e2e      # 42 checks against live feeds → test-artifacts/
+npm run test:e2e      # 46 checks against live feeds → test-artifacts/
 npm run test:pwa      # 16 installability + offline checks
 ```
 

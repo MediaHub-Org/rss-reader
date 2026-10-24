@@ -22,6 +22,7 @@ export default function App() {
   const [dataOpen, setDataOpen] = useState(false);
   const [dataTab, setDataTab] = useState<DataTab>('import');
   const [confirmFeed, setConfirmFeed] = useState<Feed | null>(null);
+  const [confirmFolder, setConfirmFolder] = useState<string | null>(null);
   const lastRefreshed = useRef(0);
 
   /* hydrate once */
@@ -172,8 +173,13 @@ export default function App() {
             setDataTab('export');
             setDataOpen(true);
           }}
+          onManage={() => {
+            setDataTab('manage');
+            setDataOpen(true);
+          }}
           onSettings={() => setSettingsOpen(true)}
           onUnsubscribe={setConfirmFeed}
+          onRemoveFolder={setConfirmFolder}
           onClose={closeSidebar}
         />
 
@@ -208,6 +214,18 @@ export default function App() {
           setConfirmFeed(null);
         }}
         onCancel={() => setConfirmFeed(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(confirmFolder)}
+        title="Delete folder?"
+        message={`Folder “${confirmFolder ?? ''}” and all feeds inside it will be removed along with their cached articles.`}
+        confirmLabel="Delete folder"
+        onConfirm={() => {
+          if (confirmFolder) store.removeFolder(confirmFolder);
+          setConfirmFolder(null);
+        }}
+        onCancel={() => setConfirmFolder(null)}
       />
 
       <Toasts />

@@ -96,12 +96,12 @@
 }
 
 .sidebar__actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-1);
 }
 
 .sidebar__actions .ghost-button {
-  flex: 1;
   justify-content: center;
 }
 
@@ -187,6 +187,10 @@
 .folder-group {
   display: flex;
   flex-direction: column;
+}
+
+.folder-header {
+  position: relative;
 }
 
 .folder-row {
@@ -581,7 +585,7 @@
 /* ---------------------------------- list ---------------------------------- */
 
 .list {
-  padding: 12px var(--space-3) var(--space-5);
+  padding: 20px 24px var(--space-5);
   width: 100%;
   box-sizing: border-box;
 }
@@ -591,9 +595,8 @@
 }
 
 .skeleton-card {
-  width: 264px;
-  height: 280px;
-  margin: 12px 8px;
+  width: 100%;
+  height: 284px;
   border-radius: 14px;
   background: linear-gradient(90deg, var(--panel-2) 25%, var(--panel-3) 37%, var(--panel-2) 63%);
   background-size: 400% 100%;
@@ -615,22 +618,24 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+  gap: 20px;
+  align-items: stretch;
 }
 
 .article-grid__item {
-  display: inline-flex;
+  display: flex;
+  min-width: 0;
 }
 
 .article-card {
   --card-radius: 14px;
   position: relative;
   box-sizing: border-box;
-  width: 264px;
-  height: 280px;
-  margin: 12px 8px;
+  width: 100%;
+  height: 284px;
+  margin: 0;
   border-radius: var(--card-radius);
   background: var(--panel);
   border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
@@ -868,9 +873,14 @@
   -webkit-line-clamp: 3;
 }
 
+[data-density='compact'] .article-grid {
+  grid-template-columns: repeat(auto-fill, minmax(244px, 1fr));
+  gap: 14px;
+}
+
 [data-density='compact'] .article-card {
-  height: 236px;
-  margin: 8px 6px;
+  height: 240px;
+  margin: 0;
 }
 
 [data-density='compact'] .article-card__media,
@@ -1620,6 +1630,141 @@ kbd {
 
 .export-actions {
   justify-content: flex-start;
+}
+
+/* --------------------- manage subscriptions & OPML XML -------------------- */
+
+.manage-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.manage-toolbar__select {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.manage-toolbar__count {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.manage-folder {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  overflow: hidden;
+}
+
+.manage-folder__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  background: var(--panel-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.manage-folder__name {
+  font-weight: 650;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.manage-folder__delete {
+  color: var(--danger);
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.manage-folder__feeds {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.manage-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.manage-item:first-child {
+  border-top: 0;
+}
+
+.manage-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+}
+
+.manage-check input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.manage-item__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.manage-item__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manage-item__url {
+  font-size: 11.5px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.opml-editor {
+  width: 100%;
+  min-height: 240px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+  white-space: pre;
 }
 
 /* --------------------------------- toasts --------------------------------- */

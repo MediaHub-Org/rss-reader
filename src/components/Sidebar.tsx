@@ -11,8 +11,10 @@ interface SidebarProps {
   onAddFeed: () => void;
   onImport: () => void;
   onExport: () => void;
+  onManage: () => void;
   onSettings: () => void;
   onUnsubscribe: (feed: Feed) => void;
+  onRemoveFolder: (folderName: string) => void;
   onClose: () => void;
 }
 
@@ -21,9 +23,19 @@ interface FolderGroup {
   feeds: Feed[];
 }
 
-export function Sidebar({ onAddFeed, onImport, onExport, onSettings, onUnsubscribe, onClose }: SidebarProps) {
+export function Sidebar({
+  onAddFeed,
+  onImport,
+  onExport,
+  onManage,
+  onSettings,
+  onUnsubscribe,
+  onRemoveFolder,
+  onClose,
+}: SidebarProps) {
   const state = useStore();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const totalUnread = useMemo(
@@ -141,20 +153,41 @@ export function Sidebar({ onAddFeed, onImport, onExport, onSettings, onUnsubscri
               0
             );
             return (
-              <li className="folder-group" key={`folder:${folder.name}`}>
-                <button
-                  type="button"
-                  className={`feed-row folder-row ${isOpen ? 'is-open' : ''}`}
-                  onClick={() => toggleFolder(folder.name)}
-                  aria-expanded={isOpen}
+              <li
+                className="folder-group"
+                key={`folder:${folder.name}`}
+              >
+                <div
+                  className="folder-header"
+                  onMouseEnter={() => setHoveredFolder(folder.name)}
+                  onMouseLeave={() => setHoveredFolder(null)}
                 >
-                  <Icon name="chevronDown" size={14} className="folder-row__caret" />
-                  <Icon name="folder" size={15} className="folder-row__icon" />
-                  <span className="feed-row__title">{folder.name}</span>
-                  {folderUnread > 0 && (
-                    <span className="badge">{folderUnread > 999 ? '999+' : folderUnread}</span>
+                  <button
+                    type="button"
+                    className={`feed-row folder-row ${isOpen ? 'is-open' : ''}`}
+                    onClick={() => toggleFolder(folder.name)}
+                    aria-expanded={isOpen}
+                  >
+                    <Icon name="chevronDown" size={14} className="folder-row__caret" />
+                    <Icon name="folder" size={15} className="folder-row__icon" />
+                    <span className="feed-row__title">{folder.name}</span>
+                    {folderUnread > 0 && (
+                      <span className="badge">{folderUnread > 999 ? '999+' : folderUnread}</span>
+                    )}
+                  </button>
+
+                  {hoveredFolder === folder.name && (
+                    <button
+                      type="button"
+                      className="feed-row__remove icon-button"
+                      onClick={() => onRemoveFolder(folder.name)}
+                      aria-label={`Delete folder ${folder.name}`}
+                      title={`Delete folder “${folder.name}”`}
+                    >
+                      <Icon name="trash" size={15} />
+                    </button>
                   )}
-                </button>
+                </div>
 
                 {isOpen && (
                   <ul className="feed-list feed-list--nested" role="list">
@@ -192,6 +225,10 @@ export function Sidebar({ onAddFeed, onImport, onExport, onSettings, onUnsubscri
           <button type="button" className="ghost-button" onClick={onExport} disabled={!state.feeds.length}>
             <Icon name="download" size={15} />
             <span>Export</span>
+          </button>
+          <button type="button" className="ghost-button" onClick={onManage} disabled={!state.feeds.length}>
+            <Icon name="trash" size={15} />
+            <span>Manage</span>
           </button>
           <button type="button" className="ghost-button" onClick={onSettings}>
             <Icon name="settings" size={15} />
