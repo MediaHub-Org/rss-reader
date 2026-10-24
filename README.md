@@ -1,0 +1,156 @@
+# RSS Reader
+
+A lightweight, **local-first** RSS/Atom reader for the desktop browser. No account, no
+backend, no telemetry — subscriptions, read state and preferences live in your own
+browser storage.
+
+Built from the Fluent Reader / FluentFlame / Folo aesthetic: clean, fast, minimal.
+
+---
+
+## Quick start
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+```
+
+Production build and static hosting:
+
+```bash
+npm run build        # tsc + vite build → dist/
+npm run preview      # serve the build (includes the feed proxy)
+```
+
+Serving `dist/` from any static host? Run the standalone proxy alongside it and set the
+app to use it (the app already falls back to a public proxy if no local one is present):
+
+```bash
+npm run proxy         # http://localhost:8788/proxy?url=<encoded feed url>
+VITE_PROXY_URL=http://localhost:8788/proxy npm run build
+```
+
+Run the end-to-end suite (expects `npm run dev` to be running):
+
+```bash
+node scripts/e2e.mjs   # 38 checks, screenshots in test-artifacts/
+```
+
+---
+
+## Features
+
+**Feeds** — subscribe by URL or by website (the alternate feed link is discovered
+automatically), validate before fetching, per-feed error state with retry, unsubscribe
+with confirmation, unread badges, favicons with a letter-avatar fallback.
+
+**Reading** — chronological list with infinite scroll (windowed rendering), article
+detail with sanitized HTML, relative-URL resolution against the article base URL,
+read/unread per article plus bulk mark read/unread, sort by newest / oldest / feed name,
+full-text search over the current view.
+
+**Portability** — export/import **OPML** (standard, subscriptions only) and a **JSON
+backup** (subscriptions *and* read status). Import validates the file, previews what it
+found, skips duplicates, and rejects invalid `javascript:` URLs.
+
+**Media** — YouTube URLs are detected in titles, links and content (no API key; the id is
+parsed from the URL). By default videos open in a new tab; switch on *Embed YouTube
+videos* in Settings to render a `youtube-nocookie.com` iframe inline.
+
+**Customization** — light/dark/system theme, comfortable/compact list density, reader
+font size, hide-read filter. All persisted in `localStorage` and applied before first
+paint (no theme flash).
+
+**Accessibility** — labelled controls, focus-trapped modal dialogs, skip link, visible
+focus rings, keyboard navigation throughout.
+
+### Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| `j` / `k` or `↓` / `↑` | Move through articles |
+| `Enter` / `o` | Open the selected article |
+| `m` | Toggle read/unread |
+| `r` | Refresh all feeds |
+| `/` | Focus search |
+| `a` | Add feed |
+| `Esc` | Close article / drawer / dialog |
+
+---
+
+## Architecture
+
+```
+server/
+  proxy-lib.mjs        shared fetch proxy: validation, SSRF guard, HTTPS upgrade, size cap
+  proxy.mjs            standalone proxy server (`npm run proxy`)
+src/
+  lib/
+    feedParser.ts      rss-parser wrapper → normalized Feed/Article types
+    fetchFeed.ts       layered CORS strategy + homepage → feed discovery
+    sanitize.ts        DOMPurify config: allow-list, relative URLs, safe links
+    youtube.ts         video-id extraction (watch, youtu.be, shorts, live, embed)
+    opml.ts            OPML + JSON export/import, XML escaping, validation
+    storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
+    hash.ts, url.ts, format.ts
+  store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors
+  components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs, toasts
+  styles/
+    theme.css          design tokens: light/dark palettes, density, font size
+    app.css            layout and components
+```
+
+### Key decisions
+
+**No backend.** Everything is client-side; state lives in `localStorage`
+(subscriptions, read status, preferences) and IndexedDB (cached articles), with a quota
+guard that evicts the cache before it can lose your subscriptions.
+
+**CORS: layered fetch.** Each feed fetch tries, in order:
+
+1. direct browser fetch (works for CORS-enabled origins),
+2. the local proxy (`/proxy` on the dev/preview server, or `VITE_PROXY_URL`),
+3. public proxies — last resort only, because they depend on third-party uptime.
+
+The proxy enforces HTTPS-first, validates the URL, blocks private/loopback hosts (SSRF),
+follows a bounded number of redirects, and caps responses at 5 MB.
+
+**`rss-parser`, browser-safe.** The spec calls for a real RSS/Atom parser, and
+`rss-parser` handles RSS 2.0, RSS 1.0/RDF, Atom and their namespaces correctly. It is a
+Node library though: `xml2js`/`sax` touch `require('events')` and
+`require('timers').setImmediate` at module load, which Vite stubs out. Two small aliases
+fix that without polyfilling all of Node:
+
+```ts
+// vite.config.ts
+{ find: /^events$/,  replacement: node_modules/events/events.js }  // real EventEmitter
+{ find: /^timers$/,  replacement: src/shims/timers.js }            // browser timers
+{ find: /^stream$/,  replacement: src/shims/stream.js }            // minimal base class
+```
+
+Only `parseString` is ever called — never `parseURL` — so `http`/`https`/`url` are never
+reached.
+
+**Sanitization is the XSS boundary.** Feed HTML is untrusted. `DOMPurify` strips
+scripts/event handlers/foreign content against an explicit tag and attribute allow-list;
+a hook then resolves relative `href`/`src`/`srcset` against the article URL, forces
+`target="_blank" rel="noopener noreferrer"` on external links, and drops `javascript:`
+URLs.
+
+**YouTube without an API key.** Feeds publish enough on their own: a video id parsed from
+any URL form is all an embed or a direct link needs. Embedding is opt-in because the
+fallback (open in a new tab) is what most people want day to day.
+
+**Single user, local only.** No auth, no sync, no multi-tenancy — by design.
+
+---
+
+## Known limitations
+
+- Read status is per device (export the JSON backup to move it).
+- Periodic refresh is 15 minutes while the tab is visible; feeds are also refreshed on
+  launch.
+- Article view is single-pane (list ⇄ detail); a two-pane desktop layout is a natural
+  next step.
+- Feed icons depend on the site's favicon resolving; failures fall back to a letter
+  avatar.

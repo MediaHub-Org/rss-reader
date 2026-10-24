@@ -1,0 +1,216 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Feed } from './types';
+import { store, selectArticles } from './store/store';
+import { useStore } from './hooks/useStore';
+import { Sidebar } from './components/Sidebar';
+import { TopBar } from './components/TopBar';
+import { ArticleList } from './components/ArticleList';
+import { ArticleDetail } from './components/ArticleDetail';
+import { AddFeedDialog } from './components/AddFeedDialog';
+import { SettingsDialog } from './components/SettingsDialog';
+import { DataDialog, type DataTab } from './components/DataDialog';
+import { ConfirmDialog } from './components/ConfirmDialog';
+import { Toasts } from './components/Toasts';
+
+const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const STALE_AFTER_MS = 10 * 60 * 1000;
+
+export default function App() {
+  const state = useStore();
+  const [addOpen, setAddOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [dataOpen, setDataOpen] = useState(false);
+  const [dataTab, setDataTab] = useState<DataTab>('import');
+  const [confirmFeed, setConfirmFeed] = useState<Feed | null>(null);
+  const lastRefreshed = useRef(0);
+
+  /* hydrate once */
+  useEffect(() => {
+    void store.hydrate();
+  }, []);
+
+  /* periodic refresh, paused while the tab is hidden */
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastRefreshed.current < STALE_AFTER_MS) return;
+      lastRefreshed.current = Date.now();
+      void store.refreshAll({ silent: true });
+    };
+    const timer = setInterval(tick, REFRESH_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
+  const visibleArticles = useMemo(
+    () =>
+      selectArticles(state, {
+        feedId: state.ui.activeFeedId,
+        sort: state.ui.sort,
+        query: state.ui.query,
+        hideRead: state.prefs.hideRead,
+      }),
+    [state]
+  );
+
+  /* keyboard navigation */
+  useEffect(() => {
+    const isTyping = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      if (!el || !el.tagName) return false;
+      return (
+        el.tagName === 'INPUT' ||
+        el.tagName === 'TEXTAREA' ||
+        el.tagName === 'SELECT' ||
+        el.isContentEditable
+      );
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTyping(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (document.querySelector('[role="dialog"]')) return;
+
+      const activeId = state.ui.activeArticleId;
+      const index = activeId ? visibleArticles.findIndex((a) => a.id === activeId) : -1;
+      const openArticle = (id: string) => {
+        store.setActiveArticle(id);
+        const article = visibleArticles.find((a) => a.id === id);
+        if (article && !state.readIds[id]) store.toggleRead(id);
+        requestAnimationFrame(() => {
+          document
+            .querySelector(`[data-article-id="${CSS.escape(id)}"]`)
+            ?.scrollIntoView({ block: 'nearest' });
+        });
+      };
+
+      switch (event.key) {
+        case 'j':
+        case 'ArrowDown': {
+          if (!visibleArticles.length) return;
+          event.preventDefault();
+          const next = visibleArticles[Math.min(index + 1, visibleArticles.length - 1)];
+          if (index < 0) openArticle(visibleArticles[0].id);
+          else openArticle(next.id);
+          break;
+        }
+        case 'k':
+        case 'ArrowUp': {
+          if (!visibleArticles.length) return;
+          event.preventDefault();
+          if (index <= 0) {
+            store.setActiveArticle(null);
+            return;
+          }
+          openArticle(visibleArticles[index - 1].id);
+          break;
+        }
+        case 'Enter':
+        case 'o': {
+          if (activeId) {
+            event.preventDefault();
+            openArticle(activeId);
+          } else if (visibleArticles[0]) {
+            openArticle(visibleArticles[0].id);
+          }
+          break;
+        }
+        case 'm': {
+          if (activeId) store.toggleRead(activeId);
+          break;
+        }
+        case 'r': {
+          event.preventDefault();
+          void store.refreshAll();
+          break;
+        }
+        case '/': {
+          event.preventDefault();
+          document.querySelector<HTMLInputElement>('.search__input')?.focus();
+          break;
+        }
+        case 'a': {
+          event.preventDefault();
+          setAddOpen(true);
+          break;
+        }
+        case 'Escape': {
+          if (state.ui.activeArticleId) store.setActiveArticle(null);
+          else if (state.ui.sidebarOpen) store.setSidebarOpen(false);
+          break;
+        }
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [state, visibleArticles]);
+
+  const closeSidebar = () => store.setSidebarOpen(false);
+
+  return (
+    <div className="app" data-sidebar-open={state.ui.sidebarOpen}>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+
+      <div className="app__body">
+        <Sidebar
+          onAddFeed={() => setAddOpen(true)}
+          onImport={() => {
+            setDataTab('import');
+            setDataOpen(true);
+          }}
+          onExport={() => {
+            setDataTab('export');
+            setDataOpen(true);
+          }}
+          onSettings={() => setSettingsOpen(true)}
+          onUnsubscribe={setConfirmFeed}
+          onClose={closeSidebar}
+        />
+
+        {state.ui.sidebarOpen && (
+          <div className="backdrop" onClick={closeSidebar} aria-hidden="true" />
+        )}
+
+        <div className="main">
+          <TopBar onMenu={() => store.setSidebarOpen(true)} onAddFeed={() => setAddOpen(true)} />
+
+          <main className="content-area" id="main-content" tabIndex={-1}>
+            {state.ui.activeArticleId ? (
+              <ArticleDetail />
+            ) : (
+              <ArticleList onAddFeed={() => setAddOpen(true)} onImport={() => setDataOpen(true)} />
+            )}
+          </main>
+        </div>
+      </div>
+
+      <AddFeedDialog open={addOpen} onClose={() => setAddOpen(false)} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <DataDialog open={dataOpen} initialTab={dataTab} onClose={() => setDataOpen(false)} />
+
+      <ConfirmDialog
+        open={Boolean(confirmFeed)}
+        title="Unsubscribe?"
+        message={`“${confirmFeed?.title ?? ''}” will be removed from your feed list along with its cached articles. Your read history for other feeds is unaffected.`}
+        confirmLabel="Unsubscribe"
+        onConfirm={() => {
+          if (confirmFeed) store.removeFeed(confirmFeed.id);
+          setConfirmFeed(null);
+        }}
+        onCancel={() => setConfirmFeed(null)}
+      />
+
+      <Toasts />
+    </div>
+  );
+}
