@@ -12,7 +12,8 @@ Built from the Fluent Reader / FluentFlame / Folo aesthetic: clean, fast, minima
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm start             # build if stale → serve :4173 → open the app
+npm run dev           # http://localhost:5173 (hot reload)
 ```
 
 Production build and static hosting:
@@ -30,7 +31,41 @@ npm run proxy         # http://localhost:8788/proxy?url=<encoded feed url>
 VITE_PROXY_URL=http://localhost:8788/proxy npm run build
 ```
 
-### Install it as an app
+## Launching it easily
+
+**One command — recommended:**
+
+```bash
+npm start
+```
+
+It rebuilds only when the sources changed, starts the app server in the background
+*only if it isn't already running*, waits for it, then opens
+http://localhost:4173. Running it again while the server is up just opens the app.
+(`--no-open` skips opening the browser, for scripts/CI.)
+
+**Double-click (Windows + WSL):** `Launch RSS Reader.bat` in the project folder, or
+the **RSS Reader** icon on your Desktop. It launches the server inside WSL — the
+build toolchain is Linux-only (`esbuild` ships `linux-x64` here) and a plain `wsl`
+shell has no `node` on `PATH`, so `scripts/launch-wsl.sh` sets that up — then opens
+the app and closes its window. Create or refresh the Desktop shortcut with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\make-shortcut.ps1
+```
+
+**Which shortcut should you actually use?**
+
+| Entry point | Use it for |
+|---|---|
+| **Installed PWA icon** (below) | Daily reading — own window, no browser chrome, instant start, works offline |
+| **Desktop shortcut / `npm start`** | Bringing the local server up — feed fetching always needs it |
+| Browser bookmark of `localhost:4173` | Zero-install fallback if you don't want a PWA |
+
+The installed app opens even with the server stopped (its shell is precached) — only
+feed refreshes fail until you start the server again.
+
+## Install it as an app
 
 The production build is an installable PWA (manifest + service worker), so it runs in
 its own window, starts instantly, and keeps working offline:

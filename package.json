@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Lightweight local-first RSS/Atom reader with media playback",
   "scripts": {
+    "start": "node scripts/launch.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
