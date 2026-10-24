@@ -4,6 +4,7 @@ import App from './App';
 import { store } from './store/store';
 import './styles/theme.css';
 import './styles/app.css';
+import './styles/responsive.css';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Root container missing');

@@ -1,52 +1,143 @@
-/* --------------------------------------------------------------------------
-   Design tokens. Light/dark are driven purely by [data-theme] on <html>,
-   which index.html sets before first paint (no flash) and the store keeps in
-   sync with the user's preference.
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   Global Design Tokens & State Variables (rem-based)
+   --------------------------------------------------------------------------
+   All colors, spacing, typography, layout dimensions, shadows, z-index and
+   state tokens live here first. Component rules in app.css and breakpoint
+   rules in responsive.css consume them by name via var(--...).
+   ========================================================================== */
 
 :root {
+  /* ------------------------------ Typography ------------------------------ */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 16px;
+  --text-2xs: 0.6875rem;   /* 11px */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.8125rem;    /* 13px */
+  --text-base: 0.875rem;   /* 14px */
+  --text-md: 1rem;         /* 16px */
+  --text-lg: 1.0625rem;    /* 17px */
+  --text-xl: 1.1875rem;    /* 19px */
+  --text-display: clamp(1.5rem, 3.4vw, 2rem);
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
+  --weight-regular: 400;
+  --weight-medium: 550;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
 
-  --sidebar-width: 276px;
-  --topbar-height: 60px;
+  /* ---------------------------- Spacing (rem) ----------------------------- */
+  --space-1: 0.25rem;      /* 4px  */
+  --space-2: 0.5rem;       /* 8px  */
+  --space-3: 0.75rem;      /* 12px */
+  --space-4: 1rem;         /* 16px */
+  --space-5: 1.25rem;      /* 20px */
+  --space-6: 1.5rem;       /* 24px */
+  --space-7: 2rem;         /* 32px */
 
+  /* ----------------------------- Radii (rem) ------------------------------ */
+  --radius-xs: 0.25rem;    /* 4px  */
+  --radius-sm: 0.375rem;   /* 6px  */
+  --radius: 0.625rem;      /* 10px */
+  --radius-card: 0.875rem; /* 14px */
+  --radius-lg: 1rem;       /* 16px */
+  --radius-pill: 999rem;
+
+  /* -------------------------- Layout Dimensions --------------------------- */
+  --sidebar-width: 17.25rem;        /* 276px */
+  --sidebar-drawer-max: 20rem;      /* 320px */
+  --sidebar-nested-indent: 1rem;    /* 16px  */
+  --topbar-height: 3.75rem;         /* 60px  */
+  --control-height: 2.125rem;       /* 34px  */
+  --icon-btn-sm: 1.375rem;          /* 22px  */
+  --feed-icon-size: 1.25rem;        /* 20px  */
+  --badge-min-width: 1.25rem;       /* 20px  */
+  --badge-height: 1.125rem;         /* 18px  */
+  --status-dot-size: 1rem;          /* 16px  */
+  --search-width: 13.75rem;         /* 220px */
+  --search-width-focus: 17.5rem;    /* 280px */
+  --dropdown-min-width: 11.875rem;  /* 190px */
+  --dropdown-max-label: 8.75rem;    /* 140px */
+  --detail-max-width: 48.75rem;     /* 780px */
+  --dialog-sm: 27.5rem;             /* 440px */
+  --dialog-md: 35rem;               /* 560px */
+  --dialog-lg: 45rem;               /* 720px */
+  --dialog-max-h: 45rem;            /* 720px */
+  --manage-list-max-h: 22.5rem;     /* 360px */
+  --opml-editor-min-h: 15rem;       /* 240px */
+  --toast-max-width: 26.25rem;      /* 420px */
+
+  /* ----------------------- Card & Grid State Tokens ----------------------- */
+  --grid-min-col: 16.5rem;          /* 264px */
+  --grid-gap: 1.25rem;              /* 20px  */
+  --grid-pad-y: 1.25rem;            /* 20px  */
+  --grid-pad-x: 1.5rem;             /* 24px  */
+  --card-height: 17.75rem;          /* 284px */
+  --card-media-height: 9.25rem;     /* 148px */
+  --card-pad-x: 0.875rem;           /* 14px  */
+  --card-favicon-size: 1rem;        /* 16px  */
+  --card-favicon-lg: 1.625rem;      /* 26px  */
+  --card-unread-size: 0.4375rem;    /* 7px   */
+  --card-play-size: 2.75rem;        /* 44px  */
+  --video-play-size: 3rem;          /* 48px  */
+  --card-snippet-lines: 2;
+  --read-media-opacity: 0.72;
+  --read-media-saturation: 0.75;
+
+  /* -------------------------- Motion & Z-Index ---------------------------- */
   --transition: 140ms cubic-bezier(0.2, 0, 0.2, 1);
+  --transition-card: 180ms ease;
+  --transition-media: 350ms cubic-bezier(0.2, 0.7, 0.2, 1);
 
-  /* Light palette */
+  --z-sticky: 5;
+  --z-backdrop: 35;
+  --z-drawer: 40;
+  --z-dropdown: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+
+  /* ------------------------- Palette (Light Mode) ------------------------- */
   --bg: #f6f7f9;
   --panel: #ffffff;
   --panel-2: #f1f3f6;
   --panel-3: #e9edf2;
+  --media-bg: #000000;
+  --on-media: #ffffff;
   --border: #e2e6ec;
   --border-strong: #cdd4de;
   --text: #14171c;
   --muted: #59626f;
   --faint: #8b94a3;
+
   --accent: #4a6cf7;
   --accent-strong: #3557e0;
   --accent-soft: rgba(74, 108, 247, 0.12);
   --accent-contrast: #ffffff;
+  --accent-secondary: #8764b8;
+
+  --unread-dot: #ffaa44;
+  --unread-dot-ring: rgba(255, 170, 68, 0.16);
+
   --danger: #d92d20;
   --danger-soft: rgba(217, 45, 32, 0.1);
   --success: #12a150;
   --success-soft: rgba(18, 161, 80, 0.12);
   --warning-soft: rgba(240, 160, 0, 0.14);
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow: 0 8px 24px rgba(16, 24, 40, 0.1);
+
+  --shadow-sm: 0 0.0625rem 0.125rem rgba(16, 24, 40, 0.06);
+  --shadow: 0 0.5rem 1.5rem rgba(16, 24, 40, 0.1);
+  --card-border: color-mix(in srgb, var(--text) 10%, transparent);
+  --card-border-hover: color-mix(in srgb, var(--text) 18%, transparent);
+  --card-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.06), 0 0.625rem 1.75rem rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.08), 0 1.125rem 2.75rem rgba(0, 0, 0, 0.16);
+  --card-shadow-active: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.08), 0 0.5rem 1.25rem rgba(0, 0, 0, 0.12);
+  --focus-ring: 0 0 0 0.1875rem var(--accent-soft);
   --overlay: rgba(15, 19, 26, 0.45);
+  --play-bg: rgba(0, 0, 0, 0.64);
+  --play-shadow: 0 0.125rem 0.625rem rgba(0, 0, 0, 0.35);
 }
+
+/* -------------------------- Palette (Dark Mode) --------------------------- */
 
 [data-theme='dark'] {
   --bg: #0e1014;
@@ -58,48 +149,63 @@
   --text: #e8eaee;
   --muted: #a2aab8;
   --faint: #737c8b;
+
   --accent: #7b95ff;
   --accent-strong: #93a8ff;
   --accent-soft: rgba(123, 149, 255, 0.16);
   --accent-contrast: #0e1014;
+
   --danger: #ff6b61;
   --danger-soft: rgba(255, 107, 97, 0.14);
   --success: #4ade80;
   --success-soft: rgba(74, 222, 128, 0.14);
   --warning-soft: rgba(255, 196, 0, 0.14);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+
+  --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.4);
+  --shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.55);
   --overlay: rgba(0, 0, 0, 0.6);
 }
 
-/* List density — one attribute changes every vertical rhythm variable. */
+/* ----------------------- Density State Overrides -------------------------- */
+
 [data-density='comfortable'] {
-  --row-y: 15px;
-  --row-gap: 6px;
-  --list-pad: 10px;
+  --grid-min-col: 16.5rem;          /* 264px */
+  --grid-gap: 1.25rem;              /* 20px  */
+  --grid-pad-y: 1.25rem;            /* 20px  */
+  --grid-pad-x: 1.5rem;             /* 24px  */
+  --card-height: 17.75rem;          /* 284px */
+  --card-media-height: 9.25rem;     /* 148px */
+  --card-snippet-lines: 2;
 }
 
 [data-density='compact'] {
-  --row-y: 7px;
-  --row-gap: 2px;
-  --list-pad: 4px;
+  --grid-min-col: 15.25rem;         /* 244px */
+  --grid-gap: 0.875rem;             /* 14px  */
+  --grid-pad-y: 0.875rem;           /* 14px  */
+  --grid-pad-x: 1rem;               /* 16px  */
+  --card-height: 15rem;             /* 240px */
+  --card-media-height: 7.375rem;    /* 118px */
+  --card-snippet-lines: 1;
 }
 
-/* Reader font size */
+/* ---------------------- Reader Font State Overrides ----------------------- */
+
 [data-font-size='small'] {
-  --reader-size: 15.5px;
+  --reader-size: 0.96875rem;        /* 15.5px */
   --reader-line: 1.6;
 }
+
 [data-font-size='medium'] {
-  --reader-size: 17px;
+  --reader-size: 1.0625rem;         /* 17px   */
   --reader-line: 1.7;
 }
+
 [data-font-size='large'] {
-  --reader-size: 19px;
+  --reader-size: 1.1875rem;         /* 19px   */
   --reader-line: 1.75;
 }
 
-/* ---------------------------------- base ---------------------------------- */
+/* ---------------------------------- Base ---------------------------------- */
 
 *,
 *::before,
@@ -116,7 +222,7 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-base);
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
@@ -146,71 +252,36 @@ a {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  outline: 0.125rem solid var(--accent);
+  outline-offset: 0.125rem;
 }
-
-::selection {
-  background: var(--accent-soft);
-}
-
-/* Scrollbars: subtle, matching the theme */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
-}
-*::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 999px;
-  border: 3px solid transparent;
-  background-clip: content-box;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--faint);
-  background-clip: content-box;
-}
-
-/* --------------------------------- a11y ----------------------------------- */
 
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 0.0625rem;
+  height: 0.0625rem;
   padding: 0;
-  margin: -1px;
+  margin: -0.0625rem;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
 }
 
 .skip-link {
-  position: absolute;
+  position: fixed;
+  top: -3.5rem;
   left: var(--space-3);
-  top: -60px;
   z-index: 100;
+  padding: var(--space-2) var(--space-3);
   background: var(--accent);
   color: var(--accent-contrast);
-  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius);
   text-decoration: none;
+  font-weight: var(--weight-semibold);
   transition: top var(--transition);
 }
+
 .skip-link:focus {
   top: var(--space-3);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
 }
