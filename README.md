@@ -30,10 +30,29 @@ npm run proxy         # http://localhost:8788/proxy?url=<encoded feed url>
 VITE_PROXY_URL=http://localhost:8788/proxy npm run build
 ```
 
-Run the end-to-end suite (expects `npm run dev` to be running):
+### Install it as an app
+
+The production build is an installable PWA (manifest + service worker), so it runs in
+its own window, starts instantly, and keeps working offline:
 
 ```bash
-node scripts/e2e.mjs   # 38 checks, screenshots in test-artifacts/
+npm run build
+npm run preview       # http://localhost:4173
+```
+
+Open that URL in Chrome/Edge and use **Install** in the address bar (or ⋮ → *Install
+page as app…*); on macOS Chrome it is *File → Install "RSS Reader"*. The installed app
+gets its own window and dock/taskbar icon, and boots from the precached shell even with
+no network — only feed refreshes need connectivity.
+
+Icons are generated from one SVG source (`npm run icons`).
+
+Run the test suites (`npm run dev` for the first, `npm run build && npm run preview`
+for the second):
+
+```bash
+npm run test:e2e      # 38 checks against live feeds → test-artifacts/
+npm run test:pwa      # 16 installability + offline checks
 ```
 
 ---
@@ -142,6 +161,12 @@ any URL form is all an embed or a direct link needs. Embedding is opt-in because
 fallback (open in a new tab) is what most people want day to day.
 
 **Single user, local only.** No auth, no sync, no multi-tenancy — by design.
+
+**Offline shell.** A production-only service worker precaches the app shell (including
+the hashed CSS/JS it references on first load) so an installed app starts with no
+network. `/proxy` is deliberately excluded — feed reads are never cached, and hashed
+asset lookups use `ignoreVary` because the origin sends `Vary: Origin`, which would
+otherwise make CORS-mode subresources miss the cache.
 
 ---
 

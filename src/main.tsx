@@ -13,6 +13,16 @@ if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).__store = store;
 }
 
+// Register the app-shell service worker so the installed app boots instantly
+// and keeps working offline. Production only — never during development.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch((err) => {
+      console.warn('Service worker registration failed', err);
+    });
+  });
+}
+
 createRoot(container).render(
   <StrictMode>
     <App />

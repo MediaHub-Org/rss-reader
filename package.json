@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test:e2e": "node scripts/e2e.mjs",
+    "test:pwa": "node scripts/verify-pwa.mjs",
+    "icons": "node scripts/make-icons.mjs",
     "proxy": "node server/proxy.mjs"
   },
   "dependencies": {
