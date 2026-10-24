@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { store } from '../store/store';
+import { useStore } from '../hooks/useStore';
+import { byName } from '../lib/opml';
 import { Dialog } from './Dialog';
 
 interface AddFeedDialogProps {
@@ -15,9 +17,19 @@ const SUGGESTIONS = [
 ];
 
 export function AddFeedDialog({ open, onClose }: AddFeedDialogProps) {
+  const state = useStore();
   const [value, setValue] = useState('');
+  const [folder, setFolder] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const folders = useMemo(
+    () =>
+      [...new Set(state.feeds.map((f) => f.folder?.trim()).filter(Boolean) as string[])].sort(
+        byName
+      ),
+    [state.feeds]
+  );
 
   const submit = async (raw: string) => {
     if (busy) return;
@@ -28,11 +40,12 @@ export function AddFeedDialog({ open, onClose }: AddFeedDialogProps) {
     }
     setBusy(true);
     setError(null);
-    const result = await store.addFeed(url);
+    const result = await store.addFeed(url, folder);
     setBusy(false);
 
     if (result.ok) {
       setValue('');
+      setFolder('');
       store.notify('success', result.message || 'Subscribed');
       onClose();
     } else {
@@ -96,6 +109,24 @@ export function AddFeedDialog({ open, onClose }: AddFeedDialogProps) {
             Paste a feed URL, or a website address — the feed is discovered automatically.
           </p>
         )}
+
+        <label className="field">
+          <span className="field__label">Folder (optional)</span>
+          <input
+            className="input"
+            type="text"
+            list="feed-folder-options"
+            placeholder="e.g. Tech, News — or leave blank"
+            value={folder}
+            onChange={(event) => setFolder(event.target.value)}
+            spellCheck={false}
+          />
+          <datalist id="feed-folder-options">
+            {folders.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </label>
       </form>
 
       <div className="suggestions">

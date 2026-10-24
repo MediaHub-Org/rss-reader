@@ -4,7 +4,7 @@ import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { sanitizeHtml } from '../lib/sanitize';
 import { formatDate } from '../lib/format';
-import { embedUrl, watchUrl } from '../lib/youtube';
+import { embedUrl, thumbnailUrl, watchUrl } from '../lib/youtube';
 import { Icon } from './Icon';
 
 export function ArticleDetail() {
@@ -110,14 +110,25 @@ export function ArticleDetail() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span className="video-card__play" aria-hidden="true">
-                  <Icon name="play" size={22} />
-                </span>
-                <span className="video-card__text">
-                  <strong>Watch on YouTube</strong>
-                  <span>Opens in a new tab</span>
-                </span>
-                <Icon name="external" size={16} />
+                <div className="video-card__poster">
+                  <img
+                    src={thumbnailUrl(article.youtubeId)}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                  />
+                  <span className="video-card__play" aria-hidden="true">
+                    <Icon name="play" size={22} />
+                  </span>
+                </div>
+                <div className="video-card__footer">
+                  <span className="video-card__text">
+                    <strong>Watch on YouTube</strong>
+                    <span>Opens in a new tab</span>
+                  </span>
+                  <Icon name="external" size={16} />
+                </div>
               </a>
             )}
           </section>
@@ -129,7 +140,7 @@ export function ArticleDetail() {
           dangerouslySetInnerHTML={{ __html: html }}
         />
 
-        {!html && (
+        {!html && !article.youtubeId && (
           <p className="detail__fallback">
             This article has no readable content.
             {article.link && (

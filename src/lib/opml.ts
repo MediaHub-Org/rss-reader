@@ -10,6 +10,8 @@ export interface ExportFeed {
   url: string;
   title: string;
   siteUrl?: string;
+  /** Folder/group this feed belongs to (round-trips through OPML nesting). */
+  folder?: string;
 }
 
 export interface ImportResult {
@@ -17,6 +19,28 @@ export interface ImportResult {
   readIds?: Record<string, true>;
   format: 'opml' | 'json';
   warnings: string[];
+  /** Unique folder names found in the file, sorted A–Z. */
+  folders: string[];
+}
+
+/** Case/diacritic-insensitive A–Z ordering used everywhere feeds are listed. */
+export function byName(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+/**
+ * Foldered feeds first (folders A–Z, feeds inside A–Z), then any ungrouped
+ * feeds A–Z — matches the sidebar and OPML export order.
+ */
+function sortImportedFeeds(feeds: ExportFeed[]): ExportFeed[] {
+  return [...feeds].sort((a, b) => {
+    const folderA = a.folder?.trim() ?? '';
+    const folderB = b.folder?.trim() ?? '';
+    if (Boolean(folderA) !== Boolean(folderB)) return folderA ? -1 : 1;
+    const folderCmp = byName(folderA, folderB);
+    if (folderCmp !== 0) return folderCmp;
+    return byName(a.title || a.url, b.title || b.url);
+  });
 }
 
 export class ImportError extends Error {}
@@ -44,19 +68,48 @@ function normalizeUrl(raw: string): string | null {
   }
 }
 
-/** Serialize subscriptions to OPML 2.0. */
+const feedOutline = (feed: ExportFeed, indent: string): string =>
+  `${indent}<outline type="rss" text="${escapeXml(feed.title)}" title="${escapeXml(
+    feed.title
+  )}" xmlUrl="${escapeXml(feed.url)}"${
+    feed.siteUrl ? ` htmlUrl="${escapeXml(feed.siteUrl)}"` : ''
+  } />`;
+
+/**
+ * Serialize subscriptions to OPML 2.0.
+ *
+ * Feeds are grouped into nested folder outlines — folders A–Z, and the feeds
+ * inside each folder A–Z — so the structure survives an export → import
+ * round-trip (or a trip through another reader).
+ */
 export function exportOpml(feeds: Feed[]): string {
   const now = new Date().toUTCString();
-  const outlines = feeds
+  const byTitle = (a: Feed, b: Feed) => byName(a.title, b.title);
+
+  const grouped = new Map<string, Feed[]>();
+  const loose: Feed[] = [];
+  for (const feed of feeds) {
+    const folder = feed.folder?.trim();
+    if (!folder) {
+      loose.push(feed);
+      continue;
+    }
+    grouped.set(folder, [...(grouped.get(folder) ?? []), feed]);
+  }
+
+  const folderOutlines = [...grouped.entries()]
+    .sort(([a], [b]) => byName(a, b))
     .map(
-      (feed) =>
-        `    <outline type="rss" text="${escapeXml(feed.title)}" title="${escapeXml(
-          feed.title
-        )}" xmlUrl="${escapeXml(feed.url)}"${
-          feed.siteUrl ? ` htmlUrl="${escapeXml(feed.siteUrl)}"` : ''
-        } />`
-    )
-    .join('\n');
+      ([folder, list]) =>
+        `    <outline text="${escapeXml(folder)}" title="${escapeXml(folder)}">\n` +
+        list
+          .sort(byTitle)
+          .map((feed) => feedOutline(feed, '      '))
+          .join('\n') +
+        `\n    </outline>`
+    );
+
+  const looseOutlines = loose.sort(byTitle).map((feed) => feedOutline(feed, '    '));
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0">
@@ -65,7 +118,7 @@ export function exportOpml(feeds: Feed[]): string {
     <dateCreated>${escapeXml(now)}</dateCreated>
   </head>
   <body>
-${outlines}
+${[...folderOutlines, ...looseOutlines].join('\n')}
   </body>
 </opml>
 `;
@@ -78,7 +131,13 @@ export function exportJson(feeds: Feed[], readIds: Record<string, true>): string
       app: 'rss-reader',
       version: 1,
       exportedAt: new Date().toISOString(),
-      feeds: feeds.map((f) => ({ url: f.url, title: f.title, siteUrl: f.siteUrl, addedAt: f.addedAt })),
+      feeds: feeds.map((f) => ({
+        url: f.url,
+        title: f.title,
+        siteUrl: f.siteUrl,
+        folder: f.folder,
+        addedAt: f.addedAt,
+      })),
       readIds: Object.keys(readIds),
     },
     null,
@@ -100,36 +159,63 @@ function parseOpml(text: string): ImportResult {
   const warnings: string[] = [];
   const feeds: ExportFeed[] = [];
   const seen = new Set<string>();
+  const folderNames = new Set<string>();
 
   const outlines = Array.from(doc.querySelectorAll('outline'));
   if (!outlines.length) {
     throw new ImportError('The OPML file contains no subscriptions.');
   }
 
-  for (const node of outlines) {
-    const xmlUrl =
-      node.getAttribute('xmlUrl') || node.getAttribute('xmlurl') || node.getAttribute('url');
-    if (!xmlUrl) continue; // folder/group node — recurse is implicit in the query
+  /**
+   * Walk the outline tree so folder nesting survives: a feed inside
+   * <outline text="News"> inherits that folder, and deeper nesting is joined
+   * with " / " (e.g. "News / Tech"). A node without xmlUrl is a folder.
+   */
+  const walk = (node: Element, ancestors: string[]): void => {
+    for (const child of Array.from(node.children)) {
+      if (child.localName.toLowerCase() !== 'outline') continue;
 
-    const url = normalizeUrl(xmlUrl);
-    if (!url) {
-      warnings.push(`Skipped an entry with an invalid URL: ${xmlUrl.slice(0, 80)}`);
-      continue;
+      const xmlUrl =
+        child.getAttribute('xmlUrl') || child.getAttribute('xmlurl') || child.getAttribute('url');
+
+      if (xmlUrl) {
+        const url = normalizeUrl(xmlUrl);
+        if (!url) {
+          warnings.push(`Skipped an entry with an invalid URL: ${xmlUrl.slice(0, 80)}`);
+          continue;
+        }
+        if (seen.has(url)) continue;
+        seen.add(url);
+
+        const folder = ancestors.join(' / ').trim() || undefined;
+        if (folder) folderNames.add(folder);
+        feeds.push({
+          url,
+          title: (child.getAttribute('title') || child.getAttribute('text') || '').trim(),
+          siteUrl: child.getAttribute('htmlUrl') || undefined,
+          folder,
+        });
+        continue;
+      }
+
+      // Folder/group node: recurse with its name on the ancestor stack.
+      const name = (child.getAttribute('title') || child.getAttribute('text') || '').trim();
+      walk(child, name ? [...ancestors, name] : ancestors);
     }
-    if (seen.has(url)) continue;
-    seen.add(url);
+  };
 
-    feeds.push({
-      url,
-      title: (node.getAttribute('title') || node.getAttribute('text') || '').trim(),
-      siteUrl: node.getAttribute('htmlUrl') || undefined,
-    });
-  }
+  const body = doc.querySelector('body') ?? root;
+  walk(body, []);
 
   if (!feeds.length) {
     throw new ImportError('No valid feed URLs were found in that OPML file.');
   }
-  return { feeds, format: 'opml', warnings };
+  return {
+    feeds: sortImportedFeeds(feeds),
+    format: 'opml',
+    warnings,
+    folders: [...folderNames].sort(byName),
+  };
 }
 
 function parseJsonBackup(text: string): ImportResult {
@@ -147,6 +233,7 @@ function parseJsonBackup(text: string): ImportResult {
   }
 
   const feeds: ExportFeed[] = [];
+  const folderNames = new Set<string>();
   const seen = new Set<string>();
   for (const entry of rawFeeds) {
     const url = normalizeUrl(String(entry?.url ?? ''));
@@ -156,7 +243,14 @@ function parseJsonBackup(text: string): ImportResult {
     }
     if (seen.has(url)) continue;
     seen.add(url);
-    feeds.push({ url, title: String(entry?.title ?? '').trim(), siteUrl: entry?.siteUrl || undefined });
+    const folder = typeof entry?.folder === 'string' ? entry.folder.trim() || undefined : undefined;
+    if (folder) folderNames.add(folder);
+    feeds.push({
+      url,
+      title: String(entry?.title ?? '').trim(),
+      siteUrl: entry?.siteUrl || undefined,
+      folder,
+    });
   }
 
   const readIds: Record<string, true> = {};
@@ -165,7 +259,13 @@ function parseJsonBackup(text: string): ImportResult {
   }
 
   if (!feeds.length) throw new ImportError('No valid feed URLs were found in that backup.');
-  return { feeds, readIds, format: 'json', warnings };
+  return {
+    feeds: sortImportedFeeds(feeds),
+    readIds,
+    format: 'json',
+    warnings,
+    folders: [...folderNames].sort(byName),
+  };
 }
 
 /** Parse an uploaded OPML or JSON backup file. */

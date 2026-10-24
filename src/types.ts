@@ -9,7 +9,7 @@ export interface Preferences {
   theme: ThemeMode;
   density: Density;
   fontSize: FontSize;
-  /** Embed YouTube players inline instead of linking out. */
+  /** Play YouTube videos inline in the reader (otherwise link out). */
   embedYouTube: boolean;
   /** Hide articles already marked as read. */
   hideRead: boolean;
@@ -19,7 +19,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'system',
   density: 'comfortable',
   fontSize: 'medium',
-  embedYouTube: false,
+  embedYouTube: true,
   hideRead: false,
 };
 
@@ -32,6 +32,8 @@ export interface Feed {
   siteUrl?: string;
   description?: string;
   iconUrl?: string;
+  /** Folder/group from OPML import (or assigned when subscribing). */
+  folder?: string;
   addedAt: number;
 }
 
@@ -46,6 +48,8 @@ export interface Article {
   contentHtml: string;
   author?: string;
   publishedAt: number;
+  /** Best still image for the card (enclosure / media:content / first <img>). */
+  thumbnail?: string;
   /** Detected YouTube video id, if the item references one. */
   youtubeId?: string;
 }

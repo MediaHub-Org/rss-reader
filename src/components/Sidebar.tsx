@@ -3,7 +3,8 @@ import type { Feed } from '../types';
 import { ALL_FEEDS } from '../types';
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
-import { faviconUrl } from '../lib/url';
+import { byName } from '../lib/opml';
+import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
 
 interface SidebarProps {
@@ -15,44 +16,94 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-function FeedIcon({ feed }: { feed: Feed }) {
-  const [failed, setFailed] = useState(false);
-  const src = failed ? null : feed.iconUrl || faviconUrl(feed);
-  const letter = (feed.title || '?').trim().charAt(0).toUpperCase();
-
-  if (!src) {
-    return (
-      <span className="feed-icon feed-icon--letter" aria-hidden="true">
-        {letter}
-      </span>
-    );
-  }
-  return (
-    <img
-      className="feed-icon"
-      src={src}
-      alt=""
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-    />
-  );
+interface FolderGroup {
+  name: string;
+  feeds: Feed[];
 }
 
 export function Sidebar({ onAddFeed, onImport, onExport, onSettings, onUnsubscribe, onClose }: SidebarProps) {
   const state = useStore();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const totalUnread = useMemo(
     () => state.feeds.reduce((sum, feed) => sum + unreadCount(state, feed.id), 0),
     [state]
   );
 
-  const sortedFeeds = useMemo(
-    () => [...state.feeds].sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })),
-    [state.feeds]
-  );
+  /**
+   * Folders sorted A–Z with their feeds sorted A–Z inside, followed by any
+   * ungrouped feeds sorted A–Z.
+   */
+  const { folders, ungrouped } = useMemo(() => {
+    const byTitle = (a: Feed, b: Feed) => byName(a.title, b.title);
+    const grouped = new Map<string, Feed[]>();
+    const loose: Feed[] = [];
+
+    for (const feed of state.feeds) {
+      const folder = feed.folder?.trim();
+      if (!folder) {
+        loose.push(feed);
+        continue;
+      }
+      grouped.set(folder, [...(grouped.get(folder) ?? []), feed]);
+    }
+
+    const folderList: FolderGroup[] = [...grouped.entries()]
+      .sort(([a], [b]) => byName(a, b))
+      .map(([name, list]) => ({ name, feeds: list.sort(byTitle) }));
+
+    return { folders: folderList, ungrouped: loose.sort(byTitle) };
+  }, [state.feeds]);
+
+  const toggleFolder = (name: string) => {
+    setCollapsed((current) => ({ ...current, [name]: !current[name] }));
+  };
+
+  const renderFeedItem = (feed: Feed) => {
+    const unread = unreadCount(state, feed.id);
+    const feedState = state.feedState[feed.id];
+    const hasError = feedState?.status === 'error';
+    const isActive = state.ui.activeFeedId === feed.id;
+
+    return (
+      <li
+        key={feed.id}
+        className="feed-item"
+        onMouseEnter={() => setHovered(feed.id)}
+        onMouseLeave={() => setHovered(null)}
+      >
+        <button
+          type="button"
+          className={`feed-row ${isActive ? 'is-active' : ''}`}
+          onClick={() => store.setActiveFeed(feed.id)}
+          aria-current={isActive ? 'page' : undefined}
+          title={feed.description || feed.title}
+        >
+          <FeedIcon feed={feed} />
+          <span className="feed-row__title">{feed.title}</span>
+          {hasError && (
+            <span className="status-dot" title={feedState?.message} aria-label="Feed has an error">
+              !
+            </span>
+          )}
+          {unread > 0 && <span className="badge">{unread > 999 ? '999+' : unread}</span>}
+        </button>
+
+        {(hovered === feed.id || isActive) && (
+          <button
+            type="button"
+            className="feed-row__remove icon-button"
+            onClick={() => onUnsubscribe(feed)}
+            aria-label={`Unsubscribe from ${feed.title}`}
+            title="Unsubscribe"
+          >
+            <Icon name="trash" size={15} />
+          </button>
+        )}
+      </li>
+    );
+  };
 
   return (
     <nav className="sidebar" aria-label="Feeds">
@@ -83,50 +134,38 @@ export function Sidebar({ onAddFeed, onImport, onExport, onSettings, onUnsubscri
             </button>
           </li>
 
-          {sortedFeeds.map((feed) => {
-            const unread = unreadCount(state, feed.id);
-            const feedState = state.feedState[feed.id];
-            const hasError = feedState?.status === 'error';
-            const isActive = state.ui.activeFeedId === feed.id;
-
+          {folders.map((folder) => {
+            const isOpen = !collapsed[folder.name];
+            const folderUnread = folder.feeds.reduce(
+              (sum, feed) => sum + unreadCount(state, feed.id),
+              0
+            );
             return (
-              <li
-                key={feed.id}
-                className="feed-item"
-                onMouseEnter={() => setHovered(feed.id)}
-                onMouseLeave={() => setHovered(null)}
-              >
+              <li className="folder-group" key={`folder:${folder.name}`}>
                 <button
                   type="button"
-                  className={`feed-row ${isActive ? 'is-active' : ''}`}
-                  onClick={() => store.setActiveFeed(feed.id)}
-                  aria-current={isActive ? 'page' : undefined}
-                  title={feed.description || feed.title}
+                  className={`feed-row folder-row ${isOpen ? 'is-open' : ''}`}
+                  onClick={() => toggleFolder(folder.name)}
+                  aria-expanded={isOpen}
                 >
-                  <FeedIcon feed={feed} />
-                  <span className="feed-row__title">{feed.title}</span>
-                  {hasError && (
-                    <span className="status-dot" title={feedState?.message} aria-label="Feed has an error">
-                      !
-                    </span>
+                  <Icon name="chevronDown" size={14} className="folder-row__caret" />
+                  <Icon name="folder" size={15} className="folder-row__icon" />
+                  <span className="feed-row__title">{folder.name}</span>
+                  {folderUnread > 0 && (
+                    <span className="badge">{folderUnread > 999 ? '999+' : folderUnread}</span>
                   )}
-                  {unread > 0 && <span className="badge">{unread > 999 ? '999+' : unread}</span>}
                 </button>
 
-                {(hovered === feed.id || isActive) && (
-                  <button
-                    type="button"
-                    className="feed-row__remove icon-button"
-                    onClick={() => onUnsubscribe(feed)}
-                    aria-label={`Unsubscribe from ${feed.title}`}
-                    title="Unsubscribe"
-                  >
-                    <Icon name="trash" size={15} />
-                  </button>
+                {isOpen && (
+                  <ul className="feed-list feed-list--nested" role="list">
+                    {folder.feeds.map(renderFeedItem)}
+                  </ul>
                 )}
               </li>
             );
           })}
+
+          {ungrouped.map(renderFeedItem)}
 
           {state.feeds.length === 0 && state.hydrated && (
             <li className="feed-list__empty">

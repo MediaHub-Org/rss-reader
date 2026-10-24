@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
-import type { Article } from '../types';
-import { ALL_FEEDS } from '../types';
+import { useMemo, useState } from 'react';
+import type { Article, Feed } from '../types';
 import { store, selectArticles } from '../store/store';
 import { useStore, useInfiniteList } from '../hooks/useStore';
 import { formatRelativeTime } from '../lib/format';
+import { thumbnailUrl } from '../lib/youtube';
+import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
 
 const PAGE_SIZE = 30;
@@ -27,11 +28,13 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
     [state]
   );
 
+  const feedsById = useMemo(
+    () => new Map<string, Feed>(state.feeds.map((feed) => [feed.id, feed])),
+    [state.feeds]
+  );
+
   const { visible, sentinelRef, loadMore } = useInfiniteList(articles.length, PAGE_SIZE);
   const slice = articles.slice(0, visible);
-
-  const feedTitle = (id: string) => state.feeds.find((f) => f.id === id)?.title ?? 'Unknown feed';
-  const showFeedName = state.ui.activeFeedId === ALL_FEEDS;
 
   const feedErrors = Object.entries(state.feedState)
     .filter(([, value]) => value.status === 'error')
@@ -41,9 +44,11 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
     return (
       <div className="list list--loading" aria-busy="true" aria-live="polite">
         <p className="sr-only">Loading feeds</p>
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div className="skeleton-row" key={index} />
-        ))}
+        <div className="article-grid">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div className="skeleton-card" key={index} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -108,14 +113,14 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
         </div>
       ))}
 
-      <ul className="article-list">
+      <ul className="article-grid">
         {slice.map((article) => (
-          <ArticleRow
+          <ArticleCard
             key={article.id}
             article={article}
+            feed={feedsById.get(article.feedId)}
             read={Boolean(state.readIds[article.id])}
             active={state.ui.activeArticleId === article.id}
-            feedName={showFeedName ? feedTitle(article.feedId) : undefined}
           />
         ))}
       </ul>
@@ -133,15 +138,23 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
   );
 }
 
-interface ArticleRowProps {
+interface ArticleCardProps {
   article: Article;
+  feed?: Feed;
   read: boolean;
   active: boolean;
-  feedName?: string;
 }
 
-function ArticleRow({ article, read, active, feedName }: ArticleRowProps) {
+function ArticleCard({ article, feed, read, active }: ArticleCardProps) {
+  const [imgFailed, setImgFailed] = useState(false);
   const time = formatRelativeTime(article.publishedAt);
+
+  // YouTube items always have an i.ytimg.com thumbnail even when the feed XML
+  // omitted <media:thumbnail>; regular items use the extracted image.
+  const rawThumb = article.youtubeId
+    ? thumbnailUrl(article.youtubeId)
+    : article.thumbnail;
+  const thumb = imgFailed ? undefined : rawThumb;
 
   const open = () => {
     if (!read) store.toggleRead(article.id);
@@ -149,9 +162,17 @@ function ArticleRow({ article, read, active, feedName }: ArticleRowProps) {
   };
 
   return (
-    <li className="article-list__item">
+    <li className="article-grid__item">
       <article
-        className={`article-row ${read ? 'is-read' : ''} ${active ? 'is-active' : ''}`}
+        className={[
+          'article-card',
+          read ? 'is-read' : '',
+          active ? 'is-active' : '',
+          thumb ? 'has-media' : 'no-media',
+          article.youtubeId ? 'article-card--video' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         data-article-id={article.id}
         tabIndex={0}
         role="link"
@@ -165,35 +186,48 @@ function ArticleRow({ article, read, active, feedName }: ArticleRowProps) {
           }
         }}
       >
-        <span className={`unread-dot ${read ? 'is-read' : ''}`} aria-hidden="true" />
-
-        <div className="article-row__body">
-          <div className="article-row__meta">
-            {feedName && <span className="article-row__feed">{feedName}</span>}
-            <time dateTime={new Date(article.publishedAt).toISOString()}>{time}</time>
+        {thumb && (
+          <div className="article-card__media">
+            <img
+              className="article-card__img"
+              src={thumb}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onError={() => setImgFailed(true)}
+            />
             {article.youtubeId && (
-              <span className="chip chip--video" title="References a YouTube video">
-                <Icon name="play" size={11} /> Video
+              <span className="article-card__play" title="YouTube video" aria-hidden="true">
+                <Icon name="play" size={18} />
               </span>
             )}
           </div>
+        )}
 
-          <h3 className="article-row__title">{article.title}</h3>
-          {article.summary && <p className="article-row__excerpt">{article.summary}</p>}
+        <div className="article-card__info">
+          {feed && <FeedIcon feed={feed} className="article-card__favicon" />}
+          <span className="article-card__feed">{feed?.title ?? 'Feed'}</span>
+          {!read && <span className="article-card__unread" aria-hidden="true" />}
+          <time className="article-card__time" dateTime={new Date(article.publishedAt).toISOString()}>
+            {time}
+          </time>
+          <button
+            type="button"
+            className="icon-button article-card__toggle"
+            onClick={(event) => {
+              event.stopPropagation();
+              store.toggleRead(article.id);
+            }}
+            aria-label={read ? 'Mark as unread' : 'Mark as read'}
+            title={read ? 'Mark as unread' : 'Mark as read'}
+          >
+            <Icon name={read ? 'eyeOff' : 'eye'} size={14} />
+          </button>
         </div>
 
-        <button
-          type="button"
-          className="icon-button article-row__toggle"
-          onClick={(event) => {
-            event.stopPropagation();
-            store.toggleRead(article.id);
-          }}
-          aria-label={read ? 'Mark as unread' : 'Mark as read'}
-          title={read ? 'Mark as unread' : 'Mark as read'}
-        >
-          <Icon name={read ? 'eyeOff' : 'eye'} size={16} />
-        </button>
+        <h3 className="article-card__title">{article.title}</h3>
+        {article.summary && <p className="article-card__snippet">{article.summary}</p>}
       </article>
     </li>
   );

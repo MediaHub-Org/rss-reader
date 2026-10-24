@@ -47,3 +47,7 @@ export function embedUrl(id: string): string {
   // nocookie domain: no tracking cookies until the user interacts.
   return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1`;
 }
+
+export function thumbnailUrl(id: string): string {
+  return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+}

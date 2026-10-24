@@ -1,7 +1,7 @@
 import Parser from 'rss-parser';
 import { articleId, hash } from './hash';
 import { resolveUrl } from './url';
-import { extractYouTubeId, extractYouTubeIdFromHtml } from './youtube';
+import { extractYouTubeId, extractYouTubeIdFromHtml, thumbnailUrl } from './youtube';
 import type { Article, Feed } from '../types';
 
 export class FeedParseError extends Error {}
@@ -15,6 +15,7 @@ const parser = new Parser({
       ['content:encoded', 'contentEncoded'],
       ['media:content', 'mediaContent', { keepArray: true }],
       ['media:thumbnail', 'mediaThumbnail', { keepArray: true }],
+      ['media:group', 'mediaGroup'],
       ['dc:creator', 'dcCreator'],
       ['published', 'published'],
       ['updated', 'updated'],
@@ -99,6 +100,17 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
   const link = resolveUrl(base, pickString(item.link)) ?? undefined;
   const guid = pickString(item.guid) ?? pickString(item.id);
 
+  const rawMediaDesc = item.mediaGroup?.['media:description'];
+  const mediaDesc = pickString(Array.isArray(rawMediaDesc) ? rawMediaDesc[0] : rawMediaDesc);
+  const mediaDescHtml = mediaDesc
+    ? `<p>${mediaDesc
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n{2,}/g, '</p><p>')
+        .replace(/\n/g, '<br>')}</p>`
+    : '';
+
   const html =
     pickString(item.contentEncoded) ||
     pickString(item.content) ||
@@ -106,6 +118,7 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
     pickString(item.summary) ||
     pickString(item.description) ||
     pickString(item.contentSnippet) ||
+    mediaDescHtml ||
     '';
 
   const publishedAt = pickDate(
@@ -118,9 +131,16 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
   );
 
   const image = extractImage(item, base);
-  const decoratedHtml = image && !html.includes(image)
-    ? `${html}<figure class="feed-image"><img src="${image}" alt="" loading="lazy"></figure>`
-    : html;
+  const youtubeId =
+    extractYouTubeId(link) ??
+    extractYouTubeIdFromHtml(html) ??
+    extractYouTubeId(title) ??
+    undefined;
+
+  const decoratedHtml =
+    image && !youtubeId && !html.includes(image)
+      ? `${html}<figure class="feed-image"><img src="${image}" alt="" loading="lazy"></figure>`
+      : html;
 
   return {
     id: articleId(feedId, { guid, link, title, publishedAt }),
@@ -131,11 +151,8 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
     contentHtml: decoratedHtml,
     author: pickString(item.author) ?? pickString(item['dcCreator']) ?? pickString(item.creator),
     publishedAt,
-    youtubeId:
-      extractYouTubeId(link) ??
-      extractYouTubeIdFromHtml(decoratedHtml) ??
-      extractYouTubeId(title) ??
-      undefined,
+    thumbnail: image ?? (youtubeId ? thumbnailUrl(youtubeId) : undefined),
+    youtubeId,
   };
 }
 

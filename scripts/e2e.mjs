@@ -51,8 +51,8 @@ try {
 
   await page.fill('[role="dialog"] input.input', 'https://www.theverge.com/rss/index.xml');
   await page.click('[role="dialog"] .dialog__footer .button--primary');
-  await page.waitForSelector('.article-row', { timeout: 30_000 });
-  const rowCount = await page.locator('.article-row').count();
+  await page.waitForSelector('.article-card', { timeout: 30_000 });
+  const rowCount = await page.locator('.article-card').count();
   check('Feed parsed and articles rendered', rowCount > 5, `${rowCount} rows`);
 
   /* second feed */
@@ -81,7 +81,7 @@ try {
   }
 
   /* --------------------------- article detail -------------------------- */
-  await page.click('.article-row >> nth=0');
+  await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail .content');
   const html = await page.innerHTML('.detail .content');
   check('Article content rendered', html.trim().length > 100, `${html.length} chars`);
@@ -103,8 +103,8 @@ try {
 
   /* read state — opening the article already marked it read */
   await page.click('.detail .ghost-button:has-text("Back")');
-  await page.waitForSelector('.article-list');
-  const firstRowRead = await page.getAttribute('.article-row >> nth=0', 'class');
+  await page.waitForSelector('.article-grid');
+  const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');
   check('Read state reflected in list', /is-read/.test(firstRowRead || ''), firstRowRead);
 
   /* --------------------------- sorting/search -------------------------- */
@@ -145,7 +145,7 @@ try {
   await page.waitForSelector('.dropdown__menu', { state: 'detached' });
 
   await pickSort('Oldest first');
-  const dates = await page.$$eval('.article-row time', (nodes) =>
+  const dates = await page.$$eval('.article-card time', (nodes) =>
     nodes.map((n) => new Date(n.dateTime).getTime())
   );
   const ascending = dates.every((v, i) => i === 0 || dates[i - 1] <= v);
@@ -199,15 +199,18 @@ try {
   check('Density preference applied', density === 'compact', density || '');
   check('Font size preference applied', fontSize === 'large', fontSize || '');
 
-  /* YouTube embed switch on */
+  /* YouTube embed switch defaults to true; toggle off and back on */
+  const defaultEmbed = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
+  await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
+  const toggledOff = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
   await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
   const embedOn = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
-  check('Embed toggle persists to aria-checked', embedOn === 'true', embedOn || '');
+  check('Embed toggle defaults on and persists to aria-checked', defaultEmbed === 'true' && toggledOff === 'false' && embedOn === 'true', `${defaultEmbed} → ${toggledOff} → ${embedOn}`);
   await page.keyboard.press('Escape');
 
   /* preferences survive reload */
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.article-list, .empty-state');
+  await page.waitForSelector('.article-grid, .empty-state');
   const persistedTheme = await page.getAttribute('html', 'data-theme');
   const persistedDensity = await page.getAttribute('html', 'data-density');
   check('Theme persisted across reload', persistedTheme === after, persistedTheme || '');
@@ -239,23 +242,45 @@ try {
     importPath,
     `<?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0"><head><title>t</title></head><body>
+  <outline text="Zebra Video" title="Zebra Video">
+    <outline type="rss" text="Fireship" title="Fireship" xmlUrl="${incomingUrl}"/>
+  </outline>
+  <outline text="Alpha Tech" title="Alpha Tech">
+    <outline type="rss" text="Zeta Feed" title="Zeta Feed" xmlUrl="https://feeds.bbci.co.uk/news/world/rss.xml"/>
+    <outline type="rss" text="Alpha Feed" title="Alpha Feed" xmlUrl="https://feeds.bbci.co.uk/news/technology/rss.xml"/>
+  </outline>
   <outline type="rss" text="Duplicate" xmlUrl="https://www.theverge.com/rss/index.xml"/>
-  <outline type="rss" text="Fireship" xmlUrl="${incomingUrl}"/>
   <outline type="rss" text="Bad" xmlUrl="javascript:alert(1)"/>
 </body></opml>`
   );
   await page.setInputFiles('.file-input', importPath);
   await page.waitForSelector('.import-preview__summary');
   const summary = await page.textContent('.import-preview__summary');
-  check('Import preview counts valid entries', /2 feeds found/.test(summary || ''), summary?.replace(/\s+/g, ' ').trim());
+  check('Import preview counts valid entries and folders', /4 feeds found.*2 folders/i.test(summary || ''), summary?.replace(/\s+/g, ' ').trim());
   check('Import flags invalid javascript: URL', (await page.$('.import-preview__warnings')) !== null);
   await page.click('.button--primary:has-text("Import")');
   await page.waitForFunction(
     (expected) => document.querySelectorAll('.sidebar .feed-item').length === expected,
-    feedsBeforeImport + 1,
+    feedsBeforeImport + 3,
     { timeout: 30_000 }
   );
-  check('Imported feed appears (duplicates skipped)', true, `${await page.locator('.sidebar .feed-item').count()} feeds`);
+  check('Imported feeds appear (duplicates skipped)', true, `${await page.locator('.sidebar .feed-item').count()} feeds`);
+
+  const folderOrder = await page.$$eval('.sidebar .folder-row .feed-row__title', (nodes) =>
+    nodes.map((n) => n.textContent?.trim() || '')
+  );
+  check(
+    'Imported folders sorted A–Z in sidebar',
+    folderOrder.length === 2 && folderOrder[0] === 'Alpha Tech' && folderOrder[1] === 'Zebra Video',
+    folderOrder.join(' → ')
+  );
+
+  const alphaFeedOrder = await page.locator('.sidebar .folder-group').first().locator('.feed-item .feed-row__title').allTextContents();
+  check(
+    'Links inside folder sorted A–Z',
+    alphaFeedOrder.length === 2 && alphaFeedOrder[0].trim() === 'Alpha Feed' && alphaFeedOrder[1].trim() === 'Zeta Feed',
+    alphaFeedOrder.map((t) => t.trim()).join(' → ')
+  );
 
   /* duplicate re-import reports skipped */
   await page.click('.sidebar__actions .ghost-button:has-text("Import")');
@@ -270,42 +295,54 @@ try {
 
   /* ---------------------------- YouTube ------------------------------- */
   await page.click('.feed-row:has-text("Fireship")');
-  await page.waitForSelector('.article-row');
-  const videoChips = await page.locator('.chip--video').count();
-  check('YouTube references detected in feed items', videoChips > 0, `${videoChips} video chips`);
+  await page.waitForSelector('.article-card');
+  const videoCards = await page.locator('.article-card--video').count();
+  const thumbSrc = await page.getAttribute('.article-card--video .article-card__img >> nth=0', 'src');
+  const hasPlayBadge = (await page.$('.article-card--video .article-card__play')) !== null;
+  check(
+    'YouTube cards render thumbnail + play badge',
+    videoCards > 0 && /i\.ytimg\.com\/vi\/[\w-]{11}\//.test(thumbSrc || '') && hasPlayBadge,
+    `${videoCards} video cards · ${thumbSrc || ''}`
+  );
 
-  await page.click('.article-row >> nth=0');
+  await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail');
   const embedVisible = (await page.$('.video-card__frame iframe')) !== null;
   const linkVisible = (await page.$('.video-card__link')) !== null;
-  check('YouTube player behavior (embed vs link)', embedVisible || linkVisible, `embed=${embedVisible} link=${linkVisible}`);
+  check('YouTube player behavior (inline iframe by default)', embedVisible && !linkVisible, `embed=${embedVisible} link=${linkVisible}`);
 
   if (embedVisible) {
     const src = await page.getAttribute('.video-card__frame iframe', 'src');
     check('Embed uses youtube-nocookie', /youtube-nocookie\.com\/embed\/[\w-]{11}/.test(src || ''), src || '');
   }
 
-  /* link mode after disabling the setting */
+  /* link mode (with thumbnail poster) after disabling the setting */
   await page.click('.detail .ghost-button:has-text("Back")');
   await page.click('.sidebar__actions .ghost-button:has-text("Settings")');
   await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
   await page.keyboard.press('Escape');
-  await page.click('.article-row >> nth=0');
+  await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail');
   const linkHref = await page.getAttribute('.video-card__link', 'href');
-  check('Fallback link opens youtube.com/watch', /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(linkHref || ''), linkHref || '');
+  const posterSrc = await page.getAttribute('.video-card__poster img', 'src');
+  check(
+    'Fallback link shows thumbnail poster and opens youtube.com/watch',
+    /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(linkHref || '') &&
+      /i\.ytimg\.com\/vi\/[\w-]{11}\//.test(posterSrc || ''),
+    linkHref || ''
+  );
   await page.screenshot({ path: path.join(SHOTS, '03-video-link.png') });
   await page.click('.detail .ghost-button:has-text("Back")');
 
   /* --------------------------- keyboard nav ---------------------------- */
   await page.click('.feed-row:has-text("All articles")');
-  await page.waitForSelector('.article-row');
-  await page.locator('.article-row').first().focus();
+  await page.waitForSelector('.article-card');
+  await page.locator('.article-card').first().focus();
   await page.keyboard.press('j');
   await page.waitForSelector('.detail');
   check('Keyboard j opens an article', true);
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.article-list');
+  await page.waitForSelector('.article-grid');
   check('Escape returns to list', true);
 
   await page.keyboard.press('/');

@@ -140,12 +140,18 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
               <p className="import-preview__summary">
                 <strong>{pending.feeds.length}</strong> feed{pending.feeds.length === 1 ? '' : 's'} found in
                 a {pending.format.toUpperCase()} file
+                {pending.folders.length
+                  ? ` across ${pending.folders.length} folder${pending.folders.length === 1 ? '' : 's'}`
+                  : ''}
                 {pending.readIds ? ` · ${Object.keys(pending.readIds).length} read entries` : ''}.
               </p>
 
               <ul className="import-preview__list">
                 {pending.feeds.slice(0, 8).map((feed) => (
-                  <li key={feed.url}>{feed.title || feed.url}</li>
+                  <li key={feed.url}>
+                    {feed.folder ? `${feed.folder} › ` : ''}
+                    {feed.title || feed.url}
+                  </li>
                 ))}
                 {pending.feeds.length > 8 && <li className="is-more">
                   +{pending.feeds.length - 8} more

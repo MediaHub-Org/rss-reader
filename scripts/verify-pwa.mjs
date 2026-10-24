@@ -18,7 +18,7 @@ const page = await context.newPage();
 
 try {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.empty-state, .article-list', { timeout: 15_000 });
+  await page.waitForSelector('.empty-state, .article-grid', { timeout: 15_000 });
   check('Production app boots', true);
 
   /* ------------------------------ manifest ----------------------------- */
@@ -85,7 +85,7 @@ try {
   await page.waitForTimeout(800); // let the first controlled load settle
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('.empty-state, .article-list', { timeout: 15_000 });
+  await page.waitForSelector('.empty-state, .article-grid', { timeout: 15_000 });
   check('App still boots with the network offline', true);
 
   const offlineHtml = await page.innerHTML('#main-content');

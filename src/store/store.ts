@@ -172,7 +172,7 @@ export class Store {
     });
   }
 
-  async addFeed(rawUrl: string): Promise<ActionResult> {
+  async addFeed(rawUrl: string, folder?: string): Promise<ActionResult> {
     const validated = normalizeFeedUrl(rawUrl);
     if (!validated.ok) return { ok: false, message: validated.error };
 
@@ -182,10 +182,12 @@ export class Store {
       return { ok: false, message: 'You are already subscribed to that feed.' };
     }
 
+    const folderName = folder?.trim() || undefined;
     const placeholder: Feed = {
       id: feedId,
       url,
       title: url.replace(/^https?:\/\//, '').slice(0, 60),
+      folder: folderName,
       addedAt: Date.now(),
     };
     this.update({
@@ -341,7 +343,7 @@ export class Store {
 
   /** Merge imported subscriptions, skipping duplicates. Returns counts. */
   importFeeds(
-    incoming: Array<{ url: string; title?: string; siteUrl?: string }>
+    incoming: Array<{ url: string; title?: string; siteUrl?: string; folder?: string }>
   ): { added: number; skipped: number } {
     const existing = new Set(this.state.feeds.map((f) => f.id));
     const added: Feed[] = [];
@@ -364,6 +366,7 @@ export class Store {
         url: validated.url,
         title: entry.title || validated.url.replace(/^https?:\/\//, ''),
         siteUrl: entry.siteUrl,
+        folder: entry.folder?.trim() || undefined,
         addedAt: Date.now(),
       });
     }
