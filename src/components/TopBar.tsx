@@ -3,6 +3,7 @@ import type { SortMode } from '../types';
 import { store, selectArticles, isDarkTheme } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Icon } from './Icon';
+import { Dropdown } from './Dropdown';
 
 interface TopBarProps {
   onMenu: () => void;
@@ -76,22 +77,15 @@ export function TopBar({ onMenu, onAddFeed }: TopBarProps) {
           />
         </div>
 
-        <label className="select-wrap" title="Sort articles">
-          <span className="sr-only">Sort articles</span>
-          <Icon name="sort" size={15} />
-          <select
-            className="select"
-            value={state.ui.sort}
-            onChange={(event) => store.setSort(event.target.value as SortMode)}
-            aria-label="Sort articles"
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Dropdown<SortMode>
+          value={state.ui.sort}
+          options={SORT_OPTIONS}
+          onChange={(next) => store.setSort(next)}
+          label="Sort articles"
+          triggerTitle="Sort articles"
+          icon={<Icon name="sort" size={15} />}
+          className="topbar__sort"
+        />
 
         <button
           type="button"

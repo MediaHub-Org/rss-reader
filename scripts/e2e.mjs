@@ -108,25 +108,87 @@ try {
   check('Read state reflected in list', /is-read/.test(firstRowRead || ''), firstRowRead);
 
   /* --------------------------- sorting/search -------------------------- */
-  await page.selectOption('.select', 'date-asc');
+  // The sort control is a themed listbox (a native <select> renders an
+  // OS-styled popup that ignores the CSS variables, so it can never match
+  // light/dark). Drive it the way a user would: open, then pick.
+  const pickSort = async (label) => {
+    await page.click('.dropdown__trigger');
+    await page.waitForSelector('.dropdown__menu');
+    await page.click(`.dropdown__option:has-text("${label}")`);
+    await page.waitForSelector('.dropdown__menu', { state: 'detached' });
+  };
+
+  await page.click('.dropdown__trigger');
+  await page.waitForSelector('.dropdown__menu');
+  await page.waitForTimeout(250); // let the open animation settle for the screenshot
+  const menuTheme = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--panel');
+    document.body.appendChild(probe);
+    const panelBg = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    const menu = document.querySelector('.dropdown__menu');
+    return {
+      menuBg: getComputedStyle(menu).backgroundColor,
+      panelBg,
+      shadow: getComputedStyle(menu).boxShadow,
+      theme: document.documentElement.dataset.theme,
+    };
+  });
+  await page.screenshot({ path: 'test-artifacts/05-sort-menu.png' });
+  check(
+    'Sort menu is themed to the panel color',
+    menuTheme.menuBg === menuTheme.panelBg && menuTheme.shadow !== 'none',
+    `${menuTheme.theme}: ${menuTheme.menuBg} vs ${menuTheme.panelBg}`
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.dropdown__menu', { state: 'detached' });
+
+  await pickSort('Oldest first');
   const dates = await page.$$eval('.article-row time', (nodes) =>
     nodes.map((n) => new Date(n.dateTime).getTime())
   );
   const ascending = dates.every((v, i) => i === 0 || dates[i - 1] <= v);
   check('Sort by oldest works', ascending, `${dates.length} dates`);
 
-  await page.selectOption('.select', 'feed');
+  await pickSort('By feed name');
   await page.fill('.search__input', 'zzzzz-no-match-zzzzz');
   const noMatch = await page.textContent('.empty-state h2').catch(() => '');
   check('Search shows empty state for no matches', /No matches/i.test(noMatch || ''), noMatch?.trim());
   await page.fill('.search__input', '');
-  await page.selectOption('.select', 'date-desc');
+  await pickSort('Newest first');
 
   /* ------------------------- theme + settings -------------------------- */
   const before = await page.getAttribute('html', 'data-theme');
   await page.click('.topbar__tools .icon-button[aria-label*="theme" i]');
   const after = await page.getAttribute('html', 'data-theme');
   check('Theme toggle flips data-theme', before !== after, `${before} → ${after}`);
+
+  // The menu must follow the new theme, not keep the old one.
+  await page.click('.dropdown__trigger');
+  await page.waitForSelector('.dropdown__menu');
+  await page.waitForTimeout(250);
+  const themedAfterToggle = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--panel');
+    document.body.appendChild(probe);
+    const panelBg = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    const menu = document.querySelector('.dropdown__menu');
+    return {
+      menuBg: getComputedStyle(menu).backgroundColor,
+      panelBg,
+      text: getComputedStyle(menu).color,
+      theme: document.documentElement.dataset.theme,
+    };
+  });
+  await page.screenshot({ path: 'test-artifacts/05b-sort-menu-toggled.png' });
+  await page.keyboard.press('Escape');
+  check(
+    'Sort menu restyles with the toggled theme',
+    themedAfterToggle.menuBg === themedAfterToggle.panelBg,
+    `${themedAfterToggle.theme}: ${themedAfterToggle.menuBg} vs ${themedAfterToggle.panelBg}`
+  );
 
   await page.click('.sidebar__actions .ghost-button:has-text("Settings")');
   await page.waitForSelector('[role="dialog"]');
