@@ -213,16 +213,17 @@
   transition: transform var(--transition);
 }
 
-.folder-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-1);
-  padding: 0 var(--space-2) var(--space-1);
-}
-
-/* Shared "pointing right, collapsed" state for any disclosure caret. */
+/* Shared "pointing right, collapsed" state for a per-row disclosure caret
+   (folder rows: down = open, right = closed). */
 .caret--collapsed {
   transform: rotate(-90deg);
+}
+
+/* The toolbar's single expand/collapse-all button instead shows which way
+   it's about to fold, Obsidian-style: down when it will expand, up when it
+   will collapse. */
+.caret--flipped {
+  transform: rotate(180deg);
 }
 
 .folder-row {
@@ -335,6 +336,27 @@
   border-bottom: 0.0625rem solid var(--border);
 }
 
+/* Stays above .sidebar__scroll, not inside it -- new folder/feed, sort and
+   expand/collapse-all need to stay reachable no matter how far the feed
+   list is scrolled. */
+.sidebar__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-2);
+  border-bottom: 0.0625rem solid var(--border);
+}
+
+.sidebar__toolbar-spacer {
+  flex: 1;
+}
+
+.sidebar__new-folder-input {
+  flex: 1;
+  height: var(--control-height);
+}
+
 .search__icon {
   position: absolute;
   left: calc(var(--space-3) + 0.5625rem);
@@ -440,6 +462,38 @@
 
 .dropdown__menu:focus {
   outline: none;
+}
+
+/* Icon-only trigger (no visible label/caret) -- used for the sidebar's
+   compact toolbar, where a text value would not fit next to the other
+   icon buttons. */
+.dropdown--icon .dropdown__trigger {
+  width: var(--control-height);
+  padding: 0;
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.dropdown--icon .dropdown__trigger:hover {
+  background: var(--panel-3);
+  color: var(--text);
+}
+
+.dropdown--icon .dropdown__trigger[aria-expanded='true'] {
+  background: var(--panel-3);
+  border-color: transparent;
+}
+
+.dropdown--icon .dropdown__value,
+.dropdown--icon .dropdown__caret {
+  display: none;
+}
+
+.dropdown--icon .dropdown__menu {
+  right: auto;
+  left: 0;
 }
 
 .dropdown__option {

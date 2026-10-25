@@ -1,11 +1,12 @@
-import { useMemo, useRef, useState } from 'react';
-import type { Feed } from '../types';
-import { ALL_FEEDS, folderViewId } from '../types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { AppState, Feed, SidebarSort } from '../types';
+import { ALL_FEEDS, folderNameFromViewId, folderViewId } from '../types';
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/opml';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
+import { Dropdown, type DropdownOption } from './Dropdown';
 
 interface SidebarProps {
   onAddFeed: () => void;
@@ -19,6 +20,43 @@ interface FolderGroup {
   feeds: Feed[];
 }
 
+const SORT_OPTIONS: Array<DropdownOption<SidebarSort>> = [
+  { value: 'name-asc', label: 'Name (A to Z)' },
+  { value: 'name-desc', label: 'Name (Z to A)' },
+  { value: 'modified-desc', label: 'Last updated (newest)' },
+  { value: 'modified-asc', label: 'Last updated (oldest)' },
+  { value: 'created-desc', label: 'Date added (newest)' },
+  { value: 'created-asc', label: 'Date added (oldest)' },
+];
+
+/** A feed's sort key for the "updated"/"added" orders -- falls back to when
+ *  it was added if it has never finished a refresh yet. */
+function feedTimestamp(feed: Feed, state: AppState, which: 'modified' | 'created'): number {
+  if (which === 'created') return feed.addedAt;
+  return state.feedState[feed.id]?.updatedAt ?? feed.addedAt;
+}
+
+/** Sorts feeds within one folder/ungrouped section. Folder ordering itself
+ *  always stays alphabetical (see foldersOf below) -- matches how file
+ *  explorers keep folders name-sorted regardless of the chosen file sort. */
+function sortFeeds(feeds: Feed[], state: AppState, sort: SidebarSort): Feed[] {
+  const list = [...feeds];
+  switch (sort) {
+    case 'name-desc':
+      return list.sort((a, b) => byName(b.title, a.title));
+    case 'modified-desc':
+      return list.sort((a, b) => feedTimestamp(b, state, 'modified') - feedTimestamp(a, state, 'modified'));
+    case 'modified-asc':
+      return list.sort((a, b) => feedTimestamp(a, state, 'modified') - feedTimestamp(b, state, 'modified'));
+    case 'created-desc':
+      return list.sort((a, b) => feedTimestamp(b, state, 'created') - feedTimestamp(a, state, 'created'));
+    case 'created-asc':
+      return list.sort((a, b) => feedTimestamp(a, state, 'created') - feedTimestamp(b, state, 'created'));
+    default:
+      return list.sort((a, b) => byName(a.title, b.title));
+  }
+}
+
 export function Sidebar({
   onAddFeed,
   onUnsubscribe,
@@ -29,7 +67,15 @@ export function Sidebar({
   const [hovered, setHovered] = useState<string | null>(null);
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
+  const newFolderRef = useRef<HTMLInputElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (creatingFolder) newFolderRef.current?.focus();
+  }, [creatingFolder]);
 
   const onSearchKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -44,14 +90,16 @@ export function Sidebar({
   );
 
   /**
-   * Folders sorted A–Z with their feeds sorted A–Z inside, followed by any
-   * ungrouped feeds sorted A–Z.
+   * Folders always ordered A-Z (like a file explorer keeps folders
+   * name-sorted regardless of the chosen file sort); feeds inside each
+   * folder, and the ungrouped list, follow prefs.sidebarSort. An explicitly
+   * created empty folder (state.folders) shows even with zero feeds in it.
    */
   const { folders, ungrouped } = useMemo(() => {
-    const byTitle = (a: Feed, b: Feed) => byName(a.title, b.title);
     const grouped = new Map<string, Feed[]>();
     const loose: Feed[] = [];
 
+    for (const name of state.folders) grouped.set(name, grouped.get(name) ?? []);
     for (const feed of state.feeds) {
       const folder = feed.folder?.trim();
       if (!folder) {
@@ -63,10 +111,10 @@ export function Sidebar({
 
     const folderList: FolderGroup[] = [...grouped.entries()]
       .sort(([a], [b]) => byName(a, b))
-      .map(([name, list]) => ({ name, feeds: list.sort(byTitle) }));
+      .map(([name, list]) => ({ name, feeds: sortFeeds(list, state, state.prefs.sidebarSort) }));
 
-    return { folders: folderList, ungrouped: loose.sort(byTitle) };
-  }, [state.feeds]);
+    return { folders: folderList, ungrouped: sortFeeds(loose, state, state.prefs.sidebarSort) };
+  }, [state]);
 
   const toggleFolder = (name: string) => {
     setCollapsed((current) => ({ ...current, [name]: !current[name] }));
@@ -88,6 +136,82 @@ export function Sidebar({
     }
   };
 
+  const submitNewFolder = () => {
+    const name = newFolderName.trim();
+    if (!name) {
+      setCreatingFolder(false);
+      return;
+    }
+    const result = store.createFolder(name);
+    if (result.ok) {
+      setCreatingFolder(false);
+      setNewFolderName('');
+    } else if (result.message) {
+      store.notify('error', result.message);
+    }
+  };
+
+  const onNewFolderKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') submitNewFolder();
+    else if (event.key === 'Escape') {
+      setCreatingFolder(false);
+      setNewFolderName('');
+    }
+  };
+
+  /**
+   * Reveal: expand the path to a feed or folder row (if collapsed) and
+   * scroll it into view, without changing what's selected as the active
+   * filter. Used both automatically (below) and from the toolbar's
+   * "Reveal active feed" button, for when the view is fully collapsed and
+   * you've lost track of where you are.
+   */
+  const revealRow = (selector: string, folderName?: string) => {
+    if (folderName && collapsed[folderName]) {
+      setCollapsed((current) => ({ ...current, [folderName]: false }));
+    }
+    requestAnimationFrame(() => {
+      navRef.current?.querySelector(selector)?.scrollIntoView({ block: 'nearest' });
+    });
+  };
+
+  const revealFeed = (feedId: string) => {
+    const folderName = folders.find((f) => f.feeds.some((feed) => feed.id === feedId))?.name;
+    revealRow(`[data-feed-id="${CSS.escape(feedId)}"]`, folderName);
+  };
+
+  const revealFolder = (name: string) => {
+    revealRow(`[data-folder-name="${CSS.escape(name)}"]`, name);
+  };
+
+  /** What "reveal" targets right now: the open article's feed, else the
+   *  active filter (a feed, a folder view, or nothing for "All articles"). */
+  const revealActiveTarget = () => {
+    const article = state.ui.activeArticleId
+      ? Object.values(state.articles)
+          .flat()
+          .find((a) => a.id === state.ui.activeArticleId)
+      : null;
+    if (article) {
+      revealFeed(article.feedId);
+      return;
+    }
+    const folderName = folderNameFromViewId(state.ui.activeFeedId);
+    if (folderName) {
+      revealFolder(folderName);
+      return;
+    }
+    if (state.ui.activeFeedId && state.ui.activeFeedId !== ALL_FEEDS) {
+      revealFeed(state.ui.activeFeedId);
+    }
+  };
+
+  // Automatic: whenever the open article or the active filter changes.
+  useEffect(() => {
+    revealActiveTarget();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.ui.activeArticleId, state.ui.activeFeedId]);
+
   const renderFeedItem = (feed: Feed) => {
     const unread = unreadCount(state, feed.id);
     const feedState = state.feedState[feed.id];
@@ -98,6 +222,7 @@ export function Sidebar({
       <li
         key={feed.id}
         className="feed-item"
+        data-feed-id={feed.id}
         onMouseEnter={() => setHovered(feed.id)}
         onMouseLeave={() => setHovered(null)}
       >
@@ -134,7 +259,7 @@ export function Sidebar({
   };
 
   return (
-    <nav className="sidebar" aria-label="Feeds">
+    <nav className="sidebar" aria-label="Feeds" ref={navRef}>
       <div className="sidebar__header">
         <span className="brand">
           <Icon name="rss" size={18} />
@@ -160,6 +285,76 @@ export function Sidebar({
         />
       </div>
 
+      <div className="sidebar__toolbar">
+        {creatingFolder ? (
+          <input
+            ref={newFolderRef}
+            type="text"
+            className="input sidebar__new-folder-input"
+            placeholder="Folder name"
+            value={newFolderName}
+            onChange={(event) => setNewFolderName(event.target.value)}
+            onKeyDown={onNewFolderKey}
+            onBlur={submitNewFolder}
+          />
+        ) : (
+          <>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => setCreatingFolder(true)}
+              aria-label="New folder"
+              title="New folder"
+            >
+              <Icon name="folderPlus" size={16} />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onAddFeed}
+              aria-label="New feed"
+              title="New feed"
+            >
+              <Icon name="plus" size={16} />
+            </button>
+            <span className="sidebar__toolbar-spacer" />
+            <Dropdown<SidebarSort>
+              value={state.prefs.sidebarSort}
+              options={SORT_OPTIONS}
+              onChange={(sidebarSort) => store.setPreferences({ sidebarSort })}
+              label="Sort feeds"
+              triggerTitle="Sort feeds"
+              icon={<Icon name="sort" size={15} />}
+              className="dropdown--icon"
+            />
+            {folders.length > 0 && (
+              <button
+                type="button"
+                className="icon-button"
+                onClick={toggleAllFolders}
+                aria-label={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+                title={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+              >
+                <Icon
+                  name="chevronDown"
+                  size={14}
+                  className={allFoldersExpanded ? 'caret--flipped' : undefined}
+                />
+              </button>
+            )}
+            <button
+              type="button"
+              className="icon-button"
+              onClick={revealActiveTarget}
+              aria-label="Reveal active feed"
+              title="Reveal active feed"
+            >
+              <Icon name="locate" size={15} />
+            </button>
+          </>
+        )}
+      </div>
+
       <div className="sidebar__scroll">
         <ul className="feed-list" role="list">
           <li>
@@ -177,24 +372,6 @@ export function Sidebar({
             </button>
           </li>
 
-          {folders.length > 0 && (
-            <li className="folder-actions">
-              <button
-                type="button"
-                className="icon-button"
-                onClick={toggleAllFolders}
-                aria-label={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
-                title={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
-              >
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={allFoldersExpanded ? undefined : 'caret--collapsed'}
-                />
-              </button>
-            </li>
-          )}
-
           {folders.map((folder) => {
             const isOpen = !collapsed[folder.name];
             const isActive = state.ui.activeFeedId === folderViewId(folder.name);
@@ -206,6 +383,7 @@ export function Sidebar({
               <li
                 className="folder-group"
                 key={`folder:${folder.name}`}
+                data-folder-name={folder.name}
               >
                 <div
                   className="folder-header"

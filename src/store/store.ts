@@ -14,9 +14,11 @@ import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { normalizeFeedUrl } from '../lib/url';
 import {
   loadFeeds,
+  loadFolders,
   loadPreferences,
   loadReadIds,
   saveFeeds,
+  saveFolders,
   savePreferences,
   saveReadIds,
   saveArticles,
@@ -32,6 +34,7 @@ let toastSeq = 0;
 function initialState(): AppState {
   return {
     feeds: [],
+    folders: [],
     articles: {},
     feedState: {},
     readIds: {},
@@ -82,6 +85,7 @@ export class Store {
     this.persistTimer = setTimeout(() => {
       this.persistTimer = null;
       saveFeeds(this.state.feeds);
+      saveFolders(this.state.folders);
       saveReadIds(this.state.readIds);
       savePreferences(this.state.prefs);
       void Promise.all(
@@ -141,9 +145,10 @@ export class Store {
 
     const prefs = loadPreferences();
     const feeds = loadFeeds();
+    const folders = loadFolders();
     const readIds = loadReadIds();
 
-    this.update({ prefs, feeds, readIds });
+    this.update({ prefs, feeds, folders, readIds });
     this.applyPreferences(prefs);
 
     const cached = await loadAllArticles();
@@ -347,7 +352,9 @@ export class Store {
     const activeGone =
       this.state.ui.activeFeedId !== null &&
       (toRemove.has(this.state.ui.activeFeedId) ||
-        (activeFolder !== null && !remaining.some((f) => f.folder === activeFolder)));
+        (activeFolder !== null &&
+          !remaining.some((f) => f.folder === activeFolder) &&
+          !this.state.folders.includes(activeFolder)));
 
     this.update({
       feeds: remaining,
@@ -367,17 +374,44 @@ export class Store {
     return removedCount;
   }
 
-  /** Delete an entire folder along with all feeds inside it. */
+  /**
+   * Create an empty folder, so it shows in the sidebar before any feed is
+   * put in it. Adding a feed to a folder name that doesn't exist yet (via
+   * addFeed/updateFeed) already makes it show up on its own -- this is only
+   * for the "start empty, add feeds later" order.
+   */
+  createFolder(name: string): ActionResult {
+    const target = name.trim();
+    if (!target) return { ok: false, message: 'Folder name cannot be empty.' };
+    const exists =
+      this.state.folders.includes(target) || this.state.feeds.some((f) => f.folder?.trim() === target);
+    if (exists) return { ok: false, message: `A folder named "${target}" already exists.` };
+
+    this.update({ folders: [...this.state.folders, target] });
+    this.schedulePersist();
+    return { ok: true };
+  }
+
+  /** Delete a folder: every feed inside it (if any), and the empty-folder record itself. */
   removeFolder(folderName: string): number {
     const target = folderName.trim();
     const ids = this.state.feeds
       .filter((f) => (f.folder?.trim() ?? '') === target)
       .map((f) => f.id);
-    const removed = this.removeFeeds(ids, { silent: true });
-    if (removed > 0) {
+    const hadEmptyRecord = this.state.folders.includes(target);
+    const removed = ids.length ? this.removeFeeds(ids, { silent: true }) : 0;
+
+    if (hadEmptyRecord) {
+      this.update({ folders: this.state.folders.filter((f) => f !== target) });
+      this.schedulePersist();
+    }
+
+    if (removed > 0 || hadEmptyRecord) {
       this.notify(
         'success',
-        `Removed folder “${target}” (${removed} feed${removed === 1 ? '' : 's'})`
+        removed > 0
+          ? `Removed folder “${target}” (${removed} feed${removed === 1 ? '' : 's'})`
+          : `Removed folder “${target}”`
       );
     }
     return removed;

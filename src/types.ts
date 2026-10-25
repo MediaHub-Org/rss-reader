@@ -4,6 +4,13 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export type Density = 'compact' | 'comfortable';
 export type FontSize = 'small' | 'medium' | 'large';
 export type SortMode = 'date-desc' | 'date-asc' | 'feed';
+export type SidebarSort =
+  | 'name-asc'
+  | 'name-desc'
+  | 'modified-desc'
+  | 'modified-asc'
+  | 'created-desc'
+  | 'created-asc';
 
 export interface Preferences {
   theme: ThemeMode;
@@ -22,6 +29,8 @@ export interface Preferences {
    * Stored locally only, sent to no one but Google's API.
    */
   youtubeApiKey: string;
+  /** How feeds are ordered within each folder/ungrouped section of the sidebar. */
+  sidebarSort: SidebarSort;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -32,6 +41,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   hideRead: false,
   sidebarCollapsed: false,
   youtubeApiKey: '',
+  sidebarSort: 'name-asc',
 };
 
 export interface Feed {
@@ -90,6 +100,12 @@ export interface Toast {
 
 export interface AppState {
   feeds: Feed[];
+  /**
+   * Folder names created explicitly (e.g. via "New folder"), independent of
+   * whether any feed is in them yet. A folder with feeds in it (feed.folder)
+   * shows in the sidebar either way; this is what keeps an empty one around.
+   */
+  folders: string[];
   articles: Record<string, Article[]>;
   feedState: Record<string, FeedState>;
   readIds: Record<string, true>;
