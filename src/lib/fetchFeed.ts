@@ -9,7 +9,8 @@
  * Every hop is HTTPS-only and every failure is reported with a readable message
  * so the UI can explain *why* a feed is unavailable.
  */
-import { looksLikeFeed } from './feedParser';
+import { looksLikeFeed, parseFeedXml, type ParseResult } from './feedParser';
+import { extractYouTubeFeedTarget, fetchYouTubeChannelFeed } from './youtubeApi';
 
 export const PROXY_URL: string | undefined =
   (import.meta.env.VITE_PROXY_URL as string | undefined) || undefined;
@@ -148,4 +149,30 @@ export async function fetchFeedDocument(input: string): Promise<ResolvedFeed> {
   }
 
   throw new FeedFetchError('The response is not valid RSS or Atom content.');
+}
+
+export interface FeedArticlesResult {
+  parsed: ParseResult;
+  finalUrl: string;
+}
+
+/**
+ * Resolve a subscribed URL into parsed articles. Routes a YouTube channel
+ * feed through the Data API when a key is configured (see youtubeApi.ts for
+ * why); any other feed, or a Data API failure, uses the plain RSS/Atom path.
+ */
+export async function fetchFeedArticles(url: string, feedId: string, youtubeApiKey?: string): Promise<FeedArticlesResult> {
+  const target = youtubeApiKey ? extractYouTubeFeedTarget(url) : null;
+  if (target) {
+    try {
+      const parsed = await fetchYouTubeChannelFeed(target, feedId, youtubeApiKey!);
+      return { parsed, finalUrl: url };
+    } catch (err) {
+      console.warn('YouTube Data API fetch failed, falling back to the RSS feed:', err);
+    }
+  }
+
+  const { xml, finalUrl } = await fetchFeedDocument(url);
+  const parsed = await parseFeedXml(xml, feedId);
+  return { parsed, finalUrl };
 }

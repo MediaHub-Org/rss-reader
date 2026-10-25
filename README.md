@@ -44,11 +44,14 @@ It rebuilds only when the sources changed, starts the app server in the backgrou
 http://localhost:4173. Running it again while the server is up just opens the app.
 (`--no-open` skips opening the browser, for scripts/CI.)
 
-**Double-click (Windows + WSL):** `Launch RSS Reader.bat` in the project folder, or
-the **RSS Reader** icon on your Desktop. It launches the server inside WSL — the
-build toolchain is Linux-only (`esbuild` ships `linux-x64` here) and a plain `wsl`
-shell has no `node` on `PATH`, so `scripts/launch-wsl.sh` sets that up — then opens
-the app and closes its window. Create or refresh the Desktop shortcut with:
+**Double-click (Windows):** `Launch RSS Reader.bat` in the project folder, or
+the **RSS Reader** icon on your Desktop. Runs `node scripts\launch.mjs` directly
+with Windows node (no WSL) — `node_modules` here holds Windows-native
+rollup/esbuild binaries, so that's the toolchain that actually works; routing
+through WSL's Linux node instead fails on a missing
+`@rollup/rollup-linux-x64-gnu`. The window stays open and pauses on failure so
+you can read the error, instead of flashing closed. Create or refresh the
+Desktop shortcut with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\make-shortcut.ps1

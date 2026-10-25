@@ -13,6 +13,15 @@ export interface Preferences {
   embedYouTube: boolean;
   /** Hide articles already marked as read. */
   hideRead: boolean;
+  /** Sidebar collapsed to a hidden state on desktop (persists across sessions). */
+  sidebarCollapsed: boolean;
+  /**
+   * YouTube Data API v3 key (optional). When set, channel/playlist feeds
+   * (youtube.com/feeds/videos.xml) fetch up to 50 recent videos through the
+   * API instead of the ~15-item cap on YouTube's own public RSS feed.
+   * Stored locally only, sent to no one but Google's API.
+   */
+  youtubeApiKey: string;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -21,6 +30,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   fontSize: 'medium',
   embedYouTube: true,
   hideRead: false,
+  sidebarCollapsed: false,
+  youtubeApiKey: '',
 };
 
 export interface Feed {
@@ -90,3 +101,20 @@ export interface AppState {
 
 /** Sentinel feed id for the "all articles" view. */
 export const ALL_FEEDS = '__all__';
+
+/**
+ * `activeFeedId` doubles as a folder-view id, prefixed so it can never
+ * collide with a real feed id (those come from `feedIdForUrl`'s hash, never
+ * containing a colon). Lets every existing consumer of `activeFeedId`
+ * (selectArticles, keyboard nav, mark-all-read, ...) keep working unchanged;
+ * only `selectArticles` needs to know what the prefix means.
+ */
+const FOLDER_PREFIX = 'folder:';
+
+export function folderViewId(folderName: string): string {
+  return FOLDER_PREFIX + folderName;
+}
+
+export function folderNameFromViewId(id: string | null): string | null {
+  return id?.startsWith(FOLDER_PREFIX) ? id.slice(FOLDER_PREFIX.length) : null;
+}

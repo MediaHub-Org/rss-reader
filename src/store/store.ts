@@ -8,9 +8,9 @@ import type {
   Toast,
   ToastKind,
 } from '../types';
-import { ALL_FEEDS, DEFAULT_PREFERENCES } from '../types';
-import { feedIdForUrl, parseFeedXml, FeedParseError } from '../lib/feedParser';
-import { fetchFeedDocument, FeedFetchError } from '../lib/fetchFeed';
+import { ALL_FEEDS, DEFAULT_PREFERENCES, folderNameFromViewId } from '../types';
+import { feedIdForUrl, FeedParseError } from '../lib/feedParser';
+import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { normalizeFeedUrl } from '../lib/url';
 import {
   loadFeeds,
@@ -197,8 +197,7 @@ export class Store {
     });
 
     try {
-      const { xml, finalUrl } = await fetchFeedDocument(url);
-      const parsed = await parseFeedXml(xml, feedId);
+      const { parsed, finalUrl } = await fetchFeedArticles(url, feedId, this.state.prefs.youtubeApiKey);
       const feed: Feed = {
         ...placeholder,
         url,
@@ -258,8 +257,7 @@ export class Store {
 
     this.setFeedState(feedId, { status: 'loading' });
     try {
-      const { xml } = await fetchFeedDocument(feed.url);
-      const parsed = await parseFeedXml(xml, feedId);
+      const { parsed } = await fetchFeedArticles(feed.url, feedId, this.state.prefs.youtubeApiKey);
       const existing = this.state.articles[feedId] ?? [];
       const seen = new Set(existing.map((a) => a.id));
       const merged = [...existing];
@@ -345,8 +343,11 @@ export class Store {
       void removeArticles(id);
     }
 
+    const activeFolder = folderNameFromViewId(this.state.ui.activeFeedId);
     const activeGone =
-      this.state.ui.activeFeedId !== null && toRemove.has(this.state.ui.activeFeedId);
+      this.state.ui.activeFeedId !== null &&
+      (toRemove.has(this.state.ui.activeFeedId) ||
+        (activeFolder !== null && !remaining.some((f) => f.folder === activeFolder)));
 
     this.update({
       feeds: remaining,
@@ -561,8 +562,15 @@ export function selectArticles(
   options: { feedId: string | null; sort: SortMode; query: string; hideRead?: boolean }
 ): Article[] {
   const feedId = options.feedId ?? ALL_FEEDS;
+  const folderName = folderNameFromViewId(feedId);
   const source =
-    feedId === ALL_FEEDS ? Object.values(state.articles).flat() : (state.articles[feedId] ?? []);
+    feedId === ALL_FEEDS
+      ? Object.values(state.articles).flat()
+      : folderName !== null
+        ? state.feeds
+            .filter((f) => f.folder === folderName)
+            .flatMap((f) => state.articles[f.id] ?? [])
+        : (state.articles[feedId] ?? []);
 
   const needle = options.query.trim().toLowerCase();
   let list = source;

@@ -2,7 +2,8 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\make-shortcut.ps1
 #
 # The shortcut runs "Launch RSS Reader.bat", which starts the local app
-# server in WSL and then opens the installed app / browser at localhost:4173.
+# server with Windows node and then opens the installed app / browser at
+# localhost:4173.
 $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path -Parent $PSScriptRoot

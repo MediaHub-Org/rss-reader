@@ -28,7 +28,7 @@ type RawItem = Record<string, any>;
 type RawFeed = Record<string, any>;
 
 /** Strip markup down to a readable plain-text excerpt. */
-function toExcerpt(html: string, limit = 240): string {
+export function toExcerpt(html: string, limit = 240): string {
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -44,7 +44,7 @@ function toExcerpt(html: string, limit = 240): string {
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
-function pickDate(...candidates: unknown[]): number {
+export function pickDate(...candidates: unknown[]): number {
   for (const value of candidates) {
     if (!value) continue;
     if (typeof value === 'number') return value > 1e12 ? value : value * 1000;

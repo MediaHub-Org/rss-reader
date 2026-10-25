@@ -49,6 +49,18 @@
   min-height: 0;
   background: var(--panel-2);
   border-right: 0.0625rem solid var(--border);
+  transition: width var(--transition), flex-basis var(--transition), border-color var(--transition);
+}
+
+/* Desktop-only collapse, independent of the mobile drawer below
+   (responsive.css) which uses data-sidebar-open instead. */
+@media (min-width: 53.76rem) {
+  .app[data-sidebar-collapsed='true'] .sidebar {
+    width: 0;
+    flex-basis: 0;
+    border-right-color: transparent;
+    overflow: hidden;
+  }
 }
 
 .sidebar__header {
@@ -95,16 +107,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.sidebar__actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-1);
-}
-
-.sidebar__actions .ghost-button {
-  justify-content: center;
 }
 
 /* ------------------------------- Feed List -------------------------------- */
@@ -193,22 +195,39 @@
 
 .folder-header {
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.folder-header .folder-row {
+  flex: 1;
+  width: auto;
+}
+
+.folder-row__toggle {
+  flex: 0 0 auto;
+  color: var(--faint);
+}
+
+.folder-row__toggle svg {
+  transition: transform var(--transition);
+}
+
+.folder-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  padding: 0 var(--space-2) var(--space-1);
+}
+
+/* Shared "pointing right, collapsed" state for any disclosure caret. */
+.caret--collapsed {
+  transform: rotate(-90deg);
 }
 
 .folder-row {
   font-weight: var(--weight-semibold);
   color: var(--text);
-}
-
-.folder-row__caret {
-  flex: 0 0 auto;
-  color: var(--faint);
-  transform: rotate(-90deg);
-  transition: transform var(--transition);
-}
-
-.folder-row.is-open .folder-row__caret {
-  transform: rotate(0deg);
 }
 
 .folder-row__icon {
@@ -307,21 +326,24 @@
 
 /* --------------------------------- Search --------------------------------- */
 
-.search {
+.sidebar__search {
   position: relative;
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.0625rem solid var(--border);
 }
 
 .search__icon {
   position: absolute;
-  left: 0.5625rem;
+  left: calc(var(--space-3) + 0.5625rem);
   color: var(--faint);
   pointer-events: none;
 }
 
 .search__input {
-  width: var(--search-width);
+  width: 100%;
   height: var(--control-height);
   padding: 0 var(--space-3) 0 1.875rem;
   border: 0.0625rem solid var(--border);
@@ -329,7 +351,7 @@
   background: var(--panel-2);
   color: var(--text);
   font-size: var(--text-sm);
-  transition: width var(--transition), border-color var(--transition), background var(--transition);
+  transition: border-color var(--transition), background var(--transition);
 }
 
 .search__input::placeholder {
@@ -338,7 +360,6 @@
 
 .search__input:focus {
   outline: none;
-  width: var(--search-width-focus);
   background: var(--panel);
   border-color: var(--accent);
   box-shadow: var(--focus-ring);
@@ -1384,6 +1405,57 @@
 
 /* -------------------------------- Settings -------------------------------- */
 
+.settings-layout {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.settings-nav {
+  flex: 0 0 9.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.settings-nav__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.settings-nav__item:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.settings-nav__item.is-active {
+  background: var(--panel-2);
+  color: var(--accent);
+  font-weight: var(--weight-semibold);
+}
+
+.settings-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-data-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-3);
+}
+
 .settings-section {
   padding: var(--space-3) 0;
   border-bottom: 0.0625rem solid var(--border);
@@ -1422,6 +1494,23 @@
   color: var(--faint);
   font-size: var(--text-xs);
   max-width: 20.625rem;
+}
+
+.setting-key-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+.setting-key-row .input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+}
+
+.setting-key-row .icon-button {
+  flex: 0 0 auto;
 }
 
 .segmented {

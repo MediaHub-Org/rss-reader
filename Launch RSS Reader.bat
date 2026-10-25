@@ -1,7 +1,9 @@
 @echo off
 rem Double-click to start the RSS Reader app server and open it.
-rem The project folder lives on the Windows side, the app runs in WSL
-rem (build tooling is Linux-only). Extra arguments are passed through,
-rem e.g. "Launch RSS Reader.bat --no-open".
+rem Runs node directly on Windows -- no WSL hop. node_modules here was
+rem installed by Windows npm (win32 rollup/esbuild binaries), so routing
+rem through WSL's Linux node fails on a missing @rollup/rollup-linux-x64-gnu.
+rem Extra arguments are passed through, e.g. "Launch RSS Reader.bat --no-open".
 cd /d "%~dp0"
-wsl bash scripts/launch-wsl.sh %*
+node scripts\launch.mjs %*
+if errorlevel 1 pause

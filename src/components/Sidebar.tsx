@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { Feed } from '../types';
-import { ALL_FEEDS } from '../types';
+import { ALL_FEEDS, folderViewId } from '../types';
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/opml';
@@ -9,10 +9,6 @@ import { Icon } from './Icon';
 
 interface SidebarProps {
   onAddFeed: () => void;
-  onImport: () => void;
-  onExport: () => void;
-  onManage: () => void;
-  onSettings: () => void;
   onUnsubscribe: (feed: Feed) => void;
   onRemoveFolder: (folderName: string) => void;
   onClose: () => void;
@@ -25,10 +21,6 @@ interface FolderGroup {
 
 export function Sidebar({
   onAddFeed,
-  onImport,
-  onExport,
-  onManage,
-  onSettings,
   onUnsubscribe,
   onRemoveFolder,
   onClose,
@@ -37,6 +29,14 @@ export function Sidebar({
   const [hovered, setHovered] = useState<string | null>(null);
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const onSearchKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') {
+      store.setQuery('');
+      searchRef.current?.blur();
+    }
+  };
 
   const totalUnread = useMemo(
     () => state.feeds.reduce((sum, feed) => sum + unreadCount(state, feed.id), 0),
@@ -70,6 +70,22 @@ export function Sidebar({
 
   const toggleFolder = (name: string) => {
     setCollapsed((current) => ({ ...current, [name]: !current[name] }));
+  };
+
+  const selectFolder = (name: string) => {
+    store.setActiveFeed(folderViewId(name));
+  };
+
+  const allFoldersExpanded = folders.length > 0 && folders.every((f) => !collapsed[f.name]);
+
+  const toggleAllFolders = () => {
+    if (allFoldersExpanded) {
+      const next: Record<string, boolean> = {};
+      for (const folder of folders) next[folder.name] = true;
+      setCollapsed(next);
+    } else {
+      setCollapsed({});
+    }
   };
 
   const renderFeedItem = (feed: Feed) => {
@@ -129,6 +145,21 @@ export function Sidebar({
         </button>
       </div>
 
+      <div className="sidebar__search">
+        <Icon name="search" size={16} className="search__icon" />
+        <input
+          ref={searchRef}
+          type="search"
+          className="search__input"
+          placeholder="Search articles"
+          aria-label="Search articles"
+          value={state.ui.query}
+          onChange={(event) => store.setQuery(event.target.value)}
+          onKeyDown={onSearchKey}
+          spellCheck={false}
+        />
+      </div>
+
       <div className="sidebar__scroll">
         <ul className="feed-list" role="list">
           <li>
@@ -146,8 +177,27 @@ export function Sidebar({
             </button>
           </li>
 
+          {folders.length > 0 && (
+            <li className="folder-actions">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={toggleAllFolders}
+                aria-label={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+                title={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+              >
+                <Icon
+                  name="chevronDown"
+                  size={14}
+                  className={allFoldersExpanded ? undefined : 'caret--collapsed'}
+                />
+              </button>
+            </li>
+          )}
+
           {folders.map((folder) => {
             const isOpen = !collapsed[folder.name];
+            const isActive = state.ui.activeFeedId === folderViewId(folder.name);
             const folderUnread = folder.feeds.reduce(
               (sum, feed) => sum + unreadCount(state, feed.id),
               0
@@ -164,11 +214,22 @@ export function Sidebar({
                 >
                   <button
                     type="button"
-                    className={`feed-row folder-row ${isOpen ? 'is-open' : ''}`}
+                    className="icon-button folder-row__toggle"
                     onClick={() => toggleFolder(folder.name)}
                     aria-expanded={isOpen}
+                    aria-label={isOpen ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
+                    title={isOpen ? 'Collapse' : 'Expand'}
                   >
-                    <Icon name="chevronDown" size={14} className="folder-row__caret" />
+                    <Icon name="chevronDown" size={14} className={isOpen ? undefined : 'caret--collapsed'} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`feed-row folder-row ${isActive ? 'is-active' : ''}`}
+                    onClick={() => selectFolder(folder.name)}
+                    aria-current={isActive ? 'page' : undefined}
+                    title={`Show articles from “${folder.name}”`}
+                  >
                     <Icon name="folder" size={15} className="folder-row__icon" />
                     <span className="feed-row__title">{folder.name}</span>
                     {folderUnread > 0 && (
@@ -216,25 +277,6 @@ export function Sidebar({
           <Icon name="plus" size={16} />
           <span>Add feed</span>
         </button>
-
-        <div className="sidebar__actions">
-          <button type="button" className="ghost-button" onClick={onImport}>
-            <Icon name="upload" size={15} />
-            <span>Import</span>
-          </button>
-          <button type="button" className="ghost-button" onClick={onExport} disabled={!state.feeds.length}>
-            <Icon name="download" size={15} />
-            <span>Export</span>
-          </button>
-          <button type="button" className="ghost-button" onClick={onManage} disabled={!state.feeds.length}>
-            <Icon name="trash" size={15} />
-            <span>Manage</span>
-          </button>
-          <button type="button" className="ghost-button" onClick={onSettings}>
-            <Icon name="settings" size={15} />
-            <span>Settings</span>
-          </button>
-        </div>
       </div>
     </nav>
   );

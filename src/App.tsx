@@ -157,7 +157,11 @@ export default function App() {
   const closeSidebar = () => store.setSidebarOpen(false);
 
   return (
-    <div className="app" data-sidebar-open={state.ui.sidebarOpen}>
+    <div
+      className="app"
+      data-sidebar-open={state.ui.sidebarOpen}
+      data-sidebar-collapsed={state.prefs.sidebarCollapsed}
+    >
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
@@ -165,19 +169,6 @@ export default function App() {
       <div className="app__body">
         <Sidebar
           onAddFeed={() => setAddOpen(true)}
-          onImport={() => {
-            setDataTab('import');
-            setDataOpen(true);
-          }}
-          onExport={() => {
-            setDataTab('export');
-            setDataOpen(true);
-          }}
-          onManage={() => {
-            setDataTab('manage');
-            setDataOpen(true);
-          }}
-          onSettings={() => setSettingsOpen(true)}
           onUnsubscribe={setConfirmFeed}
           onRemoveFolder={setConfirmFolder}
           onClose={closeSidebar}
@@ -188,7 +179,11 @@ export default function App() {
         )}
 
         <div className="main">
-          <TopBar onMenu={() => store.setSidebarOpen(true)} onAddFeed={() => setAddOpen(true)} />
+          <TopBar
+            onMenu={() => store.setSidebarOpen(true)}
+            onAddFeed={() => setAddOpen(true)}
+            onSettings={() => setSettingsOpen(true)}
+          />
 
           <main className="content-area" id="main-content" tabIndex={-1}>
             {state.ui.activeArticleId ? (
@@ -201,7 +196,29 @@ export default function App() {
       </div>
 
       <AddFeedDialog open={addOpen} onClose={() => setAddOpen(false)} />
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        hasFeeds={state.feeds.length > 0}
+        onImport={() => {
+          // Hand off to the Data dialog instead of stacking it on top of
+          // Settings -- two simultaneously open Dialogs both listen for
+          // Escape on document, and only one of them ends up closing.
+          setSettingsOpen(false);
+          setDataTab('import');
+          setDataOpen(true);
+        }}
+        onExport={() => {
+          setSettingsOpen(false);
+          setDataTab('export');
+          setDataOpen(true);
+        }}
+        onManage={() => {
+          setSettingsOpen(false);
+          setDataTab('manage');
+          setDataOpen(true);
+        }}
+      />
       <DataDialog open={dataOpen} initialTab={dataTab} onClose={() => setDataOpen(false)} />
 
       <ConfirmDialog

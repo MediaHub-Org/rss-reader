@@ -15,8 +15,6 @@
 /* Medium-narrow desktops / tablets (≤ 62.5rem / 1000px) */
 @media (max-width: 62.5rem) {
   :root {
-    --search-width: 10.625rem;        /* 170px */
-    --search-width-focus: 13.75rem;   /* 220px */
     --grid-pad-x: 1.125rem;           /* 18px  */
   }
 }
@@ -24,8 +22,6 @@
 /* Tablet / mobile drawer breakpoint (≤ 53.75rem / 860px) */
 @media (max-width: 53.75rem) {
   :root {
-    --search-width: 8.75rem;          /* 140px */
-    --search-width-focus: 8.75rem;    /* 140px */
     --grid-pad-y: 0.875rem;           /* 14px  */
     --grid-pad-x: 0.875rem;           /* 14px  */
     --grid-gap: 0.875rem;             /* 14px  */
@@ -57,6 +53,12 @@
   .sidebar .sidebar__close,
   .topbar .topbar__menu {
     display: inline-flex;
+  }
+
+  /* The mobile drawer (menu/close above) already shows/hides the sidebar;
+     the desktop collapse toggle would be a redundant, inert second control. */
+  .topbar .topbar__sidebar-toggle {
+    display: none;
   }
 
   .topbar {
@@ -93,9 +95,18 @@
     --grid-pad-x: 0.75rem;            /* 12px */
   }
 
-  .search,
   .topbar__sort {
     display: none;
+  }
+
+  .settings-layout {
+    flex-direction: column;
+  }
+
+  .settings-nav {
+    flex: 0 0 auto;
+    flex-direction: row;
+    overflow-x: auto;
   }
 
   .detail__bar {

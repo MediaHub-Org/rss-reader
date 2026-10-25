@@ -14,6 +14,7 @@ const NS = 'rss-reader:';
 const KEYS = {
   prefs: `${NS}prefs`,
   feeds: `${NS}feeds`,
+  folders: `${NS}folders`,
   read: `${NS}read`,
   version: `${NS}version`,
 } as const;
@@ -64,6 +65,17 @@ export function loadFeeds(): Feed[] {
 
 export function saveFeeds(feeds: Feed[]): void {
   writeJson(KEYS.feeds, feeds);
+}
+
+export function loadFolders(): string[] {
+  const folders = readJson<string[]>(KEYS.folders, []);
+  return Array.isArray(folders)
+    ? [...new Set(folders.map((f) => String(f ?? '').trim()).filter(Boolean))]
+    : [];
+}
+
+export function saveFolders(folders: string[]): void {
+  writeJson(KEYS.folders, [...new Set(folders.map((f) => f.trim()).filter(Boolean))]);
 }
 
 export function loadReadIds(): Record<string, true> {

@@ -1,5 +1,6 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import type { SortMode } from '../types';
+import { folderNameFromViewId } from '../types';
 import { store, selectArticles, isDarkTheme } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Icon } from './Icon';
@@ -8,6 +9,7 @@ import { Dropdown } from './Dropdown';
 interface TopBarProps {
   onMenu: () => void;
   onAddFeed: () => void;
+  onSettings: () => void;
 }
 
 const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
@@ -16,12 +18,12 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
   { value: 'feed', label: 'By feed name' },
 ];
 
-export function TopBar({ onMenu, onAddFeed }: TopBarProps) {
+export function TopBar({ onMenu, onAddFeed, onSettings }: TopBarProps) {
   const state = useStore();
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const activeFeed = state.feeds.find((f) => f.id === state.ui.activeFeedId);
-  const heading = activeFeed ? activeFeed.title : 'All articles';
+  const activeFolder = folderNameFromViewId(state.ui.activeFeedId);
+  const heading = activeFolder ?? activeFeed?.title ?? 'All articles';
 
   const visible = useMemo(
     () =>
@@ -38,17 +40,20 @@ export function TopBar({ onMenu, onAddFeed }: TopBarProps) {
   const anyLoading = Object.values(state.feedState).some((f) => f.status === 'loading');
   const dark = isDarkTheme(state.prefs);
 
-  const onSearchKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Escape') {
-      store.setQuery('');
-      searchRef.current?.blur();
-    }
-  };
-
   return (
     <header className="topbar">
       <button type="button" className="icon-button topbar__menu" onClick={onMenu} aria-label="Show feed list">
         <Icon name="menu" />
+      </button>
+
+      <button
+        type="button"
+        className="icon-button topbar__sidebar-toggle"
+        onClick={() => store.setPreferences({ sidebarCollapsed: !state.prefs.sidebarCollapsed })}
+        aria-label={state.prefs.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        title={state.prefs.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+      >
+        <Icon name="panelLeft" size={17} />
       </button>
 
       <div className="topbar__titles">
@@ -62,21 +67,6 @@ export function TopBar({ onMenu, onAddFeed }: TopBarProps) {
       </div>
 
       <div className="topbar__tools">
-        <div className="search">
-          <Icon name="search" size={16} className="search__icon" />
-          <input
-            ref={searchRef}
-            type="search"
-            className="search__input"
-            placeholder="Search articles"
-            aria-label="Search articles"
-            value={state.ui.query}
-            onChange={(event) => store.setQuery(event.target.value)}
-            onKeyDown={onSearchKey}
-            spellCheck={false}
-          />
-        </div>
-
         <Dropdown<SortMode>
           value={state.ui.sort}
           options={SORT_OPTIONS}
@@ -117,6 +107,16 @@ export function TopBar({ onMenu, onAddFeed }: TopBarProps) {
           title={dark ? 'Light theme' : 'Dark theme'}
         >
           <Icon name={dark ? 'sun' : 'moon'} />
+        </button>
+
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onSettings}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <Icon name="settings" size={17} />
         </button>
 
         <button type="button" className="icon-button topbar__add" onClick={onAddFeed} aria-label="Add feed">
