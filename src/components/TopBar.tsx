@@ -8,7 +8,6 @@ import { Dropdown } from './Dropdown';
 
 interface TopBarProps {
   onMenu: () => void;
-  onAddFeed: () => void;
   onSettings: () => void;
 }
 
@@ -18,7 +17,7 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
   { value: 'feed', label: 'By feed name' },
 ];
 
-export function TopBar({ onMenu, onAddFeed, onSettings }: TopBarProps) {
+export function TopBar({ onMenu, onSettings }: TopBarProps) {
   const state = useStore();
 
   const activeFeed = state.feeds.find((f) => f.id === state.ui.activeFeedId);
@@ -117,10 +116,6 @@ export function TopBar({ onMenu, onAddFeed, onSettings }: TopBarProps) {
           title="Settings"
         >
           <Icon name="settings" size={17} />
-        </button>
-
-        <button type="button" className="icon-button topbar__add" onClick={onAddFeed} aria-label="Add feed">
-          <Icon name="plus" />
         </button>
       </div>
     </header>

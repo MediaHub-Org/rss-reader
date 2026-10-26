@@ -134,13 +134,23 @@ export function ArticleDetail() {
           </section>
         )}
 
+        {article.audioUrl && (
+          <section className="audio-card" aria-label="Episode audio">
+            <audio controls preload="none" src={article.audioUrl}>
+              <a href={article.audioUrl} target="_blank" rel="noopener noreferrer">
+                Download the audio
+              </a>
+            </audio>
+          </section>
+        )}
+
         <div
           className="content"
           // Sanitized immediately before injection (src/lib/sanitize.ts).
           dangerouslySetInnerHTML={{ __html: html }}
         />
 
-        {!html && !article.youtubeId && (
+        {!html && !article.youtubeId && !article.audioUrl && (
           <p className="detail__fallback">
             This article has no readable content.
             {article.link && (

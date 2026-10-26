@@ -113,7 +113,7 @@ export async function fetchYouTubeChannelFeed(
       const contentHtml = description ? `<p>${escapeHtml(description).replace(/\n/g, '<br>')}</p>` : '';
 
       return {
-        id: articleId(feedId, { guid: videoId, title, publishedAt }),
+        id: articleId(feedId, { youtubeId: videoId, title, publishedAt }),
         feedId,
         title,
         link: watchUrl(videoId),

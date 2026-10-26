@@ -95,6 +95,24 @@ function extractImage(item: RawItem, base?: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Pull a playable audio URL out of an enclosure -- podcast episode audio.
+ * Every podcast host (Spotify for Podcasters/Anchor, Libsyn, SoundCloud,
+ * Transistor, ...) publishes the episode file the same standard way, as an
+ * <enclosure> with an audio/* type, so this covers all of them at once
+ * rather than needing per-platform handling.
+ */
+function extractAudio(item: RawItem, base?: string): { url: string; type?: string } | undefined {
+  const enclosure = item.enclosure;
+  if (!enclosure?.url) return undefined;
+  const type = pickString(enclosure.type) ?? '';
+  const looksLikeAudio =
+    /^audio\//i.test(type) || /\.(mp3|m4a|aac|ogg|oga|wav|flac|opus)(\?|$)/i.test(enclosure.url);
+  if (!looksLikeAudio) return undefined;
+  const resolved = resolveUrl(base, enclosure.url);
+  return resolved ? { url: resolved, type: type || undefined } : undefined;
+}
+
 function normalizeItem(feedId: string, base: string | undefined, item: RawItem): Article | null {
   const title = pickString(item.title) || '(untitled)';
   const link = resolveUrl(base, pickString(item.link)) ?? undefined;
@@ -131,6 +149,7 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
   );
 
   const image = extractImage(item, base);
+  const audio = extractAudio(item, base);
   const youtubeId =
     extractYouTubeId(link) ??
     extractYouTubeIdFromHtml(html) ??
@@ -143,7 +162,7 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
       : html;
 
   return {
-    id: articleId(feedId, { guid, link, title, publishedAt }),
+    id: articleId(feedId, { guid, link, title, publishedAt, youtubeId }),
     feedId,
     title,
     link,
@@ -153,6 +172,8 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
     publishedAt,
     thumbnail: image ?? (youtubeId ? thumbnailUrl(youtubeId) : undefined),
     youtubeId,
+    audioUrl: audio?.url,
+    audioType: audio?.type,
   };
 }
 

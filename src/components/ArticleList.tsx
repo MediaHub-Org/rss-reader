@@ -143,6 +143,7 @@ function ArticleCard({ article, feed, read, active }: ArticleCardProps) {
           active ? 'is-active' : '',
           thumb ? 'has-media' : 'no-media',
           article.youtubeId ? 'article-card--video' : '',
+          !article.youtubeId && article.audioUrl ? 'article-card--audio' : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -172,6 +173,11 @@ function ArticleCard({ article, feed, read, active }: ArticleCardProps) {
             />
             {article.youtubeId && (
               <span className="article-card__play" title="YouTube video" aria-hidden="true">
+                <Icon name="play" size={18} />
+              </span>
+            )}
+            {!article.youtubeId && article.audioUrl && (
+              <span className="article-card__play" title="Audio episode" aria-hidden="true">
                 <Icon name="play" size={18} />
               </span>
             )}

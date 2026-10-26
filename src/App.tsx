@@ -181,7 +181,6 @@ export default function App() {
         <div className="main">
           <TopBar
             onMenu={() => store.setSidebarOpen(true)}
-            onAddFeed={() => setAddOpen(true)}
             onSettings={() => setSettingsOpen(true)}
           />
 

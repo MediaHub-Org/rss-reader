@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AppState, Feed, SidebarSort } from '../types';
-import { ALL_FEEDS, folderNameFromViewId, folderViewId } from '../types';
+import {
+  ALL_FEEDS,
+  folderNameFromViewId,
+  folderViewId,
+  SIDEBAR_WIDTH_MAX,
+  SIDEBAR_WIDTH_MIN,
+} from '../types';
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/opml';
@@ -69,6 +75,8 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+  const [isResizing, setIsResizing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const newFolderRef = useRef<HTMLInputElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -76,6 +84,29 @@ export function Sidebar({
   useEffect(() => {
     if (creatingFolder) newFolderRef.current?.focus();
   }, [creatingFolder]);
+
+  const sidebarWidth = dragWidth ?? state.prefs.sidebarWidth;
+
+  const startResize = (event: React.MouseEvent) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = state.prefs.sidebarWidth;
+    const clamp = (w: number) => Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, w));
+
+    setIsResizing(true);
+    const onMove = (moveEvent: MouseEvent) => {
+      setDragWidth(clamp(startWidth + (moveEvent.clientX - startX)));
+    };
+    const onUp = (upEvent: MouseEvent) => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      store.setPreferences({ sidebarWidth: clamp(startWidth + (upEvent.clientX - startX)) });
+      setDragWidth(null);
+      setIsResizing(false);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   const onSearchKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -259,7 +290,12 @@ export function Sidebar({
   };
 
   return (
-    <nav className="sidebar" aria-label="Feeds" ref={navRef}>
+    <nav
+      className={`sidebar ${isResizing ? 'sidebar--resizing' : ''}`}
+      aria-label="Feeds"
+      ref={navRef}
+      style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
+    >
       <div className="sidebar__header">
         <span className="brand">
           <Icon name="rss" size={18} />
@@ -335,11 +371,7 @@ export function Sidebar({
                 aria-label={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
                 title={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
               >
-                <Icon
-                  name="chevronDown"
-                  size={14}
-                  className={allFoldersExpanded ? 'caret--flipped' : undefined}
-                />
+                <Icon name={allFoldersExpanded ? 'collapse' : 'expand'} size={15} />
               </button>
             )}
             <button
@@ -450,12 +482,14 @@ export function Sidebar({
         </ul>
       </div>
 
-      <div className="sidebar__footer">
-        <button type="button" className="button button--primary sidebar__cta" onClick={onAddFeed}>
-          <Icon name="plus" size={16} />
-          <span>Add feed</span>
-        </button>
-      </div>
+      <div
+        className="sidebar__resize-handle"
+        onMouseDown={startResize}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        title="Drag to resize"
+      />
     </nav>
   );
 }

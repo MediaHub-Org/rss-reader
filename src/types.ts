@@ -31,7 +31,12 @@ export interface Preferences {
   youtubeApiKey: string;
   /** How feeds are ordered within each folder/ungrouped section of the sidebar. */
   sidebarSort: SidebarSort;
+  /** Sidebar width in pixels, drag-resizable (desktop only). */
+  sidebarWidth: number;
 }
+
+export const SIDEBAR_WIDTH_MIN = 200;
+export const SIDEBAR_WIDTH_MAX = 480;
 
 export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'system',
@@ -42,6 +47,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   sidebarCollapsed: false,
   youtubeApiKey: '',
   sidebarSort: 'name-asc',
+  sidebarWidth: 276, // matches the previous fixed --sidebar-width (17.25rem)
 };
 
 export interface Feed {
@@ -73,6 +79,9 @@ export interface Article {
   thumbnail?: string;
   /** Detected YouTube video id, if the item references one. */
   youtubeId?: string;
+  /** Podcast/episode audio enclosure (Spotify-for-Podcasters, Anchor, Libsyn, SoundCloud RSS, etc. all publish one the same way). */
+  audioUrl?: string;
+  audioType?: string;
 }
 
 export interface FeedState {
