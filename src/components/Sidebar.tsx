@@ -13,6 +13,11 @@ import { byName } from '../lib/opml';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
 import { Dropdown, type DropdownOption } from './Dropdown';
+import { ContextMenu, type ContextMenuItem } from './ContextMenu';
+
+type ContextTarget =
+  | { type: 'feed'; feed: Feed; x: number; y: number }
+  | { type: 'folder'; name: string; x: number; y: number };
 
 interface SidebarProps {
   onAddFeed: () => void;
@@ -77,13 +82,34 @@ export function Sidebar({
   const [newFolderName, setNewFolderName] = useState('');
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const [isResizing, setIsResizing] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextTarget | null>(null);
+  const [renamingFeedId, setRenamingFeedId] = useState<string | null>(null);
+  const [renameFeedValue, setRenameFeedValue] = useState('');
+  const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
+  const [renameFolderValue, setRenameFolderValue] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
   const newFolderRef = useRef<HTMLInputElement>(null);
+  const renameFeedRef = useRef<HTMLInputElement>(null);
+  const renameFolderRef = useRef<HTMLInputElement>(null);
   const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (creatingFolder) newFolderRef.current?.focus();
   }, [creatingFolder]);
+
+  useEffect(() => {
+    if (renamingFeedId) {
+      renameFeedRef.current?.focus();
+      renameFeedRef.current?.select();
+    }
+  }, [renamingFeedId]);
+
+  useEffect(() => {
+    if (renamingFolder) {
+      renameFolderRef.current?.focus();
+      renameFolderRef.current?.select();
+    }
+  }, [renamingFolder]);
 
   const sidebarWidth = dragWidth ?? state.prefs.sidebarWidth;
 
@@ -190,6 +216,62 @@ export function Sidebar({
     }
   };
 
+  const startRenameFeed = (feed: Feed) => {
+    setRenamingFeedId(feed.id);
+    setRenameFeedValue(feed.title);
+  };
+
+  const submitRenameFeed = () => {
+    if (!renamingFeedId) return;
+    const result = store.renameFeed(renamingFeedId, renameFeedValue);
+    if (!result.ok && result.message) store.notify('error', result.message);
+    setRenamingFeedId(null);
+  };
+
+  const onRenameFeedKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') submitRenameFeed();
+    else if (event.key === 'Escape') setRenamingFeedId(null);
+  };
+
+  const startRenameFolder = (name: string) => {
+    setRenamingFolder(name);
+    setRenameFolderValue(name);
+  };
+
+  const submitRenameFolder = () => {
+    if (!renamingFolder) return;
+    const result = store.renameFolder(renamingFolder, renameFolderValue);
+    if (!result.ok && result.message) store.notify('error', result.message);
+    setRenamingFolder(null);
+  };
+
+  const onRenameFolderKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') submitRenameFolder();
+    else if (event.key === 'Escape') setRenamingFolder(null);
+  };
+
+  const feedContextItems = (feed: Feed): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [
+      { icon: 'pencil', label: 'Rename feed', onSelect: () => startRenameFeed(feed) },
+    ];
+    const otherFolders = folders.map((f) => f.name).filter((name) => name !== feed.folder);
+    if (feed.folder || otherFolders.length > 0) {
+      items.push({ type: 'divider' });
+      items.push({ type: 'label', label: 'Move to folder' });
+      if (feed.folder) {
+        items.push({ label: 'No folder', onSelect: () => store.moveFeedToFolder(feed.id, undefined) });
+      }
+      for (const name of otherFolders) {
+        items.push({ icon: 'folder', label: name, onSelect: () => store.moveFeedToFolder(feed.id, name) });
+      }
+    }
+    return items;
+  };
+
+  const folderContextItems = (name: string): ContextMenuItem[] => [
+    { icon: 'pencil', label: 'Rename folder', onSelect: () => startRenameFolder(name) },
+  ];
+
   /**
    * Reveal: expand the path to a feed or folder row (if collapsed) and
    * scroll it into view, without changing what's selected as the active
@@ -248,6 +330,7 @@ export function Sidebar({
     const feedState = state.feedState[feed.id];
     const hasError = feedState?.status === 'error';
     const isActive = state.ui.activeFeedId === feed.id;
+    const isRenaming = renamingFeedId === feed.id;
 
     return (
       <li
@@ -256,25 +339,44 @@ export function Sidebar({
         data-feed-id={feed.id}
         onMouseEnter={() => setHovered(feed.id)}
         onMouseLeave={() => setHovered(null)}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          setContextMenu({ type: 'feed', feed, x: event.clientX, y: event.clientY });
+        }}
       >
-        <button
-          type="button"
-          className={`feed-row ${isActive ? 'is-active' : ''}`}
-          onClick={() => store.setActiveFeed(feed.id)}
-          aria-current={isActive ? 'page' : undefined}
-          title={feed.description || feed.title}
-        >
-          <FeedIcon feed={feed} />
-          <span className="feed-row__title">{feed.title}</span>
-          {hasError && (
-            <span className="status-dot" title={feedState?.message} aria-label="Feed has an error">
-              !
-            </span>
-          )}
-          {unread > 0 && <span className="badge">{unread > 999 ? '999+' : unread}</span>}
-        </button>
+        {isRenaming ? (
+          <div className="feed-row feed-row--renaming">
+            <FeedIcon feed={feed} />
+            <input
+              ref={renameFeedRef}
+              type="text"
+              className="input sidebar__rename-input"
+              value={renameFeedValue}
+              onChange={(event) => setRenameFeedValue(event.target.value)}
+              onKeyDown={onRenameFeedKey}
+              onBlur={submitRenameFeed}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={`feed-row ${isActive ? 'is-active' : ''}`}
+            onClick={() => store.setActiveFeed(feed.id)}
+            aria-current={isActive ? 'page' : undefined}
+            title={feed.description || feed.title}
+          >
+            <FeedIcon feed={feed} />
+            <span className="feed-row__title">{feed.title}</span>
+            {hasError && (
+              <span className="status-dot" title={feedState?.message} aria-label="Feed has an error">
+                !
+              </span>
+            )}
+            {unread > 0 && <span className="badge">{unread > 999 ? '999+' : unread}</span>}
+          </button>
+        )}
 
-        {(hovered === feed.id || isActive) && (
+        {!isRenaming && (hovered === feed.id || isActive) && (
           <button
             type="button"
             className="feed-row__remove icon-button"
@@ -421,6 +523,10 @@ export function Sidebar({
                   className="folder-header"
                   onMouseEnter={() => setHoveredFolder(folder.name)}
                   onMouseLeave={() => setHoveredFolder(null)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setContextMenu({ type: 'folder', name: folder.name, x: event.clientX, y: event.clientY });
+                  }}
                 >
                   <button
                     type="button"
@@ -433,21 +539,36 @@ export function Sidebar({
                     <Icon name="chevronDown" size={14} className={isOpen ? undefined : 'caret--collapsed'} />
                   </button>
 
-                  <button
-                    type="button"
-                    className={`feed-row folder-row ${isActive ? 'is-active' : ''}`}
-                    onClick={() => selectFolder(folder.name)}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={`Show articles from “${folder.name}”`}
-                  >
-                    <Icon name="folder" size={15} className="folder-row__icon" />
-                    <span className="feed-row__title">{folder.name}</span>
-                    {folderUnread > 0 && (
-                      <span className="badge">{folderUnread > 999 ? '999+' : folderUnread}</span>
-                    )}
-                  </button>
+                  {renamingFolder === folder.name ? (
+                    <div className="feed-row folder-row folder-row--renaming">
+                      <Icon name="folder" size={15} className="folder-row__icon" />
+                      <input
+                        ref={renameFolderRef}
+                        type="text"
+                        className="input sidebar__rename-input"
+                        value={renameFolderValue}
+                        onChange={(event) => setRenameFolderValue(event.target.value)}
+                        onKeyDown={onRenameFolderKey}
+                        onBlur={submitRenameFolder}
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`feed-row folder-row ${isActive ? 'is-active' : ''}`}
+                      onClick={() => selectFolder(folder.name)}
+                      aria-current={isActive ? 'page' : undefined}
+                      title={`Show articles from “${folder.name}”`}
+                    >
+                      <Icon name="folder" size={15} className="folder-row__icon" />
+                      <span className="feed-row__title">{folder.name}</span>
+                      {folderUnread > 0 && (
+                        <span className="badge">{folderUnread > 999 ? '999+' : folderUnread}</span>
+                      )}
+                    </button>
+                  )}
 
-                  {hoveredFolder === folder.name && (
+                  {renamingFolder !== folder.name && hoveredFolder === folder.name && (
                     <button
                       type="button"
                       className="feed-row__remove icon-button"
@@ -490,6 +611,19 @@ export function Sidebar({
         aria-label="Resize sidebar"
         title="Drag to resize"
       />
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={
+            contextMenu.type === 'feed'
+              ? feedContextItems(contextMenu.feed)
+              : folderContextItems(contextMenu.name)
+          }
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </nav>
   );
 }

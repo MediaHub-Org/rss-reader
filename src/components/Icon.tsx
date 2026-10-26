@@ -33,6 +33,8 @@ const PATHS: Record<string, string> = {
   collapse: 'm7 20 5-5 5 5M7 4l5 5 5-5',
   expand: 'm7 15 5 5 5-5M7 9l5-5 5 5',
   locate: 'M12 2v3M12 19v3M2 12h3M19 12h3M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z',
+  pencil:
+    'M21.174 6.812a1 1 0 0 0-3.986-3.986L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .622.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4',
 };
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {

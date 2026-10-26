@@ -551,6 +551,84 @@
   }
 }
 
+/* ----------------------------- Context menu -------------------------------- */
+/* Summoned at the cursor (fixed position, set inline by ContextMenu.tsx),
+   not anchored to a trigger -- same visual language as .dropdown__menu. */
+
+.context-menu {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  min-width: var(--dropdown-min-width);
+  margin: 0;
+  padding: var(--space-1);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  animation: dropdown-in 120ms ease-out;
+}
+
+.context-menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: var(--space-2);
+  padding: var(--space-2) 0.625rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu__item:hover {
+  background: var(--accent-soft);
+}
+
+.context-menu__check {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.context-menu__label {
+  padding: var(--space-2) 0.625rem 0.25rem;
+  color: var(--faint);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.context-menu__divider {
+  margin: var(--space-1) 0.375rem;
+  border-top: 0.0625rem solid var(--border);
+}
+
+/* ------------------------------ Inline rename ------------------------------ */
+
+.feed-row--renaming,
+.folder-row--renaming {
+  cursor: default;
+}
+
+.sidebar__rename-input {
+  flex: 1;
+  min-width: 0;
+  height: 1.75rem;
+  padding: 0 var(--space-1);
+  border: 0.0625rem solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+.sidebar__rename-input:focus {
+  outline: none;
+}
+
 /* -------------------------------- Buttons --------------------------------- */
 
 .icon-button {

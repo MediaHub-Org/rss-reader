@@ -417,6 +417,59 @@ export class Store {
     return removed;
   }
 
+  /** Rename a feed's display title (its id stays derived from the feed URL). */
+  renameFeed(feedId: string, title: string): ActionResult {
+    const next = title.trim();
+    if (!next) return { ok: false, message: 'Feed name cannot be empty.' };
+    const feed = this.state.feeds.find((f) => f.id === feedId);
+    if (!feed) return { ok: false, message: 'Feed not found.' };
+    if (next === feed.title) return { ok: true };
+
+    this.update({
+      feeds: this.state.feeds.map((f) => (f.id === feedId ? { ...f, title: next } : f)),
+    });
+    this.schedulePersist();
+    return { ok: true };
+  }
+
+  /** Move a feed into a different folder, or ungroup it with `folder: undefined`. */
+  moveFeedToFolder(feedId: string, folder: string | undefined): ActionResult {
+    const feed = this.state.feeds.find((f) => f.id === feedId);
+    if (!feed) return { ok: false, message: 'Feed not found.' };
+    const next = folder?.trim() || undefined;
+    if ((feed.folder?.trim() || undefined) === next) return { ok: true };
+
+    this.update({
+      feeds: this.state.feeds.map((f) => (f.id === feedId ? { ...f, folder: next } : f)),
+    });
+    this.schedulePersist();
+    return { ok: true };
+  }
+
+  /**
+   * Rename a folder: updates the explicit empty-folder record (if any) and
+   * every feed currently in it. Blocks renaming onto an existing folder's
+   * name, same collision rule as createFolder.
+   */
+  renameFolder(oldName: string, newName: string): ActionResult {
+    const from = oldName.trim();
+    const to = newName.trim();
+    if (!to) return { ok: false, message: 'Folder name cannot be empty.' };
+    if (to === from) return { ok: true };
+    const collision =
+      this.state.folders.includes(to) || this.state.feeds.some((f) => f.folder?.trim() === to);
+    if (collision) return { ok: false, message: `A folder named "${to}" already exists.` };
+
+    this.update({
+      folders: this.state.folders.map((f) => (f === from ? to : f)),
+      feeds: this.state.feeds.map((f) =>
+        (f.folder?.trim() ?? '') === from ? { ...f, folder: to } : f
+      ),
+    });
+    this.schedulePersist();
+    return { ok: true };
+  }
+
   /* ------------------------------ subscriptions --------------------------- */
 
   /**
