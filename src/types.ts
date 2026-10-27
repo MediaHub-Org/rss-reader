@@ -16,8 +16,12 @@ export interface Preferences {
   theme: ThemeMode;
   density: Density;
   fontSize: FontSize;
-  /** Play YouTube videos inline in the reader (otherwise link out). */
-  embedYouTube: boolean;
+  /**
+   * Play media inline in the reader — YouTube, Vimeo, Spotify, SoundCloud,
+   * Deezer, Apple Podcasts/Music. When off, links open in a new tab instead.
+   * (Persisted for older sessions as `embedYouTube`; see loadPreferences.)
+   */
+  embedMedia: boolean;
   /** Hide articles already marked as read. */
   hideRead: boolean;
   /** Sidebar collapsed to a hidden state on desktop (persists across sessions). */
@@ -44,7 +48,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'system',
   density: 'comfortable',
   fontSize: 'medium',
-  embedYouTube: true,
+  embedMedia: true,
   hideRead: false,
   sidebarCollapsed: false,
   youtubeApiKey: '',

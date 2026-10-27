@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { sanitizeHtml } from '../lib/sanitize';
 import { formatDate } from '../lib/format';
 import { copyText } from '../lib/clipboard';
-import { embedUrl, thumbnailUrl, watchUrl } from '../lib/youtube';
+import { thumbnailUrl, watchUrl } from '../lib/youtube';
+import { detectEmbed, detectEmbedInHtml, type MediaEmbed } from '../lib/embeds';
 import { Icon } from './Icon';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 
@@ -16,6 +17,9 @@ type DetailMenu =
 export function ArticleDetail() {
   const state = useStore();
   const [menu, setMenu] = useState<DetailMenu | null>(null);
+  /** A provider link clicked inside the article body, played above the text. */
+  const [inlineMedia, setInlineMedia] = useState<MediaEmbed | null>(null);
+  const mediaRef = useRef<HTMLElement>(null);
 
   const article = useMemo(
     () => Object.values(state.articles).flat().find((a) => a.id === state.ui.activeArticleId),
@@ -31,6 +35,18 @@ export function ArticleDetail() {
     return sanitizeHtml(article.contentHtml, base);
   }, [article, feed]);
 
+  // The item's own link wins; otherwise the first supported provider linked
+  // from the body (Spotify in prose, a Vimeo clip in a paragraph…).
+  const detectedMedia = useMemo(
+    () => (article ? detectEmbed(article.link) ?? detectEmbedInHtml(article.contentHtml) : null),
+    [article]
+  );
+
+  // A player opened from one article must not follow you to the next one.
+  useEffect(() => {
+    setInlineMedia(null);
+  }, [article?.id]);
+
   if (!article) {
     return (
       <div className="detail detail--empty">
@@ -44,7 +60,28 @@ export function ArticleDetail() {
   }
 
   const read = Boolean(state.readIds[article.id]);
-  const showEmbed = state.prefs.embedYouTube && article.youtubeId;
+  const showEmbed = state.prefs.embedMedia;
+  const embed = inlineMedia ?? detectedMedia;
+
+  /**
+   * A link to a supported provider plays in place instead of navigating away.
+   * Modifier-clicks and the “play media inline” setting being off keep the
+   * normal new-tab behaviour.
+   */
+  const playMediaLink = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!showEmbed) return;
+    if (event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as HTMLElement).closest('a[href]');
+    if (!anchor) return;
+    const target = detectEmbed(anchor.getAttribute('href'));
+    if (!target) return;
+    event.preventDefault();
+    setInlineMedia(target);
+    requestAnimationFrame(() => {
+      mediaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  };
 
   /**
    * Links inside feed HTML get app actions (open/copy); plain article text
@@ -187,47 +224,88 @@ export function ArticleDetail() {
           </p>
         </header>
 
-        {article.youtubeId && (
-          <section className="video-card" aria-label="Video">
+        {embed && (
+          <section
+            className={`media-card media-card--${embed.provider}`}
+            aria-label={`${embed.label} player`}
+            ref={mediaRef}
+          >
             {showEmbed ? (
-              <div className="video-card__frame">
+              <div
+                className={`media-card__frame media-card__frame--${embed.layout}`}
+                style={
+                  embed.layout === 'audio' ? { height: `${embed.height ?? 166}px` } : undefined
+                }
+              >
                 <iframe
-                  src={embedUrl(article.youtubeId)}
-                  title="YouTube video player"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  src={embed.src}
+                  title={`${embed.label} player`}
+                  allow={embed.allow}
                   allowFullScreen
                   loading="lazy"
                   referrerPolicy="strict-origin-when-cross-origin"
                 />
               </div>
-            ) : (
+            ) : embed.provider === 'youtube' ? (
               <a
-                className="video-card__link"
-                href={watchUrl(article.youtubeId)}
+                className="media-card__link"
+                href={watchUrl(embed.id)}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="video-card__poster">
+                <div className="media-card__poster">
                   <img
-                    src={thumbnailUrl(article.youtubeId)}
+                    src={thumbnailUrl(embed.id)}
                     alt=""
                     loading="lazy"
                     decoding="async"
                     referrerPolicy="no-referrer"
                   />
-                  <span className="video-card__play" aria-hidden="true">
+                  <span className="media-card__play" aria-hidden="true">
                     <Icon name="play" size={22} />
                   </span>
                 </div>
-                <div className="video-card__footer">
-                  <span className="video-card__text">
+                <div className="media-card__footer">
+                  <span className="media-card__text">
                     <strong>Watch on YouTube</strong>
                     <span>Opens in a new tab</span>
                   </span>
                   <Icon name="external" size={16} />
                 </div>
               </a>
+            ) : (
+              <a
+                className="media-card__link media-card__link--compact"
+                href={embed.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="media-card__play" aria-hidden="true">
+                  <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={18} />
+                </span>
+                <span className="media-card__compact-text">
+                  <strong>Play on {embed.label}</strong>
+                  <span>Opens in a new tab</span>
+                </span>
+                <Icon name="external" size={16} />
+              </a>
             )}
+
+            <div className="media-card__meta">
+              <span className="media-card__provider">{embed.label}</span>
+              <a href={embed.href} target="_blank" rel="noopener noreferrer">
+                Open in {embed.label}
+              </a>
+              {inlineMedia && (
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setInlineMedia(null)}
+                >
+                  Close player
+                </button>
+              )}
+            </div>
           </section>
         )}
 
@@ -243,11 +321,12 @@ export function ArticleDetail() {
 
         <div
           className="content"
+          onClick={playMediaLink}
           // Sanitized immediately before injection (src/lib/sanitize.ts).
           dangerouslySetInnerHTML={{ __html: html }}
         />
 
-        {!html && !article.youtubeId && !article.audioUrl && (
+        {!html && !embed && !article.audioUrl && (
           <p className="detail__fallback">
             This article has no readable content.
             {article.link && (

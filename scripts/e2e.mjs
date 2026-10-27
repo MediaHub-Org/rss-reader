@@ -247,14 +247,15 @@ try {
   check('Density preference applied', density === 'compact', density || '');
   check('Font size preference applied', fontSize === 'large', fontSize || '');
 
-  /* YouTube embed switch defaults to true; toggle off and back on */
+  /* Inline-media switch defaults to true; toggle off and back on */
   await page.click('[role="dialog"] .settings-nav__item:has-text("General")');
-  const defaultEmbed = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
-  await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
-  const toggledOff = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
-  await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
-  const embedOn = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
-  check('Embed toggle defaults on and persists to aria-checked', defaultEmbed === 'true' && toggledOff === 'false' && embedOn === 'true', `${defaultEmbed} → ${toggledOff} → ${embedOn}`);
+  const mediaSwitch = '[role="dialog"] .switch[aria-label*="Play media" i]';
+  const defaultEmbed = await page.getAttribute(mediaSwitch, 'aria-checked');
+  await page.click(mediaSwitch);
+  const toggledOff = await page.getAttribute(mediaSwitch, 'aria-checked');
+  await page.click(mediaSwitch);
+  const embedOn = await page.getAttribute(mediaSwitch, 'aria-checked');
+  check('Inline media toggle defaults on and persists to aria-checked', defaultEmbed === 'true' && toggledOff === 'false' && embedOn === 'true', `${defaultEmbed} → ${toggledOff} → ${embedOn}`);
   await page.keyboard.press('Escape');
 
   /* preferences survive reload */
@@ -359,32 +360,37 @@ try {
 
   await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail');
-  const embedVisible = (await page.$('.video-card__frame iframe')) !== null;
-  const linkVisible = (await page.$('.video-card__link')) !== null;
+  const embedVisible = (await page.$('.media-card__frame iframe')) !== null;
+  const linkVisible = (await page.$('.media-card__link')) !== null;
   check('YouTube player behavior (inline iframe by default)', embedVisible && !linkVisible, `embed=${embedVisible} link=${linkVisible}`);
 
   if (embedVisible) {
-    const src = await page.getAttribute('.video-card__frame iframe', 'src');
+    const src = await page.getAttribute('.media-card__frame iframe', 'src');
     check('Embed uses youtube-nocookie', /youtube-nocookie\.com\/embed\/[\w-]{11}/.test(src || ''), src || '');
   }
 
   /* link mode (with thumbnail poster) after disabling the setting */
   await page.click('.detail .ghost-button:has-text("Back")');
   await openSettings('General');
-  await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
+  const mediaToggle = '[role="dialog"] .switch[aria-label*="Play media" i]';
+  const embedDefault = await page.getAttribute(mediaToggle, 'aria-checked');
+  await page.click(mediaToggle);
   await page.keyboard.press('Escape');
   await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail');
-  const linkHref = await page.getAttribute('.video-card__link', 'href');
-  const posterSrc = await page.getAttribute('.video-card__poster img', 'src');
+  const linkHref = await page.getAttribute('.media-card__link', 'href');
+  const posterSrc = await page.getAttribute('.media-card__poster img', 'src');
   check(
     'Fallback link shows thumbnail poster and opens youtube.com/watch',
     /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(linkHref || '') &&
       /i\.ytimg\.com\/vi\/[\w-]{11}\//.test(posterSrc || ''),
-    linkHref || ''
+    `toggle was ${embedDefault} · ${linkHref || ''}`
   );
   await page.screenshot({ path: path.join(SHOTS, '03-video-link.png') });
   await page.click('.detail .ghost-button:has-text("Back")');
+  await openSettings('General');
+  await page.click(mediaToggle);
+  await page.keyboard.press('Escape');
 
   /* --------------------------- keyboard nav ---------------------------- */
   await page.click('.feed-row:has-text("All articles")');
@@ -627,11 +633,128 @@ try {
   );
   check('Mobile drawer closes after choosing a view', true);
 
+  /* ------------------------- inline media providers --------------------- */
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(300);
+  await page.click('.sidebar .feed-row:has-text("All articles")');
+  await page.click('.sidebar__toolbar button[aria-label="New feed"]');
+  await page.fill('[role="dialog"] input.input', fixture('media.xml'));
+  await page.click('[role="dialog"] .dialog__footer .button--primary');
+  await page.waitForSelector('.article-card', { timeout: 30_000 });
+  await page.click('.sidebar .feed-row:has-text("Media Fixture")');
+  await page.waitForSelector('.article-card');
+
+  const audioCards = await page.locator('.article-card--audio').count();
+  const mediaChips = await page.locator('.article-card__media-chip').count();
+  check(
+    'Audio embeds get a card badge and an inline chip',
+    audioCards >= 3 && mediaChips >= 5,
+    `${audioCards} audio cards · ${mediaChips} chips`
+  );
+
+  /* Provider cards with no thumbnail still get a branded band, not blank space */
+  const bands = await page.locator('.article-card__media--embed').count();
+  check('Media cards without artwork get a branded band', bands >= 4, `${bands} bands`);
+
+  /* Spotify item opens a track player, not a redirect */
+  await page.click('.article-card:has-text("Spotify track fixture")');
+  await page.waitForSelector('.detail .media-card iframe');
+  const spotifySrc = await page.getAttribute('.detail .media-card iframe', 'src');
+  const spotifyFrameClass = await page.getAttribute('.detail .media-card__frame', 'class');
+  check(
+    'Spotify track plays in an inline iframe',
+    /open\.spotify\.com\/embed\/track\/[A-Za-z0-9]+/.test(spotifySrc || '') &&
+      /--audio/.test(spotifyFrameClass || ''),
+    spotifySrc || ''
+  );
+  await page.screenshot({ path: path.join(SHOTS, '06-spotify.png') });
+  await page.click('.detail .ghost-button:has-text("Back")');
+
+  /* Vimeo item gets a 16:9 video player */
+  await page.click('.article-card:has-text("Vimeo clip fixture")');
+  await page.waitForSelector('.detail .media-card iframe');
+  const vimeoSrc = await page.getAttribute('.detail .media-card iframe', 'src');
+  const vimeoFrameClass = await page.getAttribute('.detail .media-card__frame', 'class');
+  check(
+    'Vimeo plays inline with a 16:9 frame',
+    /player\.vimeo\.com\/video\/76979871/.test(vimeoSrc || '') &&
+      /--video/.test(vimeoFrameClass || ''),
+    vimeoSrc || ''
+  );
+  await page.click('.detail .ghost-button:has-text("Back")');
+
+  /* SoundCloud uses its widget player */
+  await page.click('.article-card:has-text("SoundCloud track fixture")');
+  await page.waitForSelector('.detail .media-card iframe');
+  const soundcloudSrc = await page.getAttribute('.detail .media-card iframe', 'src');
+  check(
+    'SoundCloud plays inline via its widget',
+    /w\.soundcloud\.com\/player\/\?url=/.test(soundcloudSrc || ''),
+    soundcloudSrc || ''
+  );
+  await page.click('.detail .ghost-button:has-text("Back")');
+
+  /* A provider link inside the body is detected without clicking anything */
+  await page.click('.article-card:has-text("Spotify link in prose")');
+  await page.waitForSelector('.detail .media-card iframe');
+  const proseSrc = await page.getAttribute('.detail .media-card iframe', 'src');
+  check(
+    'A provider link in the article body is detected automatically',
+    /open\.spotify\.com\/embed\/episode\//.test(proseSrc || ''),
+    proseSrc || ''
+  );
+  await page.click('.detail .ghost-button:has-text("Back")');
+
+  /* Clicking a provider link in the body swaps the player in place */
+  const urlBeforeLink = page.url();
+  await page.click('.article-card:has-text("Video with a bonus track")');
+  await page.waitForSelector('.detail .media-card iframe');
+  const primarySrc = await page.getAttribute('.detail .media-card iframe', 'src');
+  await page.click('.detail .content a[href*="open.spotify.com"]');
+  await page.waitForFunction(
+    () =>
+      /open\.spotify\.com\/embed\/track/.test(
+        document.querySelector('.detail .media-card iframe')?.getAttribute('src') || ''
+      ),
+    undefined,
+    { timeout: 5000 }
+  );
+  const swappedSrc = await page.getAttribute('.detail .media-card iframe', 'src');
+  check(
+    'Clicking a provider link in the body plays it in place',
+    /youtube-nocookie\.com\/embed\//.test(primarySrc || '') &&
+      /open\.spotify\.com\/embed\/track\//.test(swappedSrc || '') &&
+      page.url() === urlBeforeLink,
+    `${primarySrc || ''} → ${swappedSrc || ''}`
+  );
+  await page.click('.detail .media-card .ghost-button:has-text("Close player")');
+  await page.waitForFunction(
+    () =>
+      /youtube-nocookie\.com\/embed\//.test(
+        document.querySelector('.detail .media-card iframe')?.getAttribute('src') || ''
+      ),
+    undefined,
+    { timeout: 5000 }
+  );
+  check('Close player restores the article’s own media', true);
+  await page.click('.detail .ghost-button:has-text("Back")');
+
+  /* Plain text item: nothing to play */
+  await page.click('.article-card:has-text("Plain article with no media")');
+  await page.waitForSelector('.detail');
+  check('Articles without media get no player', (await page.$('.detail .media-card')) === null);
+  await page.click('.detail .ghost-button:has-text("Back")');
+
   /* ---------------------------- console noise -------------------------- */
   // Direct-first fetching always logs a CORS refusal before the proxy hop, and
-  // favicon misses are cosmetic — neither is an application error.
+  // favicon misses are cosmetic — neither is an application error. Third-party
+  // players may also refuse framing or be unreachable offline; that is the
+  // provider's business, not ours.
   const relevantErrors = consoleErrors.filter(
-    (e) => !/favicon|Failed to load resource|net::ERR|CORS policy|404|419/.test(e)
+    (e) =>
+      !/favicon|Failed to load resource|net::ERR|CORS policy|404|419|Refused to display|X-Frame-Options|open\.spotify\.com|player\.vimeo\.com|w\.soundcloud\.com/.test(
+        e
+      )
   );
   check('No unexpected console errors', relevantErrors.length === 0, relevantErrors.slice(0, 3).join(' | '));
 } catch (error) {

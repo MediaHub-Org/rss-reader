@@ -50,10 +50,16 @@ function writeJson(key: string, value: unknown): void {
 }
 
 export function loadPreferences(): Preferences {
-  const stored = readJson<Partial<Preferences>>(KEYS.prefs, {});
+  const stored = readJson<Partial<Preferences> & { embedYouTube?: boolean }>(
+    KEYS.prefs,
+    {}
+  );
   const prefs = { ...DEFAULT_PREFERENCES, ...stored };
   return {
     ...prefs,
+    // `embedYouTube` was the name before other providers were supported;
+    // carry the old choice forward so nobody's toggle silently flips back on.
+    embedMedia: stored.embedMedia ?? stored.embedYouTube ?? DEFAULT_PREFERENCES.embedMedia,
     collapsedFolders: Array.isArray(prefs.collapsedFolders)
       ? [...new Set(prefs.collapsedFolders.map((name) => String(name ?? '').trim()).filter(Boolean))]
       : [],

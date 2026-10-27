@@ -125,10 +125,10 @@ export function SettingsDialog({ open, onClose, onImport, onExport, onManage, ha
           {section === 'general' && (
             <section className="settings-section">
               <Toggle
-                label="Embed YouTube videos"
-                hint="When off, videos open in a new tab instead."
-                checked={state.prefs.embedYouTube}
-                onChange={(embedYouTube) => store.setPreferences({ embedYouTube })}
+                label="Play media inline"
+                hint="YouTube, Vimeo, Spotify, SoundCloud, Deezer and Apple Podcasts play inside the reader. When off, they open in a new tab instead."
+                checked={state.prefs.embedMedia}
+                onChange={(embedMedia) => store.setPreferences({ embedMedia })}
               />
 
               <Toggle

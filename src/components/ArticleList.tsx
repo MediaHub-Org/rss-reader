@@ -4,6 +4,7 @@ import { store, selectArticles } from '../store/store';
 import { useStore, useInfiniteList } from '../hooks/useStore';
 import { formatRelativeTime } from '../lib/format';
 import { thumbnailUrl } from '../lib/youtube';
+import { detectEmbed, detectEmbedInHtml } from '../lib/embeds';
 import { copyText } from '../lib/clipboard';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
@@ -189,6 +190,12 @@ interface ArticleCardProps {
 function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const time = formatRelativeTime(article.publishedAt);
+  // Same detection as the reader panel, so the card and the detail agree on
+  // whether something will play in place.
+  const embed = useMemo(
+    () => detectEmbed(article.link) ?? detectEmbedInHtml(article.contentHtml),
+    [article.link, article.contentHtml]
+  );
 
   // YouTube items always have an i.ytimg.com thumbnail even when the feed XML
   // omitted <media:thumbnail>; regular items use the extracted image.
@@ -196,6 +203,11 @@ function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) 
     ? thumbnailUrl(article.youtubeId)
     : article.thumbnail;
   const thumb = imgFailed ? undefined : rawThumb;
+  const videoEmbed = article.youtubeId !== undefined || embed?.layout === 'video';
+  const audioEmbed = !videoEmbed && (Boolean(article.audioUrl) || embed?.layout === 'audio');
+  // A provider card without artwork still qualifies as “has media”, so it gets
+  // the band layout instead of the centred text-only treatment.
+  const hasMediaBand = Boolean(thumb) || Boolean(embed);
 
   const open = () => {
     if (!read) store.toggleRead(article.id);
@@ -209,9 +221,9 @@ function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) 
           'article-card',
           read ? 'is-read' : '',
           active ? 'is-active' : '',
-          thumb ? 'has-media' : 'no-media',
-          article.youtubeId ? 'article-card--video' : '',
-          !article.youtubeId && article.audioUrl ? 'article-card--audio' : '',
+          hasMediaBand ? 'has-media' : 'no-media',
+          videoEmbed ? 'article-card--video' : '',
+          audioEmbed ? 'article-card--audio' : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -233,7 +245,7 @@ function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) 
           }
         }}
       >
-        {thumb && (
+        {thumb ? (
           <div className="article-card__media">
             <img
               className="article-card__img"
@@ -244,22 +256,42 @@ function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) 
               referrerPolicy="no-referrer"
               onError={() => setImgFailed(true)}
             />
-            {article.youtubeId && (
-              <span className="article-card__play" title="YouTube video" aria-hidden="true">
+            {videoEmbed && (
+              <span className="article-card__play" title="Video player" aria-hidden="true">
                 <Icon name="play" size={18} />
               </span>
             )}
-            {!article.youtubeId && article.audioUrl && (
-              <span className="article-card__play" title="Audio episode" aria-hidden="true">
-                <Icon name="play" size={18} />
+            {audioEmbed && (
+              <span className="article-card__play" title="Audio player" aria-hidden="true">
+                <Icon name="music" size={18} />
               </span>
             )}
           </div>
-        )}
+        ) : embed ? (
+          // Providers don't always ship an image, but the card should still look
+          // like something you can play rather than like a text-only item.
+          <div
+            className={`article-card__media article-card__media--embed article-card__media--${embed.provider}`}
+          >
+            <span className="article-card__embed-icon" aria-hidden="true">
+              <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={20} />
+            </span>
+            <span className="article-card__embed-label">{embed.label}</span>
+          </div>
+        ) : null}
 
         <div className="article-card__info">
           {feed && <FeedIcon feed={feed} className="article-card__favicon" />}
           <span className="article-card__feed">{feed?.title ?? 'Feed'}</span>
+          {embed && (
+            <span
+              className="article-card__media-chip"
+              title={`Plays inline · ${embed.label}`}
+              aria-label={embed.label}
+            >
+              <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={11} />
+            </span>
+          )}
           {!read && <span className="article-card__unread" aria-hidden="true" />}
           <time className="article-card__time" dateTime={new Date(article.publishedAt).toISOString()}>
             {time}

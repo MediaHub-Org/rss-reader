@@ -129,10 +129,15 @@ each has its own select-all/none, **Move selected…** (same searchable picker) 
 — their feeds go to the destination and the empty folder disappears.
 
 **Media** — YouTube URLs are detected in titles, links and content (no API key; the id
-is parsed from the URL). Videos embed inline through `youtube-nocookie.com` by default;
-turn *Embed YouTube videos* off in Settings to open them in a new tab instead. An
-optional YouTube Data API key raises channel/playlist feeds from ~15 to 50 items.
-Podcast audio enclosures render an inline player with an inline card badge.
+is parsed from the URL), and **Vimeo, Spotify, SoundCloud, Deezer and Apple
+Podcasts/Music** links open in the provider's own keyless embed instead of a redirect:
+16:9 players for video, a fixed-height widget for audio. Detection also looks inside
+the article body, so a Spotify link in prose plays in place, and clicking any provider
+link while reading swaps the player above the text (modifier-clicks still open a tab).
+Cards show a play/music badge over the thumbnail, or a branded band when the feed has
+no artwork. Turn *Play media inline* off in Settings to open these links in a new tab
+instead. An optional YouTube Data API key raises channel/playlist feeds from ~15 to 50
+items. Podcast audio enclosures render a native inline player as well.
 
 **Customization** — light/dark/system theme, comfortable/compact list density, reader
 font size, hide-read filter. All persisted in `localStorage` and applied before first
@@ -167,6 +172,7 @@ src/
     fetchFeed.ts       layered CORS strategy + homepage → feed discovery
     sanitize.ts        DOMPurify config: allow-list, relative URLs, safe links
     youtube.ts         video-id extraction (watch, youtu.be, shorts, live, embed)
+    embeds.ts          provider detection + keyless embed URLs (Vimeo, Spotify, …, YouTube)
     youtubeApi.ts      optional YouTube Data API path for channel/playlist feeds
     opml.ts            OPML + JSON export/import, XML escaping, empty folders, validation
     clipboard.ts       clipboard write with a legacy fallback
@@ -217,9 +223,11 @@ a hook then resolves relative `href`/`src`/`srcset` against the article URL, for
 `target="_blank" rel="noopener noreferrer"` on external links, and drops `javascript:`
 URLs.
 
-**YouTube without an API key.** Feeds publish enough on their own: a video id parsed from
-any URL form is all an embed or a direct link needs. Embedding is opt-in because the
-fallback (open in a new tab) is what most people want day to day.
+**Keyless media embeds.** Every supported provider (YouTube, Vimeo, Spotify,
+SoundCloud, Deezer, Apple) exposes a public embed URL with no API key or OAuth, so
+detection is pure URL parsing and the iframe src is rebuilt from the parsed parts
+rather than copied from the feed. Players are on by default; *Play media inline* turns
+them off for people who prefer the original site.
 
 **Single user, local only.** No auth, no sync, no multi-tenancy — by design.
 

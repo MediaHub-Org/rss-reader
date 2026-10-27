@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Media Fixture</title>
+    <link>https://example.com/media</link>
+    <description>Spotify, Vimeo and SoundCloud inline players.</description>
+    <item>
+      <title>Spotify track fixture</title>
+      <link>https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT</link>
+      <guid isPermaLink="false">fixture-media-spotify</guid>
+      <pubDate>Fri, 23 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>A track worth hearing.</p>]]></description>
+    </item>
+    <item>
+      <title>Vimeo clip fixture</title>
+      <link>https://vimeo.com/76979871</link>
+      <guid isPermaLink="false">fixture-media-vimeo</guid>
+      <pubDate>Thu, 22 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>A short clip.</p>]]></description>
+    </item>
+    <item>
+      <title>Spotify link in prose</title>
+      <link>https://example.com/media/spotify-in-prose</link>
+      <guid isPermaLink="false">fixture-media-inline-html</guid>
+      <pubDate>Wed, 21 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Listen to <a href="https://open.spotify.com/episode/5N0F3Q2m4gJkYb1s1Dt9Gr">this episode</a> while you read.</p>]]></description>
+    </item>
+    <item>
+      <title>Video with a bonus track</title>
+      <link>https://www.youtube.com/watch?v=kJQP7kiw5Fk</link>
+      <guid isPermaLink="false">fixture-media-swap</guid>
+      <pubDate>Wed, 21 Oct 2026 09:00:00 GMT</pubDate>
+      <description><![CDATA[<p>The soundtrack is also on <a href="https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT">Spotify</a>.</p>]]></description>
+    </item>
+    <item>
+      <title>SoundCloud track fixture</title>
+      <link>https://soundcloud.com/forss/flickermood</link>
+      <guid isPermaLink="false">fixture-media-soundcloud</guid>
+      <pubDate>Tue, 20 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>An old favourite.</p>]]></description>
+    </item>
+    <item>
+      <title>Plain article with no media</title>
+      <link>https://example.com/media/plain</link>
+      <guid isPermaLink="false">fixture-media-plain</guid>
+      <pubDate>Mon, 19 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Just text, no player.</p>]]></description>
+    </item>
+  </channel>
+</rss>

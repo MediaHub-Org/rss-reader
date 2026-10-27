@@ -19,6 +19,8 @@ const PATHS: Record<string, string> = {
   close: 'M6 6l12 12M18 6 6 18',
   inbox: 'M3 13h5l1.5 3h5L16 13h5M4 13 6 5h12l2 8v6H4v-6Z',
   play: 'M8 5.5v13l11-6.5-11-6.5Z',
+  // lucide “music-2”: two note heads joined by a beam, for audio embeds.
+  music: 'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm12-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
   eye: 'M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Zm10 2.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
   eyeOff: 'M4 4l16 16M9.9 5.7A9.9 9.9 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3.4 4.1M6.5 8A16.6 16.6 0 0 0 2 12s3.6 6.5 10 6.5c1.2 0 2.3-.2 3.3-.6M10.5 10.6a2.5 2.5 0 0 0 3.4 3.4',
   menu: 'M4 7h16M4 12h16M4 17h16',
