@@ -580,33 +580,45 @@ try {
   check('OPML XML editor updates titles/folders in place', renamedVisible);
 
   /* ------------------- folder row + collapse-all control ---------------- */
-  const firstFolderRow = page.locator('.sidebar .folder-group').first().locator('.folder-row');
+  const firstFolder = page.locator('.sidebar .folder-group').first();
+  const firstFolderRow = firstFolder.locator('.folder-row');
+  const firstFolderToggle = firstFolder.locator('.folder-row__toggle');
   await firstFolderRow.click();
   check(
     'Folder row filters its feeds',
     (await firstFolderRow.getAttribute('aria-current')) === 'page'
   );
   await firstFolderRow.click();
+  check(
+    'Clicking the active folder again keeps it open',
+    (await firstFolderToggle.getAttribute('aria-expanded')) === 'true' &&
+      (await firstFolderRow.getAttribute('aria-current')) === 'page'
+  );
+  await firstFolderToggle.click();
   await page.waitForFunction(
     () =>
-      document.querySelector('.sidebar .folder-group .folder-row')?.getAttribute('aria-expanded') ===
-      'false'
+      document
+        .querySelector('.sidebar .folder-group .folder-row__toggle')
+        ?.getAttribute('aria-expanded') === 'false'
   );
-  check('Second click on the active folder collapses it', true);
+  const caretKeepsView =
+    (await firstFolderRow.getAttribute('aria-current')) === 'page' &&
+    (await firstFolder.locator('.feed-list--nested').count()) === 0;
+  check('Only the caret collapses the folder, without changing the view', caretKeepsView);
   await firstFolderRow.click();
   check(
-    'Clicking a collapsed folder expands and filters in one click',
-    (await firstFolderRow.getAttribute('aria-expanded')) === 'true'
+    'Clicking a collapsed folder row expands and filters in one click',
+    (await firstFolderToggle.getAttribute('aria-expanded')) === 'true'
   );
 
   const folderToggle = page.locator('.sidebar__toolbar button[aria-label*="all folders"]');
   await folderToggle.click();
-  const allCollapsed = await page.$$eval('.sidebar .folder-row', (rows) =>
+  const allCollapsed = await page.$$eval('.sidebar .folder-row__toggle', (rows) =>
     rows.every((row) => row.getAttribute('aria-expanded') === 'false')
   );
   check('Toolbar collapse-all closes every folder in one click', allCollapsed);
   await folderToggle.click();
-  const allExpanded = await page.$$eval('.sidebar .folder-row', (rows) =>
+  const allExpanded = await page.$$eval('.sidebar .folder-row__toggle', (rows) =>
     rows.every((row) => row.getAttribute('aria-expanded') === 'true')
   );
   check('Toolbar expand-all reopens every folder', allExpanded);

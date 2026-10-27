@@ -212,19 +212,12 @@ export function Sidebar({
   };
 
   /**
-   * One click target per folder row:
-   *   collapsed            → expand and filter
-   *   expanded, inactive   → filter
-   *   expanded and active  → collapse
+   * Two click targets per folder row:
+   *   caret                → toggle the feed list (never changes the view)
+   *   name/row             → filter by the folder, expanding it if collapsed
    */
-  const activateFolder = (name: string) => {
-    const open = !isCollapsed(name);
-    const active = state.ui.activeFeedId === folderViewId(name);
-    if (active && open) {
-      setFolderCollapsed(name, true);
-      return;
-    }
-    if (!open) setFolderCollapsed(name, false);
+  const openFolder = (name: string) => {
+    if (isCollapsed(name)) setFolderCollapsed(name, false);
     selectFolder(name);
   };
 
@@ -735,7 +728,7 @@ export function Sidebar({
                 data-folder-name={folder.name}
               >
                 <div
-                  className={`folder-header ${isActive ? 'is-active' : ''}`}
+                  className={`folder-header${isActive ? ' is-active' : ''}`}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     setContextMenu({ type: 'folder', name: folder.name, x: event.clientX, y: event.clientY });
@@ -755,29 +748,35 @@ export function Sidebar({
                       />
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      className={`feed-row folder-row ${isActive ? 'is-active' : ''}`}
-                      onClick={() => activateFolder(folder.name)}
-                      aria-expanded={isOpen}
-                      aria-current={isActive ? 'page' : undefined}
-                      title={
-                        isActive && isOpen
-                          ? `Collapse “${folder.name}”`
-                          : `Show articles from “${folder.name}”`
-                      }
-                    >
-                      <Icon
-                        name="chevronDown"
-                        size={14}
-                        className={`folder-row__caret ${isOpen ? '' : 'caret--collapsed'}`}
-                      />
-                      <Icon name="folder" size={15} className="folder-row__icon" />
-                      <span className="feed-row__title">{folder.name}</span>
-                      {folderUnread > 0 && (
-                        <span className="badge">{folderUnread > 999 ? '999+' : folderUnread}</span>
-                      )}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="folder-row__toggle"
+                        onClick={() => setFolderCollapsed(folder.name, isOpen)}
+                        aria-expanded={isOpen}
+                        aria-label={`${isOpen ? 'Collapse' : 'Expand'} folder ${folder.name}`}
+                        title={isOpen ? `Collapse “${folder.name}”` : `Expand “${folder.name}”`}
+                      >
+                        <Icon
+                          name="chevronDown"
+                          size={14}
+                          className={`folder-row__caret ${isOpen ? '' : 'caret--collapsed'}`}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        className={`feed-row folder-row ${isActive ? 'is-active' : ''}`}
+                        onClick={() => openFolder(folder.name)}
+                        aria-current={isActive ? 'page' : undefined}
+                        title={`Show articles from “${folder.name}”`}
+                      >
+                        <Icon name="folder" size={15} className="folder-row__icon" />
+                        <span className="feed-row__title">{folder.name}</span>
+                        {folderUnread > 0 && (
+                          <span className="badge">{folderUnread > 999 ? '999+' : folderUnread}</span>
+                        )}
+                      </button>
+                    </>
                   )}
 
                   {renamingFolder !== folder.name && (

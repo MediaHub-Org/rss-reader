@@ -209,18 +209,73 @@
   position: relative;
   display: flex;
   align-items: center;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+/* The header owns the highlight so the caret and the name read as one row. */
+.folder-header:hover,
+.folder-header:focus-within {
+  background: var(--panel-3);
+}
+
+.folder-header.is-active {
+  background: var(--accent-soft);
 }
 
 .folder-header .folder-row {
   flex: 1;
   width: auto;
+  min-width: 0;
+  /* The caret button supplies the left inset; without this the name would be
+     a whole column further right than a feed row. */
+  padding-left: var(--space-1);
+  background: transparent;
 }
 
-/* A folder row has one click target: the row both filters and toggles its
-   disclosure state, so the caret is an indicator rather than a second button. */
+.folder-header .folder-row:hover,
+.folder-header .folder-row.is-active {
+  background: transparent;
+}
+
+/* While renaming there is no caret, so inset the field to where the folder
+   icon sits in a normal row. */
+.folder-header .folder-row--renaming {
+  padding-left: calc(1.5rem + var(--space-1) * 2);
+}
+
+/* Disclosure caret: the only control that collapses/expands. Clicking the
+   name next to it changes the view instead. */
+.folder-row__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 1.5rem;
+  flex: 0 0 1.5rem;
+  margin-left: var(--space-1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+.folder-row__toggle:hover {
+  color: var(--text);
+}
+
+.folder-row__toggle:focus-visible {
+  outline: 0.125rem solid var(--accent);
+  outline-offset: -0.125rem;
+}
+
+/* The caret is now its own button, so it is a disclosure indicator, not part
+   of the row's hit area. */
 .folder-row__caret {
   flex: 0 0 auto;
-  color: var(--faint);
+  color: inherit;
   transition: transform var(--transition);
 }
 
