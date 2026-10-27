@@ -13,13 +13,19 @@ export type SidebarSort =
   | 'created-asc';
 
 export interface Preferences {
+  /**
+   * Internal schema revision, persisted with the other preferences so one-time
+   * migrations run exactly once and a later explicit choice is respected.
+   */
+  prefsVersion: number;
   theme: ThemeMode;
   density: Density;
   fontSize: FontSize;
   /**
    * Play media inline in the reader — YouTube, Vimeo, Spotify, SoundCloud,
    * Deezer, Apple Podcasts/Music. When off, links open in a new tab instead.
-   * (Persisted for older sessions as `embedYouTube`; see loadPreferences.)
+   * On by default; profiles from before inline players are upgraded once in
+   * loadPreferences (the old YouTube-only option defaulted to off).
    */
   embedMedia: boolean;
   /** Hide articles already marked as read. */
@@ -45,6 +51,7 @@ export const SIDEBAR_WIDTH_MIN = 200;
 export const SIDEBAR_WIDTH_MAX = 480;
 
 export const DEFAULT_PREFERENCES: Preferences = {
+  prefsVersion: 2,
   theme: 'system',
   density: 'comfortable',
   fontSize: 'medium',

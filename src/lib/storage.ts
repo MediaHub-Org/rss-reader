@@ -11,6 +11,8 @@ import type { Article, Feed, Preferences } from '../types';
 import { DEFAULT_PREFERENCES } from '../types';
 
 const NS = 'rss-reader:';
+/** Schema revision for preferences; bump when a one-time migration is added. */
+const PREFS_VERSION = 2;
 const KEYS = {
   prefs: `${NS}prefs`,
   feeds: `${NS}feeds`,
@@ -50,16 +52,18 @@ function writeJson(key: string, value: unknown): void {
 }
 
 export function loadPreferences(): Preferences {
-  const stored = readJson<Partial<Preferences> & { embedYouTube?: boolean }>(
-    KEYS.prefs,
-    {}
-  );
+  const stored = readJson<Partial<Preferences>>(KEYS.prefs, {});
+  const storedVersion = typeof stored.prefsVersion === 'number' ? stored.prefsVersion : 0;
   const prefs = { ...DEFAULT_PREFERENCES, ...stored };
   return {
     ...prefs,
-    // `embedYouTube` was the name before other providers were supported;
-    // carry the old choice forward so nobody's toggle silently flips back on.
-    embedMedia: stored.embedMedia ?? stored.embedYouTube ?? DEFAULT_PREFERENCES.embedMedia,
+    prefsVersion: PREFS_VERSION,
+    // Version 1 stored the old YouTube-only option: it defaulted to off, and
+    // the first release of the wider inline-media feature carried that off
+    // over as if it had been chosen, so existing profiles never saw a player.
+    // Upgrade those profiles once to the new default. From v2 on, the toggle
+    // is saved with the current version and an explicit choice wins.
+    embedMedia: storedVersion < PREFS_VERSION ? DEFAULT_PREFERENCES.embedMedia : prefs.embedMedia,
     collapsedFolders: Array.isArray(prefs.collapsedFolders)
       ? [...new Set(prefs.collapsedFolders.map((name) => String(name ?? '').trim()).filter(Boolean))]
       : [],

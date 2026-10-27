@@ -860,6 +860,41 @@ try {
   check('Articles without media get no player', (await page.$('.detail .media-card')) === null);
   await page.click('.detail .ghost-button:has-text("Back")');
 
+  /* ------------------- preferences schema migration -------------------- */
+  // Profiles created before inline players existed stored `embedMedia:false`
+  // (the old YouTube-only option's default). The first migration carried it
+  // over as an explicit choice, so those users never saw a player. Simulate
+  // such a profile: it must be upgraded once, and a later opt-out respected.
+  await page.evaluate(() => {
+    const prefs = JSON.parse(localStorage.getItem('rss-reader:prefs') || '{}');
+    delete prefs.prefsVersion;
+    prefs.embedMedia = false;
+    localStorage.setItem('rss-reader:prefs', JSON.stringify(prefs));
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.article-grid');
+  await openSettings('General');
+  const migratedToggle = await page.getAttribute(mediaToggle, 'aria-checked');
+  check('Legacy “inline media off” profile migrates to on', migratedToggle === 'true');
+
+  await page.click(mediaToggle);
+  const savedPrefs = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('rss-reader:prefs') || '{}')
+  );
+  check(
+    'Explicit opt-out is saved with the current schema version',
+    savedPrefs.prefsVersion === 2 && savedPrefs.embedMedia === false,
+    `v${savedPrefs.prefsVersion} · embed=${savedPrefs.embedMedia}`
+  );
+  await page.keyboard.press('Escape');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.article-grid');
+  await openSettings('General');
+  const respectedToggle = await page.getAttribute(mediaToggle, 'aria-checked');
+  check('An opt-out made after the migration survives a reload', respectedToggle === 'false');
+  await page.click(mediaToggle);
+  await page.keyboard.press('Escape');
+
   /* ---------------------------- console noise -------------------------- */
   // Direct-first fetching always logs a CORS refusal before the proxy hop, and
   // favicon misses are cosmetic — neither is an application error. Third-party
