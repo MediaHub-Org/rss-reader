@@ -819,6 +819,20 @@ export class Store {
     this.update({ ui: { ...this.state.ui, activeArticleId: articleId } });
   }
 
+  /**
+   * Replay a view from browser history: sets feed and article in one update so
+   * the history effect sees a single transition (and does not push again).
+   * Returns whether anything actually changed.
+   */
+  applyView(activeFeedId: string, activeArticleId: string | null): boolean {
+    const ui = this.state.ui;
+    if (ui.activeFeedId === activeFeedId && ui.activeArticleId === activeArticleId) {
+      return false;
+    }
+    this.update({ ui: { ...ui, activeFeedId, activeArticleId } });
+    return true;
+  }
+
   setSort(sort: SortMode): void {
     this.update({ ui: { ...this.state.ui, sort } });
   }

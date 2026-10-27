@@ -403,6 +403,102 @@ try {
   await page.waitForSelector('.article-grid');
   check('Escape returns to list', true);
 
+  /* --------------- mouse back/forward (browser history) ---------------- */
+  // The side buttons on a mouse are the browser's back/forward, so exercising
+  // history traversal covers them.
+  const browserBackToGrid = async () => {
+    await page.evaluate(() => window.history.back());
+    await page.waitForSelector('.article-grid');
+  };
+  const browserForwardToDetail = async () => {
+    await page.evaluate(() => window.history.forward());
+    await page.waitForSelector('.detail');
+  };
+
+  await page.click('.article-card >> nth=0');
+  await page.waitForSelector('.detail');
+  const historyArticleTitle = (await page.textContent('.detail__title'))?.trim();
+  await browserBackToGrid();
+  check('Mouse back closes the article', true, historyArticleTitle || '');
+  await browserForwardToDetail();
+  const reopenedTitle = (await page.textContent('.detail__title'))?.trim();
+  check(
+    'Mouse forward reopens the same article',
+    reopenedTitle === historyArticleTitle,
+    reopenedTitle || ''
+  );
+
+  // Escape must step back through the same stack, not push a duplicate entry,
+  // or forward would not return to the article.
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.article-grid');
+  await browserForwardToDetail();
+  check('Escape reuses history, so forward still reaches the article', true);
+  await browserBackToGrid();
+
+  const firstFeedTitle = (
+    await page.locator('.sidebar .feed-item .feed-row__title').first().textContent()
+  )?.trim();
+  await page.locator('.sidebar .feed-item .feed-row').first().click();
+  await page.waitForTimeout(200);
+  await page.click('.article-card >> nth=0');
+  await page.waitForSelector('.detail');
+  await browserBackToGrid();
+  const activeFeedTitle = (
+    await page.locator('.sidebar .feed-row[aria-current="page"] .feed-row__title').textContent()
+  )?.trim();
+  check(
+    'Back from an article returns to its feed list',
+    activeFeedTitle === firstFeedTitle,
+    `${activeFeedTitle} vs ${firstFeedTitle}`
+  );
+  await page.evaluate(() => window.history.back());
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.sidebar .feed-row[aria-current="page"] .feed-row__title')
+        ?.textContent === 'All articles',
+    undefined,
+    { timeout: 5000 }
+  );
+  const backAtAll = (
+    await page.locator('.sidebar .feed-row[aria-current="page"] .feed-row__title').textContent()
+  )?.trim();
+  check('Back again returns to the previous view', backAtAll === 'All articles', backAtAll || '');
+
+  // j/k between articles replaces the history entry, so Escape still means
+  // “back to the list” instead of stepping through every article.
+  await page.locator('.article-card').first().focus();
+  await page.keyboard.press('j');
+  await page.waitForSelector('.detail');
+  const firstArticleTitle = (await page.textContent('.detail__title'))?.trim();
+  await page.keyboard.press('j');
+  await page.waitForFunction(
+    (previous) => document.querySelector('.detail__title')?.textContent?.trim() !== previous,
+    firstArticleTitle,
+    { timeout: 5000 }
+  );
+  const secondArticleTitle = (await page.textContent('.detail__title'))?.trim();
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.article-grid');
+  check(
+    'Escape from a j/k-opened article returns to the list',
+    Boolean(secondArticleTitle) && secondArticleTitle !== firstArticleTitle,
+    `${firstArticleTitle} → ${secondArticleTitle}`
+  );
+  await browserForwardToDetail();
+  const forwardedTitle = (await page.textContent('.detail__title'))?.trim();
+  check(
+    'Forward returns to the latest article, not an earlier one',
+    forwardedTitle === secondArticleTitle,
+    forwardedTitle || ''
+  );
+  await browserBackToGrid();
+  await page.keyboard.press('k');
+  await page.waitForTimeout(200);
+  const stillAtAll = (
+    await page.locator('.sidebar .feed-row[aria-current="page"] .feed-row__title').textContent()
+  )?.trim();
+  check('k at the top of the list does not go back', stillAtAll === 'All articles', stillAtAll || '');
   await page.keyboard.press('/');
   const focused = await page.evaluate(() => document.activeElement?.className);
   check('Slash focuses search', /search__input/.test(focused || ''), focused || '');

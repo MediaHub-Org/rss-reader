@@ -5,6 +5,7 @@ import { useStore } from '../hooks/useStore';
 import { sanitizeHtml } from '../lib/sanitize';
 import { formatDate } from '../lib/format';
 import { copyText } from '../lib/clipboard';
+import { leaveArticle } from '../lib/viewHistory';
 import { thumbnailUrl, watchUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml, type MediaEmbed } from '../lib/embeds';
 import { Icon } from './Icon';
@@ -179,7 +180,7 @@ export function ArticleDetail() {
         <button
           type="button"
           className="ghost-button"
-          onClick={() => store.setActiveArticle(null)}
+          onClick={leaveArticle}
           aria-label="Back to article list"
         >
           <Icon name="back" size={16} />

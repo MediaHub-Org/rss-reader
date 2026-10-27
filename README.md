@@ -122,6 +122,13 @@ with sanitized HTML, relative-URL resolution against the article base URL, read/
 per article plus bulk mark read/unread, sort by newest / oldest / feed name, full-text
 search over the current view.
 
+**History** — the browser's own back/forward works inside the reader, including a
+mouse's side buttons, `Alt+←`/`Alt+→` and the back swipe on Android: it closes the open
+article, then returns to the previous feed/folder list, then to *All articles*, instead
+of leaving the page. The in-app **Back** button and `Esc` walk the same stack, so
+forward still reaches the article afterwards. Jumping between articles with `j`/`k`
+reuses one history entry, so Back always means “back to the list”, not “previous article”.
+
 **Portability** — export/import **OPML** (standard, subscriptions and folders including
 empty ones) and a **JSON backup** (subscriptions, folders *and* read status). Import
 validates the file, previews what it found, skips duplicates, and rejects invalid
@@ -160,6 +167,7 @@ focus rings, keyboard navigation throughout.
 | `/` | Focus search |
 | `a` | Add feed |
 | `Esc` | Close article / drawer / dialog |
+| `Alt+←` / `Alt+→` | Back / forward through views (mouse side buttons too) |
 
 ---
 
@@ -179,6 +187,7 @@ src/
     youtubeApi.ts      optional YouTube Data API path for channel/playlist feeds
     opml.ts            OPML + JSON export/import, XML escaping, empty folders, validation
     clipboard.ts       clipboard write with a legacy fallback
+    viewHistory.ts     browser-history bridge: back/forward across views (no router)
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts
   store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors

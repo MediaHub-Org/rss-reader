@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from './types';
 import { store, selectArticles } from './store/store';
 import { useStore } from './hooks/useStore';
+import { useViewHistory } from './hooks/useViewHistory';
+import { leaveArticle } from './lib/viewHistory';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { ArticleList } from './components/ArticleList';
@@ -25,6 +27,9 @@ export default function App() {
   const [confirmFeed, setConfirmFeed] = useState<Feed | null>(null);
   const [confirmFolder, setConfirmFolder] = useState<string | null>(null);
   const lastRefreshed = useRef(0);
+
+  /* back/forward mouse buttons, Alt+← and the browser gestures */
+  useViewHistory(state.ui.activeFeedId, state.ui.activeArticleId);
 
   /* hydrate once */
   useEffect(() => {
@@ -106,7 +111,9 @@ export default function App() {
           if (!visibleArticles.length) return;
           event.preventDefault();
           if (index <= 0) {
-            store.setActiveArticle(null);
+            // Only close an article. With no article open this key is a no-op:
+            // it must not walk the browser history backwards.
+            if (activeId) leaveArticle();
             return;
           }
           openArticle(visibleArticles[index - 1].id);
@@ -143,7 +150,7 @@ export default function App() {
           break;
         }
         case 'Escape': {
-          if (state.ui.activeArticleId) store.setActiveArticle(null);
+          if (state.ui.activeArticleId) leaveArticle();
           else if (state.ui.sidebarOpen) store.setSidebarOpen(false);
           break;
         }
