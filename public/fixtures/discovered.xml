@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Discovered Feed</title>
+    <link>http://localhost:5173/fixtures/site.html</link>
+    <description>Feed discovered from the fixture homepage.</description>
+    <item>
+      <title>Discovered fixture one</title>
+      <link>https://example.com/discovered/one</link>
+      <guid isPermaLink="false">discovered-1</guid>
+      <pubDate>Wed, 21 Oct 2026 08:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Discovered fixture body one, long enough for the detail view.</p>]]></description>
+    </item>
+    <item>
+      <title>Discovered fixture two</title>
+      <link>https://example.com/discovered/two</link>
+      <guid isPermaLink="false">discovered-2</guid>
+      <pubDate>Tue, 20 Oct 2026 08:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Discovered fixture body two, long enough for the detail view.</p>]]></description>
+    </item>
+  </channel>
+</rss>

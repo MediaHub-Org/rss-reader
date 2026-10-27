@@ -33,6 +33,8 @@ export interface Preferences {
   sidebarSort: SidebarSort;
   /** Sidebar width in pixels, drag-resizable (desktop only). */
   sidebarWidth: number;
+  /** Folder names currently collapsed in the sidebar (persists across reloads). */
+  collapsedFolders: string[];
 }
 
 export const SIDEBAR_WIDTH_MIN = 200;
@@ -48,6 +50,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   youtubeApiKey: '',
   sidebarSort: 'name-asc',
   sidebarWidth: 276, // matches the previous fixed --sidebar-width (17.25rem)
+  collapsedFolders: [],
 };
 
 export interface Feed {

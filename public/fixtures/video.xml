@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Fireship</title>
+    <link>https://www.youtube.com/@Fireship</link>
+    <description>Local YouTube-style fixture feed.</description>
+    <item>
+      <title>Fixture video one</title>
+      <link>https://www.youtube.com/watch?v=dQw4w9WgXcQ</link>
+      <guid isPermaLink="false">fixture-video-1</guid>
+      <pubDate>Wed, 21 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Video fixture body one: <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">watch it</a>.</p>]]></description>
+    </item>
+    <item>
+      <title>Fixture video two</title>
+      <link>https://www.youtube.com/watch?v=9bZkp7q19f0</link>
+      <guid isPermaLink="false">fixture-video-2</guid>
+      <pubDate>Tue, 20 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Video fixture body two: <a href="https://www.youtube.com/watch?v=9bZkp7q19f0">watch it</a>.</p>]]></description>
+    </item>
+    <item>
+      <title>Fixture video three</title>
+      <link>https://www.youtube.com/watch?v=kJQP7kiw5Fk</link>
+      <guid isPermaLink="false">fixture-video-3</guid>
+      <pubDate>Mon, 19 Oct 2026 12:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Video fixture body three: <a href="https://www.youtube.com/watch?v=kJQP7kiw5Fk">watch it</a>.</p>]]></description>
+    </item>
+  </channel>
+</rss>

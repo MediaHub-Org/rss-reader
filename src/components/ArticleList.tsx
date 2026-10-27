@@ -4,8 +4,10 @@ import { store, selectArticles } from '../store/store';
 import { useStore, useInfiniteList } from '../hooks/useStore';
 import { formatRelativeTime } from '../lib/format';
 import { thumbnailUrl } from '../lib/youtube';
+import { copyText } from '../lib/clipboard';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
+import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 
 const PAGE_SIZE = 30;
 
@@ -16,6 +18,7 @@ interface ArticleListProps {
 
 export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
   const state = useStore();
+  const [menu, setMenu] = useState<{ x: number; y: number; article: Article } | null>(null);
 
   const articles = useMemo(
     () =>
@@ -35,6 +38,60 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
 
   const { visible, sentinelRef, loadMore } = useInfiniteList(articles.length, PAGE_SIZE);
   const slice = articles.slice(0, visible);
+
+  const openArticle = (article: Article) => {
+    if (!state.readIds[article.id]) store.toggleRead(article.id);
+    store.setActiveArticle(article.id);
+  };
+
+  const copyValue = async (value: string, label: string) => {
+    const ok = await copyText(value);
+    store.notify(
+      ok ? 'success' : 'error',
+      ok ? `${label} copied to the clipboard` : `Could not copy ${label.toLowerCase()}`
+    );
+  };
+
+  const menuItems = (article: Article): ContextMenuItem[] => {
+    const read = Boolean(state.readIds[article.id]);
+    const feed = feedsById.get(article.feedId);
+    const items: ContextMenuItem[] = [
+      { icon: 'book', label: 'Open article', onSelect: () => openArticle(article) },
+    ];
+    if (article.link) {
+      items.push({
+        icon: 'external',
+        label: 'Open original in new tab',
+        onSelect: () => window.open(article.link, '_blank', 'noopener,noreferrer'),
+      });
+    }
+    items.push({
+      icon: read ? 'eyeOff' : 'eye',
+      label: read ? 'Mark as unread' : 'Mark as read',
+      onSelect: () => store.toggleRead(article.id),
+    });
+    if (article.link) {
+      items.push({
+        icon: 'copy',
+        label: 'Copy article link',
+        onSelect: () => void copyValue(article.link as string, 'Article link'),
+      });
+    }
+    items.push({
+      icon: 'copy',
+      label: 'Copy title',
+      onSelect: () => void copyValue(article.title, 'Title'),
+    });
+    if (feed) {
+      items.push({ type: 'divider' });
+      items.push({
+        icon: 'rss',
+        label: `Show only ${feed.title}`,
+        onSelect: () => store.setActiveFeed(feed.id),
+      });
+    }
+    return items;
+  };
 
   if (!state.hydrated) {
     return (
@@ -94,6 +151,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
             feed={feedsById.get(article.feedId)}
             read={Boolean(state.readIds[article.id])}
             active={state.ui.activeArticleId === article.id}
+            onMenu={(target, x, y) => setMenu({ article: target, x, y })}
           />
         ))}
       </ul>
@@ -107,6 +165,15 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
       ) : (
         <p className="list__end">End of list · {articles.length} articles</p>
       )}
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={menuItems(menu.article)}
+          onClose={() => setMenu(null)}
+        />
+      )}
     </div>
   );
 }
@@ -116,9 +183,10 @@ interface ArticleCardProps {
   feed?: Feed;
   read: boolean;
   active: boolean;
+  onMenu: (article: Article, x: number, y: number) => void;
 }
 
-function ArticleCard({ article, feed, read, active }: ArticleCardProps) {
+function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const time = formatRelativeTime(article.publishedAt);
 
@@ -153,6 +221,11 @@ function ArticleCard({ article, feed, read, active }: ArticleCardProps) {
         aria-label={`${article.title}${read ? ' (read)' : ' (unread)'}`}
         aria-current={active ? 'true' : undefined}
         onClick={open}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onMenu(article, event.clientX, event.clientY);
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();

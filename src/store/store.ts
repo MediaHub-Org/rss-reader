@@ -8,7 +8,12 @@ import type {
   Toast,
   ToastKind,
 } from '../types';
-import { ALL_FEEDS, DEFAULT_PREFERENCES, folderNameFromViewId } from '../types';
+import {
+  ALL_FEEDS,
+  DEFAULT_PREFERENCES,
+  folderNameFromViewId,
+  folderViewId,
+} from '../types';
 import { feedIdForUrl, FeedParseError } from '../lib/feedParser';
 import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { normalizeFeedUrl } from '../lib/url';
@@ -401,9 +406,26 @@ export class Store {
     const hadEmptyRecord = this.state.folders.includes(target);
     const removed = ids.length ? this.removeFeeds(ids, { silent: true }) : 0;
 
-    if (hadEmptyRecord) {
-      this.update({ folders: this.state.folders.filter((f) => f !== target) });
+    // removeFeeds leaves a folder view alone while the explicit empty-folder
+    // record still exists, so re-check after both removals and fall back to
+    // "All articles" rather than leaving the sidebar on a folder that's gone.
+    const stillActive = folderNameFromViewId(this.state.ui.activeFeedId) === target;
+    if (hadEmptyRecord || stillActive) {
+      this.update({
+        folders: hadEmptyRecord
+          ? this.state.folders.filter((f) => f !== target)
+          : this.state.folders,
+        ui: stillActive
+          ? { ...this.state.ui, activeFeedId: ALL_FEEDS, activeArticleId: null }
+          : this.state.ui,
+      });
       this.schedulePersist();
+    }
+
+    if (this.state.prefs.collapsedFolders.includes(target)) {
+      this.setPreferences({
+        collapsedFolders: this.state.prefs.collapsedFolders.filter((name) => name !== target),
+      });
     }
 
     if (removed > 0 || hadEmptyRecord) {
@@ -460,12 +482,25 @@ export class Store {
       this.state.folders.includes(to) || this.state.feeds.some((f) => f.folder?.trim() === to);
     if (collision) return { ok: false, message: `A folder named "${to}" already exists.` };
 
+    const collapsed = this.state.prefs.collapsedFolders;
+    const nextCollapsed = collapsed.includes(from)
+      ? collapsed.map((name) => (name === from ? to : name))
+      : collapsed;
+    const activeFolder = folderNameFromViewId(this.state.ui.activeFeedId);
+
     this.update({
       folders: this.state.folders.map((f) => (f === from ? to : f)),
       feeds: this.state.feeds.map((f) =>
         (f.folder?.trim() ?? '') === from ? { ...f, folder: to } : f
       ),
+      ui:
+        activeFolder === from
+          ? { ...this.state.ui, activeFeedId: folderViewId(to) }
+          : this.state.ui,
     });
+    if (nextCollapsed !== collapsed) {
+      this.setPreferences({ collapsedFolders: nextCollapsed });
+    }
     this.schedulePersist();
     return { ok: true };
   }
@@ -482,7 +517,7 @@ export class Store {
    */
   importFeeds(
     incoming: Array<{ url: string; title?: string; siteUrl?: string; folder?: string }>,
-    options: { replace?: boolean } = {}
+    options: { replace?: boolean; folders?: string[] } = {}
   ): { added: number; updated: number; removed: number; skipped: number } {
     const existingById = new Map(this.state.feeds.map((f) => [f.id, f]));
     const seen = new Set<string>();
@@ -543,13 +578,34 @@ export class Store {
       removed = this.removeFeeds(toRemove, { silent: true });
     }
 
-    if (added.length || updatedById.size) {
+    /**
+     * Explicit folder names from the source file keep empty folders alive
+     * through an export → import round-trip. On a replace (OPML XML editor)
+     * the file becomes the whole folder list, so deleted folders disappear
+     * too; on a merge we only add the new names.
+     */
+    const folderSet = new Set<string>(options.replace ? [] : this.state.folders);
+    for (const entry of incoming) {
+      const folder = entry.folder?.trim();
+      if (folder) folderSet.add(folder);
+    }
+    for (const name of options.folders ?? []) {
+      const folder = name.trim();
+      if (folder) folderSet.add(folder);
+    }
+    const nextFolders = [...folderSet];
+    const foldersChanged =
+      nextFolders.length !== this.state.folders.length ||
+      nextFolders.some((name) => !this.state.folders.includes(name));
+
+    if (added.length || updatedById.size || foldersChanged) {
       const nextFeeds = [
         ...this.state.feeds.map((f) => updatedById.get(f.id) ?? f),
         ...added,
       ];
       this.update({
         feeds: nextFeeds,
+        folders: nextFolders,
         feedState: {
           ...this.state.feedState,
           ...Object.fromEntries(
@@ -557,6 +613,15 @@ export class Store {
           ),
         },
       });
+
+      // Drop collapsed-state entries for folders that no longer exist.
+      const existingFolders = new Set(nextFolders);
+      const collapsed = this.state.prefs.collapsedFolders;
+      const nextCollapsed = collapsed.filter((name) => existingFolders.has(name));
+      if (nextCollapsed.length !== collapsed.length) {
+        this.setPreferences({ collapsedFolders: nextCollapsed });
+      }
+
       this.schedulePersist();
       void added.forEach((feed, index) => {
         setTimeout(() => void this.refreshFeed(feed.id, { silent: true }), index * REFRESH_STAGGER_MS);

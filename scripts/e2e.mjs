@@ -3,15 +3,26 @@
  *   1. start the app:  npm run dev
  *   2. run:            node scripts/e2e.mjs
  *
+ * Feeds come from `public/fixtures/` (same origin), so the run is hermetic:
+ * no proxy hop, no third-party uptime, no rate limits.
+ *
  * Covers: subscribe/validate, parsing, list + detail rendering, sanitization,
  * read state, sorting, theme/density/font settings, OPML export → import,
- * YouTube detection (link and embed modes), and keyboard navigation.
+ * YouTube detection (link and embed modes), folders/context menus, and
+ * keyboard navigation.
  */
 import { chromium } from 'playwright';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
+/**
+ * Feeds served from `public/fixtures/` instead of the live internet. They are
+ * same-origin, so they exercise the real fetch/parse/render path with no
+ * proxy hop and no third-party uptime in the loop — the suite stays
+ * deterministic even on a locked-down network.
+ */
+const fixture = (name) => `${BASE}/fixtures/${name}`;
 const SHOTS = path.resolve('test-artifacts');
 await mkdir(SHOTS, { recursive: true });
 
@@ -24,6 +35,22 @@ const check = (name, condition, detail = '') => {
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
+
+/**
+ * Settings is reached from the top bar now (the old sidebar footer is gone);
+ * Import/Export/Manage live in Settings → Data.
+ */
+async function openSettings(section) {
+  await page.click('.topbar__tools .icon-button[aria-label="Settings"]');
+  await page.waitForSelector('[role="dialog"]');
+  if (section) await page.click(`.settings-nav__item:has-text("${section}")`);
+}
+
+async function openDataTab(action) {
+  await openSettings('Data');
+  await page.click(`.settings-data-actions .button:has-text("${action}")`);
+  await page.waitForSelector('[role="dialog"]:has-text("Subscriptions")');
+}
 
 const consoleErrors = [];
 page.on('console', (msg) => {
@@ -49,15 +76,15 @@ try {
   const invalidMsg = await page.textContent('[role="dialog"] .field__error');
   check('Invalid URL rejected with a message', /valid url|http|spaces|enter a feed/i.test(invalidMsg || ''), invalidMsg?.trim());
 
-  await page.fill('[role="dialog"] input.input', 'https://www.theverge.com/rss/index.xml');
+  await page.fill('[role="dialog"] input.input', fixture('news.xml'));
   await page.click('[role="dialog"] .dialog__footer .button--primary');
   await page.waitForSelector('.article-card', { timeout: 30_000 });
   const rowCount = await page.locator('.article-card').count();
   check('Feed parsed and articles rendered', rowCount > 5, `${rowCount} rows`);
 
   /* second feed */
-  await page.click('.sidebar__cta');
-  await page.fill('[role="dialog"] input.input', 'https://feeds.bbci.co.uk/news/rss.xml');
+  await page.click('.sidebar__toolbar button[aria-label="New feed"]');
+  await page.fill('[role="dialog"] input.input', fixture('bbc.xml'));
   await page.click('[role="dialog"] .dialog__footer .button--primary');
   await page.waitForFunction(
     () => document.querySelectorAll('.sidebar .feed-item').length >= 2,
@@ -68,13 +95,19 @@ try {
   check('Second feed added', feeds === 2, `${feeds} feeds`);
 
   /* homepage discovery (no direct feed URL) */
-  await page.click('.sidebar__cta');
-  await page.fill('[role="dialog"] input.input', 'https://www.nasa.gov');
+  await page.click('.sidebar__toolbar button[aria-label="New feed"]');
+  await page.fill('[role="dialog"] input.input', fixture('site.html'));
   await page.click('[role="dialog"] .dialog__footer .button--primary');
-  await page.waitForTimeout(6000);
-  const nasaAdded = (await page.locator('.sidebar .feed-item').count()) === 3;
-  check('Feed discovered from a homepage URL', nasaAdded);
-  if (!nasaAdded) {
+  const discoveredAdded = await page
+    .waitForFunction(
+      () => document.querySelectorAll('.sidebar .feed-item').length === 3,
+      undefined,
+      { timeout: 15_000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  check('Feed discovered from a homepage URL', discoveredAdded);
+  if (!discoveredAdded) {
     const err = await page.locator('[role="dialog"] .field__error').first().textContent().catch(() => '');
     console.log('       discovery error:', (err || '').trim());
     await page.keyboard.press('Escape');
@@ -99,6 +132,14 @@ try {
     `${links.length} links`
   );
 
+  /* link context menu inside sanitized article HTML */
+  await page.locator('.detail .content a[href^="http"]').first().click({ button: 'right' });
+  await page.waitForSelector('.context-menu');
+  const linkMenu = await page.textContent('.context-menu');
+  check('Article link context menu offers link actions', /Copy link address/i.test(linkMenu || ''), linkMenu?.replace(/\s+/g, ' ').trim());
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.context-menu', { state: 'detached' });
+
   await page.screenshot({ path: path.join(SHOTS, '01-detail-light.png'), fullPage: false });
 
   /* read state — opening the article already marked it read */
@@ -107,18 +148,26 @@ try {
   const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');
   check('Read state reflected in list', /is-read/.test(firstRowRead || ''), firstRowRead);
 
+  /* card context menu (app actions, no browser menu) */
+  await page.locator('.article-card').first().click({ button: 'right' });
+  await page.waitForSelector('.context-menu');
+  const cardMenu = await page.textContent('.context-menu');
+  check('Article card context menu offers article actions', /Copy title/i.test(cardMenu || ''), cardMenu?.replace(/\s+/g, ' ').trim().slice(0, 80));
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.context-menu', { state: 'detached' });
+
   /* --------------------------- sorting/search -------------------------- */
   // The sort control is a themed listbox (a native <select> renders an
   // OS-styled popup that ignores the CSS variables, so it can never match
   // light/dark). Drive it the way a user would: open, then pick.
   const pickSort = async (label) => {
-    await page.click('.dropdown__trigger');
+    await page.click('.topbar__sort .dropdown__trigger');
     await page.waitForSelector('.dropdown__menu');
     await page.click(`.dropdown__option:has-text("${label}")`);
     await page.waitForSelector('.dropdown__menu', { state: 'detached' });
   };
 
-  await page.click('.dropdown__trigger');
+  await page.click('.topbar__sort .dropdown__trigger');
   await page.waitForSelector('.dropdown__menu');
   await page.waitForTimeout(250); // let the open animation settle for the screenshot
   const menuTheme = await page.evaluate(() => {
@@ -165,7 +214,7 @@ try {
   check('Theme toggle flips data-theme', before !== after, `${before} → ${after}`);
 
   // The menu must follow the new theme, not keep the old one.
-  await page.click('.dropdown__trigger');
+  await page.click('.topbar__sort .dropdown__trigger');
   await page.waitForSelector('.dropdown__menu');
   await page.waitForTimeout(250);
   const themedAfterToggle = await page.evaluate(() => {
@@ -190,8 +239,7 @@ try {
     `${themedAfterToggle.theme}: ${themedAfterToggle.menuBg} vs ${themedAfterToggle.panelBg}`
   );
 
-  await page.click('.sidebar__actions .ghost-button:has-text("Settings")');
-  await page.waitForSelector('[role="dialog"]');
+  await openSettings('Appearance');
   await page.click('[role="dialog"] .segmented__option:has-text("Compact")');
   await page.click('[role="dialog"] .segmented__option:has-text("Large")');
   const density = await page.getAttribute('html', 'data-density');
@@ -200,6 +248,7 @@ try {
   check('Font size preference applied', fontSize === 'large', fontSize || '');
 
   /* YouTube embed switch defaults to true; toggle off and back on */
+  await page.click('[role="dialog"] .settings-nav__item:has-text("General")');
   const defaultEmbed = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
   await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
   const toggledOff = await page.getAttribute('[role="dialog"] .switch[aria-label*="Embed YouTube" i]', 'aria-checked');
@@ -218,7 +267,7 @@ try {
   await page.screenshot({ path: path.join(SHOTS, '02-dark-compact.png') });
 
   /* --------------------------- OPML export ----------------------------- */
-  await page.click('.sidebar__actions .ghost-button:has-text("Export")');
+  await openDataTab('Export');
   await page.waitForSelector('[role="tabpanel"][id="panel-export"]');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
@@ -234,29 +283,29 @@ try {
 
   /* --------------------------- OPML import ----------------------------- */
   const feedsBeforeImport = await page.locator('.sidebar .feed-item').count();
-  await page.click('.sidebar__actions .ghost-button:has-text("Import")');
+  await openDataTab('Import');
   await page.waitForSelector('[role="dialog"] [role="tabpanel"]');
   const importPath = path.join(SHOTS, 'import.opml');
-  const incomingUrl = 'https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA';
   await writeFile(
     importPath,
     `<?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0"><head><title>t</title></head><body>
   <outline text="Zebra Video" title="Zebra Video">
-    <outline type="rss" text="Fireship" title="Fireship" xmlUrl="${incomingUrl}"/>
+    <outline type="rss" text="Fireship" title="Fireship" xmlUrl="${fixture('video.xml')}"/>
   </outline>
   <outline text="Alpha Tech" title="Alpha Tech">
-    <outline type="rss" text="Zeta Feed" title="Zeta Feed" xmlUrl="https://feeds.bbci.co.uk/news/world/rss.xml"/>
-    <outline type="rss" text="Alpha Feed" title="Alpha Feed" xmlUrl="https://feeds.bbci.co.uk/news/technology/rss.xml"/>
+    <outline type="rss" text="Zeta Feed" title="Zeta Feed" xmlUrl="${fixture('zeta.xml')}"/>
+    <outline type="rss" text="Alpha Feed" title="Alpha Feed" xmlUrl="${fixture('alpha.xml')}"/>
   </outline>
-  <outline type="rss" text="The Verge" title="The Verge" xmlUrl="https://www.theverge.com/rss/index.xml"/>
+  <outline text="Empty Folder" title="Empty Folder"/>
+  <outline type="rss" text="The Verge" title="The Verge" xmlUrl="${fixture('news.xml')}"/>
   <outline type="rss" text="Bad" xmlUrl="javascript:alert(1)"/>
 </body></opml>`
   );
   await page.setInputFiles('.file-input', importPath);
   await page.waitForSelector('.import-preview__summary');
   const summary = await page.textContent('.import-preview__summary');
-  check('Import preview counts valid entries and folders', /4 feeds found.*2 folders/i.test(summary || ''), summary?.replace(/\s+/g, ' ').trim());
+  check('Import preview counts valid entries and folders', /4 feeds found.*3 folders/i.test(summary || ''), summary?.replace(/\s+/g, ' ').trim());
   check('Import flags invalid javascript: URL', (await page.$('.import-preview__warnings')) !== null);
   await page.click('.button--primary:has-text("Import")');
   await page.waitForFunction(
@@ -270,8 +319,11 @@ try {
     nodes.map((n) => n.textContent?.trim() || '')
   );
   check(
-    'Imported folders sorted A–Z in sidebar',
-    folderOrder.length === 2 && folderOrder[0] === 'Alpha Tech' && folderOrder[1] === 'Zebra Video',
+    'Imported folders sorted A–Z in sidebar (including an empty one)',
+    folderOrder.length === 3 &&
+      folderOrder[0] === 'Alpha Tech' &&
+      folderOrder[1] === 'Empty Folder' &&
+      folderOrder[2] === 'Zebra Video',
     folderOrder.join(' → ')
   );
 
@@ -283,7 +335,7 @@ try {
   );
 
   /* duplicate re-import reports skipped */
-  await page.click('.sidebar__actions .ghost-button:has-text("Import")');
+  await openDataTab('Import');
   await page.setInputFiles('.file-input', importPath);
   await page.waitForSelector('.import-preview__summary');
   await page.click('.button--primary:has-text("Import")');
@@ -318,7 +370,7 @@ try {
 
   /* link mode (with thumbnail poster) after disabling the setting */
   await page.click('.detail .ghost-button:has-text("Back")');
-  await page.click('.sidebar__actions .ghost-button:has-text("Settings")');
+  await openSettings('General');
   await page.click('[role="dialog"] .switch[aria-label*="Embed YouTube" i]');
   await page.keyboard.press('Escape');
   await page.click('.article-card >> nth=0');
@@ -360,7 +412,7 @@ try {
   const feedsBeforeRemove = await page.locator('.sidebar .feed-item').count();
   const targetItem = page.locator('.sidebar .feed-item').nth(1);
   await targetItem.hover();
-  await targetItem.locator('.feed-row__remove').click();
+  await targetItem.locator('button[aria-label^="Unsubscribe"]').click();
   await page.waitForSelector('[role="dialog"]:has-text("Unsubscribe")');
   check('Unsubscribe asks for confirmation', true);
   await page.keyboard.press('Enter');
@@ -371,8 +423,21 @@ try {
   );
   check('Feed removed after pressing Enter in confirmation', true, `${feedsBeforeRemove - 1} feeds left`);
 
+  /* -------------------- context menu (portal + actions) ---------------- */
+  const menuFeed = page.locator('.sidebar .feed-item').first();
+  await menuFeed.click({ button: 'right' });
+  await page.waitForSelector('.context-menu');
+  const contextItems = await page.locator('.context-menu__item').count();
+  check('Feed context menu opens with full actions', contextItems >= 7, `${contextItems} items`);
+  const menuInBody = await page.evaluate(
+    () => document.querySelector('.context-menu')?.parentElement === document.body
+  );
+  check('Context menu is portalled to <body>', menuInBody);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.context-menu', { state: 'detached' });
+
   /* ------------------- Manage (select all/none/folder) ----------------- */
-  await page.click('.sidebar__actions .ghost-button:has-text("Manage")');
+  await openDataTab('Manage');
   await page.waitForSelector('#panel-manage');
   await page.click('#panel-manage button:has-text("Select all")');
   const allCountText = await page.textContent('.manage-toolbar__count');
@@ -384,20 +449,66 @@ try {
     `${allCountText?.trim()} → ${noneCountText?.trim()}`
   );
 
+  const foldersBeforeDelete = await page.locator('.sidebar .folder-group').count();
   await page.click('.manage-folder__delete >> nth=0');
+  await page.waitForSelector('.manage-confirm');
+  check('Delete folder asks for confirmation inside Manage', true);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    (expected) => document.querySelectorAll('.sidebar .folder-group').length === expected,
+    foldersBeforeDelete - 1,
+    { timeout: 5000 }
+  );
   const foldersRemaining = await page.locator('.sidebar .folder-group').count();
-  check('Delete folder removes the folder and its feeds', foldersRemaining === 1, `${foldersRemaining} folder left`);
+  check('Delete folder removes the folder and its feeds', foldersRemaining === foldersBeforeDelete - 1, `${foldersRemaining} folder(s) left`);
 
   /* ----------------------- OPML XML live editor ------------------------ */
   await page.click('#tab-xml');
   await page.waitForSelector('.opml-editor');
+  const placeholder = await page.getAttribute('.opml-editor', 'placeholder');
+  check('OPML editor shows an example placeholder', /<opml/.test(placeholder || ''));
   const currentXml = await page.inputValue('.opml-editor');
   const editedXml = currentXml.replace(/title="Fireship"/g, 'title="Fireship Channel"').replace(/text="Fireship"/g, 'text="Fireship Channel"');
   await page.fill('.opml-editor', editedXml);
-  await page.click('#panel-xml .button--primary:has-text("Apply OPML XML")');
+  await page.click('#panel-xml .button--primary:has-text("Preview changes")');
+  await page.waitForSelector('#panel-xml .import-preview');
+  check('OPML XML shows a diff before applying', true);
+  await page.click('#panel-xml .button--primary:has-text("Apply changes")');
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
   const renamedVisible = (await page.locator('.sidebar .feed-row:has-text("Fireship Channel")').count()) === 1;
   check('OPML XML editor updates titles/folders in place', renamedVisible);
+
+  /* ------------------- folder row + collapse-all control ---------------- */
+  const firstFolderRow = page.locator('.sidebar .folder-group').first().locator('.folder-row');
+  await firstFolderRow.click();
+  check(
+    'Folder row filters its feeds',
+    (await firstFolderRow.getAttribute('aria-current')) === 'page'
+  );
+  await firstFolderRow.click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.sidebar .folder-group .folder-row')?.getAttribute('aria-expanded') ===
+      'false'
+  );
+  check('Second click on the active folder collapses it', true);
+  await firstFolderRow.click();
+  check(
+    'Clicking a collapsed folder expands and filters in one click',
+    (await firstFolderRow.getAttribute('aria-expanded')) === 'true'
+  );
+
+  const folderToggle = page.locator('.sidebar__toolbar button[aria-label*="all folders"]');
+  await folderToggle.click();
+  const allCollapsed = await page.$$eval('.sidebar .folder-row', (rows) =>
+    rows.every((row) => row.getAttribute('aria-expanded') === 'false')
+  );
+  check('Toolbar collapse-all closes every folder in one click', allCollapsed);
+  await folderToggle.click();
+  const allExpanded = await page.$$eval('.sidebar .folder-row', (rows) =>
+    rows.every((row) => row.getAttribute('aria-expanded') === 'true')
+  );
+  check('Toolbar expand-all reopens every folder', allExpanded);
 
   const toastCount = await page.locator('.toast').count();
   const errorBannerCount = await page.locator('.banner--error').count();
@@ -415,6 +526,11 @@ try {
   const sidebarOpen = await page.getAttribute('.app', 'data-sidebar-open');
   check('Mobile drawer opens', sidebarOpen === 'true', sidebarOpen || '');
   await page.screenshot({ path: path.join(SHOTS, '05-mobile.png') });
+  await page.click('.sidebar .feed-row:has-text("All articles")');
+  await page.waitForFunction(
+    () => document.querySelector('.app')?.getAttribute('data-sidebar-open') === 'false'
+  );
+  check('Mobile drawer closes after choosing a view', true);
 
   /* ---------------------------- console noise -------------------------- */
   // Direct-first fetching always logs a CORS refusal before the proxy hop, and

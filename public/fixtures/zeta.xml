@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Zeta Feed</title>
+    <link>http://localhost:5173/fixtures/site.html</link>
+    <description>Local fixture feed imported into the Alpha Tech folder.</description>
+    <item>
+      <title>Zeta fixture one</title>
+      <link>https://example.com/zeta/one</link>
+      <guid isPermaLink="false">zeta-fixture-1</guid>
+      <pubDate>Wed, 21 Oct 2026 06:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Zeta fixture body one, long enough for the detail view check.</p>]]></description>
+    </item>
+    <item>
+      <title>Zeta fixture two</title>
+      <link>https://example.com/zeta/two</link>
+      <guid isPermaLink="false">zeta-fixture-2</guid>
+      <pubDate>Tue, 20 Oct 2026 06:00:00 GMT</pubDate>
+      <description><![CDATA[<p>Zeta fixture body two, long enough for the detail view check.</p>]]></description>
+    </item>
+  </channel>
+</rss>

@@ -1,14 +1,21 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Feed } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { sanitizeHtml } from '../lib/sanitize';
 import { formatDate } from '../lib/format';
+import { copyText } from '../lib/clipboard';
 import { embedUrl, thumbnailUrl, watchUrl } from '../lib/youtube';
 import { Icon } from './Icon';
+import { ContextMenu, type ContextMenuItem } from './ContextMenu';
+
+type DetailMenu =
+  | { kind: 'article'; x: number; y: number }
+  | { kind: 'link'; x: number; y: number; href: string; text: string };
 
 export function ArticleDetail() {
   const state = useStore();
+  const [menu, setMenu] = useState<DetailMenu | null>(null);
 
   const article = useMemo(
     () => Object.values(state.articles).flat().find((a) => a.id === state.ui.activeArticleId),
@@ -39,8 +46,98 @@ export function ArticleDetail() {
   const read = Boolean(state.readIds[article.id]);
   const showEmbed = state.prefs.embedYouTube && article.youtubeId;
 
+  /**
+   * Links inside feed HTML get app actions (open/copy); plain article text
+   * keeps the browser's native menu so selecting and copying prose still
+   * works. The global handler in main.tsx skips `.content` for the same
+   * reason.
+   */
+  const handleContextMenu = (event: React.MouseEvent<HTMLElement>) => {
+    const element = event.target as HTMLElement;
+    const anchor = element.closest('a[href]') as HTMLAnchorElement | null;
+    if (anchor) {
+      if (!/^https?:/i.test(anchor.href)) return;
+      event.preventDefault();
+      setMenu({
+        kind: 'link',
+        href: anchor.href,
+        text: anchor.textContent?.trim() || anchor.href,
+        x: event.clientX,
+        y: event.clientY,
+      });
+      return;
+    }
+    if (element.closest('.content')) return;
+    event.preventDefault();
+    setMenu({ kind: 'article', x: event.clientX, y: event.clientY });
+  };
+
+  const copyValue = async (value: string, label: string) => {
+    const ok = await copyText(value);
+    store.notify(
+      ok ? 'success' : 'error',
+      ok ? `${label} copied to the clipboard` : `Could not copy ${label.toLowerCase()}`
+    );
+  };
+
+  const menuItems = (): ContextMenuItem[] => {
+    if (!menu) return [];
+    if (menu.kind === 'link') {
+      return [
+        {
+          icon: 'external',
+          label: 'Open link in new tab',
+          onSelect: () => window.open(menu.href, '_blank', 'noopener,noreferrer'),
+        },
+        {
+          icon: 'copy',
+          label: 'Copy link address',
+          onSelect: () => void copyValue(menu.href, 'Link'),
+        },
+        {
+          icon: 'copy',
+          label: 'Copy link text',
+          onSelect: () => void copyValue(menu.text, 'Link text'),
+        },
+      ];
+    }
+
+    const items: ContextMenuItem[] = [];
+    if (article.link) {
+      items.push({
+        icon: 'external',
+        label: 'Open original in new tab',
+        onSelect: () => window.open(article.link as string, '_blank', 'noopener,noreferrer'),
+      });
+      items.push({
+        icon: 'copy',
+        label: 'Copy article link',
+        onSelect: () => void copyValue(article.link as string, 'Article link'),
+      });
+    }
+    items.push({
+      icon: 'copy',
+      label: 'Copy title',
+      onSelect: () => void copyValue(article.title, 'Title'),
+    });
+    items.push({
+      icon: read ? 'eyeOff' : 'eye',
+      label: read ? 'Mark as unread' : 'Mark as read',
+      onSelect: () => store.toggleRead(article.id),
+    });
+    if (feed) {
+      items.push({ type: 'divider' });
+      items.push({
+        icon: 'rss',
+        label: `Show only ${feed.title}`,
+        onSelect: () => store.setActiveFeed(feed.id),
+      });
+    }
+    return items;
+  };
+
   return (
-    <article className="detail">
+    <article className="detail" onContextMenu={handleContextMenu}>
       <div className="detail__bar">
         <button
           type="button"
@@ -165,6 +262,10 @@ export function ArticleDetail() {
           </p>
         )}
       </div>
+
+      {menu && (
+        <ContextMenu x={menu.x} y={menu.y} items={menuItems()} onClose={() => setMenu(null)} />
+      )}
     </article>
   );
 }

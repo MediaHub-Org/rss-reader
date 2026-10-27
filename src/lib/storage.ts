@@ -51,7 +51,13 @@ function writeJson(key: string, value: unknown): void {
 
 export function loadPreferences(): Preferences {
   const stored = readJson<Partial<Preferences>>(KEYS.prefs, {});
-  return { ...DEFAULT_PREFERENCES, ...stored };
+  const prefs = { ...DEFAULT_PREFERENCES, ...stored };
+  return {
+    ...prefs,
+    collapsedFolders: Array.isArray(prefs.collapsedFolders)
+      ? [...new Set(prefs.collapsedFolders.map((name) => String(name ?? '').trim()).filter(Boolean))]
+      : [],
+  };
 }
 
 export function savePreferences(prefs: Preferences): void {

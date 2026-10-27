@@ -10,6 +10,7 @@ import {
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/opml';
+import { copyText } from '../lib/clipboard';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
 import { Dropdown, type DropdownOption } from './Dropdown';
@@ -17,10 +18,12 @@ import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 
 type ContextTarget =
   | { type: 'feed'; feed: Feed; x: number; y: number }
-  | { type: 'folder'; name: string; x: number; y: number };
+  | { type: 'folder'; name: string; x: number; y: number }
+  | { type: 'all'; x: number; y: number };
 
 interface SidebarProps {
   onAddFeed: () => void;
+  onAddFeedInFolder: (folder: string) => void;
   onUnsubscribe: (feed: Feed) => void;
   onRemoveFolder: (folderName: string) => void;
   onClose: () => void;
@@ -70,16 +73,16 @@ function sortFeeds(feeds: Feed[], state: AppState, sort: SidebarSort): Feed[] {
 
 export function Sidebar({
   onAddFeed,
+  onAddFeedInFolder,
   onUnsubscribe,
   onRemoveFolder,
   onClose,
 }: SidebarProps) {
   const state = useStore();
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  /** Feed to move once the “New folder…” flow (started from its menu) finishes. */
+  const [moveAfterCreate, setMoveAfterCreate] = useState<string | null>(null);
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextTarget | null>(null);
@@ -173,47 +176,93 @@ export function Sidebar({
     return { folders: folderList, ungrouped: sortFeeds(loose, state, state.prefs.sidebarSort) };
   }, [state]);
 
-  const toggleFolder = (name: string) => {
-    setCollapsed((current) => ({ ...current, [name]: !current[name] }));
+  /** Collapsed folders live in preferences, so they survive a reload. */
+  const collapsedSet = useMemo(
+    () => new Set(state.prefs.collapsedFolders),
+    [state.prefs.collapsedFolders]
+  );
+  const isCollapsed = (name: string) => collapsedSet.has(name);
+
+  const setFolderCollapsed = (name: string, collapse: boolean) => {
+    const current = state.prefs.collapsedFolders;
+    if (current.includes(name) === collapse) return;
+    store.setPreferences({
+      collapsedFolders: collapse
+        ? [...current, name]
+        : current.filter((folder) => folder !== name),
+    });
+  };
+
+  const selectAll = () => {
+    store.setActiveFeed(ALL_FEEDS);
+    onClose();
   };
 
   const selectFolder = (name: string) => {
     store.setActiveFeed(folderViewId(name));
+    onClose();
   };
 
-  const allFoldersExpanded = folders.length > 0 && folders.every((f) => !collapsed[f.name]);
+  const selectFeed = (feedId: string) => {
+    store.setActiveFeed(feedId);
+    onClose();
+  };
+
+  /**
+   * One click target per folder row:
+   *   collapsed            → expand and filter
+   *   expanded, inactive   → filter
+   *   expanded and active  → collapse
+   */
+  const activateFolder = (name: string) => {
+    const open = !isCollapsed(name);
+    const active = state.ui.activeFeedId === folderViewId(name);
+    if (active && open) {
+      setFolderCollapsed(name, true);
+      return;
+    }
+    if (!open) setFolderCollapsed(name, false);
+    selectFolder(name);
+  };
+
+  const anyFolderOpen = folders.some((folder) => !isCollapsed(folder.name));
 
   const toggleAllFolders = () => {
-    if (allFoldersExpanded) {
-      const next: Record<string, boolean> = {};
-      for (const folder of folders) next[folder.name] = true;
-      setCollapsed(next);
-    } else {
-      setCollapsed({});
-    }
+    store.setPreferences({
+      collapsedFolders: anyFolderOpen ? folders.map((folder) => folder.name) : [],
+    });
+  };
+
+  const beginCreateFolder = (moveFeedId?: string) => {
+    setNewFolderName('');
+    setMoveAfterCreate(moveFeedId ?? null);
+    setCreatingFolder(true);
+  };
+
+  const cancelCreateFolder = () => {
+    setCreatingFolder(false);
+    setNewFolderName('');
+    setMoveAfterCreate(null);
   };
 
   const submitNewFolder = () => {
     const name = newFolderName.trim();
-    if (!name) {
-      setCreatingFolder(false);
+    const moveFeedId = moveAfterCreate;
+    cancelCreateFolder();
+    if (!name) return;
+
+    const result = store.createFolder(name);
+    if (!result.ok) {
+      if (result.message) store.notify('error', result.message);
       return;
     }
-    const result = store.createFolder(name);
-    if (result.ok) {
-      setCreatingFolder(false);
-      setNewFolderName('');
-    } else if (result.message) {
-      store.notify('error', result.message);
-    }
+    if (moveFeedId) store.moveFeedToFolder(moveFeedId, name);
+    store.notify('success', moveFeedId ? `Moved feed to “${name}”` : `Created folder “${name}”`);
   };
 
   const onNewFolderKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') submitNewFolder();
-    else if (event.key === 'Escape') {
-      setCreatingFolder(false);
-      setNewFolderName('');
-    }
+    else if (event.key === 'Escape') cancelCreateFolder();
   };
 
   const startRenameFeed = (feed: Feed) => {
@@ -250,27 +299,176 @@ export function Sidebar({
     else if (event.key === 'Escape') setRenamingFolder(null);
   };
 
-  const feedContextItems = (feed: Feed): ContextMenuItem[] => {
-    const items: ContextMenuItem[] = [
-      { icon: 'pencil', label: 'Rename feed', onSelect: () => startRenameFeed(feed) },
-    ];
-    const otherFolders = folders.map((f) => f.name).filter((name) => name !== feed.folder);
-    if (feed.folder || otherFolders.length > 0) {
-      items.push({ type: 'divider' });
-      items.push({ type: 'label', label: 'Move to folder' });
-      if (feed.folder) {
-        items.push({ label: 'No folder', onSelect: () => store.moveFeedToFolder(feed.id, undefined) });
-      }
-      for (const name of otherFolders) {
-        items.push({ icon: 'folder', label: name, onSelect: () => store.moveFeedToFolder(feed.id, name) });
-      }
+  const openExternal = (url: string | undefined) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const copyValue = async (value: string, label: string) => {
+    const ok = await copyText(value);
+    store.notify(
+      ok ? 'success' : 'error',
+      ok ? `${label} copied to the clipboard` : `Could not copy ${label.toLowerCase()}`
+    );
+  };
+
+  const setArticlesRead = (ids: string[], read: boolean, label: string) => {
+    if (!ids.length) {
+      store.notify('info', 'No cached articles in this view yet.');
+      return;
     }
+    if (read) store.markAllRead(ids);
+    else store.markAllUnread(ids);
+    store.notify('success', `${read ? 'Marked all as read' : 'Marked all as unread'} — ${label}`);
+  };
+
+  const feedContextItems = (feed: Feed): ContextMenuItem[] => {
+    const ids = (state.articles[feed.id] ?? []).map((article) => article.id);
+    const unread = unreadCount(state, feed.id);
+    const otherFolders = folders
+      .map((folder) => folder.name)
+      .filter((name) => name !== feed.folder?.trim());
+
+    const items: ContextMenuItem[] = [
+      {
+        icon: 'external',
+        label: 'Open website',
+        onSelect: () => openExternal(feed.siteUrl ?? feed.url),
+      },
+      {
+        icon: 'refresh',
+        label: 'Refresh feed',
+        onSelect: () => {
+          void store.refreshFeed(feed.id);
+          store.notify('info', `Refreshing “${feed.title}”…`);
+        },
+      },
+      { type: 'divider' },
+      {
+        icon: 'eye',
+        label: 'Mark all as read',
+        disabled: unread === 0,
+        onSelect: () => setArticlesRead(ids, true, feed.title),
+      },
+      {
+        icon: 'eyeOff',
+        label: 'Mark all as unread',
+        disabled: ids.length === 0,
+        onSelect: () => setArticlesRead(ids, false, feed.title),
+      },
+      { icon: 'copy', label: 'Copy feed URL', onSelect: () => void copyValue(feed.url, 'Feed URL') },
+      { type: 'divider' },
+      { icon: 'pencil', label: 'Rename feed', onSelect: () => startRenameFeed(feed) },
+      { type: 'label', label: 'Move to folder' },
+    ];
+
+    if (feed.folder) {
+      items.push({
+        icon: 'folder',
+        label: 'No folder',
+        onSelect: () => store.moveFeedToFolder(feed.id, undefined),
+      });
+    }
+    for (const name of otherFolders) {
+      items.push({
+        icon: 'folder',
+        label: name,
+        onSelect: () => store.moveFeedToFolder(feed.id, name),
+      });
+    }
+    items.push({
+      icon: 'folderPlus',
+      label: 'New folder…',
+      onSelect: () => beginCreateFolder(feed.id),
+    });
+    items.push({ type: 'divider' });
+    items.push({
+      icon: 'trash',
+      label: 'Unsubscribe',
+      danger: true,
+      onSelect: () => onUnsubscribe(feed),
+    });
     return items;
   };
 
-  const folderContextItems = (name: string): ContextMenuItem[] => [
-    { icon: 'pencil', label: 'Rename folder', onSelect: () => startRenameFolder(name) },
-  ];
+  const folderContextItems = (name: string): ContextMenuItem[] => {
+    const folderFeeds = state.feeds.filter((feed) => feed.folder?.trim() === name);
+    const ids = folderFeeds
+      .flatMap((feed) => state.articles[feed.id] ?? [])
+      .map((article) => article.id);
+    const unread = folderFeeds.reduce((sum, feed) => sum + unreadCount(state, feed.id), 0);
+    const open = !isCollapsed(name);
+
+    return [
+      { icon: 'folder', label: 'Open folder', onSelect: () => selectFolder(name) },
+      {
+        icon: 'plus',
+        label: 'Add feed to this folder',
+        onSelect: () => {
+          onClose();
+          onAddFeedInFolder(name);
+        },
+      },
+      { type: 'divider' },
+      {
+        icon: 'eye',
+        label: 'Mark folder as read',
+        disabled: unread === 0,
+        onSelect: () => setArticlesRead(ids, true, name),
+      },
+      {
+        icon: 'eyeOff',
+        label: 'Mark folder as unread',
+        disabled: ids.length === 0,
+        onSelect: () => setArticlesRead(ids, false, name),
+      },
+      {
+        icon: 'copy',
+        label: 'Copy folder name',
+        onSelect: () => void copyValue(name, 'Folder name'),
+      },
+      { type: 'divider' },
+      { icon: 'pencil', label: 'Rename folder', onSelect: () => startRenameFolder(name) },
+      {
+        icon: open ? 'collapse' : 'expand',
+        label: open ? 'Collapse folder' : 'Expand folder',
+        onSelect: () => setFolderCollapsed(name, open),
+      },
+      { icon: 'folderPlus', label: 'New folder…', onSelect: () => beginCreateFolder() },
+      { type: 'divider' },
+      {
+        icon: 'trash',
+        label: 'Delete folder',
+        danger: true,
+        onSelect: () => onRemoveFolder(name),
+      },
+    ];
+  };
+
+  const allContextItems = (): ContextMenuItem[] => {
+    const ids = Object.values(state.articles)
+      .flat()
+      .map((article) => article.id);
+    return [
+      { icon: 'refresh', label: 'Refresh all feeds', onSelect: () => void store.refreshAll() },
+      { type: 'divider' },
+      {
+        icon: 'eye',
+        label: 'Mark all as read',
+        disabled: totalUnread === 0,
+        onSelect: () => setArticlesRead(ids, true, 'all articles'),
+      },
+      {
+        icon: 'eyeOff',
+        label: 'Mark all as unread',
+        disabled: ids.length === 0,
+        onSelect: () => setArticlesRead(ids, false, 'all articles'),
+      },
+      { type: 'divider' },
+      { icon: 'folderPlus', label: 'New folder', onSelect: () => beginCreateFolder() },
+      { icon: 'plus', label: 'Add feed', onSelect: onAddFeed },
+    ];
+  };
 
   /**
    * Reveal: expand the path to a feed or folder row (if collapsed) and
@@ -280,9 +478,7 @@ export function Sidebar({
    * you've lost track of where you are.
    */
   const revealRow = (selector: string, folderName?: string) => {
-    if (folderName && collapsed[folderName]) {
-      setCollapsed((current) => ({ ...current, [folderName]: false }));
-    }
+    if (folderName && isCollapsed(folderName)) setFolderCollapsed(folderName, false);
     requestAnimationFrame(() => {
       navRef.current?.querySelector(selector)?.scrollIntoView({ block: 'nearest' });
     });
@@ -325,6 +521,11 @@ export function Sidebar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.ui.activeArticleId, state.ui.activeFeedId]);
 
+  const menuAtButton = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: rect.left, y: rect.bottom + 4 };
+  };
+
   const renderFeedItem = (feed: Feed) => {
     const unread = unreadCount(state, feed.id);
     const feedState = state.feedState[feed.id];
@@ -335,10 +536,8 @@ export function Sidebar({
     return (
       <li
         key={feed.id}
-        className="feed-item"
+        className={`feed-item ${isActive ? 'is-active' : ''}`}
         data-feed-id={feed.id}
-        onMouseEnter={() => setHovered(feed.id)}
-        onMouseLeave={() => setHovered(null)}
         onContextMenu={(event) => {
           event.preventDefault();
           setContextMenu({ type: 'feed', feed, x: event.clientX, y: event.clientY });
@@ -361,7 +560,7 @@ export function Sidebar({
           <button
             type="button"
             className={`feed-row ${isActive ? 'is-active' : ''}`}
-            onClick={() => store.setActiveFeed(feed.id)}
+            onClick={() => selectFeed(feed.id)}
             aria-current={isActive ? 'page' : undefined}
             title={feed.description || feed.title}
           >
@@ -376,16 +575,30 @@ export function Sidebar({
           </button>
         )}
 
-        {!isRenaming && (hovered === feed.id || isActive) && (
-          <button
-            type="button"
-            className="feed-row__remove icon-button"
-            onClick={() => onUnsubscribe(feed)}
-            aria-label={`Unsubscribe from ${feed.title}`}
-            title="Unsubscribe"
-          >
-            <Icon name="trash" size={15} />
-          </button>
+        {!isRenaming && (
+          <div className="feed-row__actions">
+            <button
+              type="button"
+              className="icon-button"
+              onClick={(event) => {
+                const { x, y } = menuAtButton(event);
+                setContextMenu({ type: 'feed', feed, x, y });
+              }}
+              aria-label={`More actions for ${feed.title}`}
+              title="More actions"
+            >
+              <Icon name="more" size={15} />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => onUnsubscribe(feed)}
+              aria-label={`Unsubscribe from ${feed.title}`}
+              title="Unsubscribe"
+            >
+              <Icon name="trash" size={15} />
+            </button>
+          </div>
         )}
       </li>
     );
@@ -429,7 +642,7 @@ export function Sidebar({
             ref={newFolderRef}
             type="text"
             className="input sidebar__new-folder-input"
-            placeholder="Folder name"
+            placeholder={moveAfterCreate ? 'Move to new folder…' : 'Folder name'}
             value={newFolderName}
             onChange={(event) => setNewFolderName(event.target.value)}
             onKeyDown={onNewFolderKey}
@@ -440,7 +653,7 @@ export function Sidebar({
             <button
               type="button"
               className="icon-button"
-              onClick={() => setCreatingFolder(true)}
+              onClick={() => beginCreateFolder()}
               aria-label="New folder"
               title="New folder"
             >
@@ -470,10 +683,10 @@ export function Sidebar({
                 type="button"
                 className="icon-button"
                 onClick={toggleAllFolders}
-                aria-label={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
-                title={allFoldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+                aria-label={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
+                title={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
               >
-                <Icon name={allFoldersExpanded ? 'collapse' : 'expand'} size={15} />
+                <Icon name={anyFolderOpen ? 'collapse' : 'expand'} size={15} />
               </button>
             )}
             <button
@@ -491,11 +704,16 @@ export function Sidebar({
 
       <div className="sidebar__scroll">
         <ul className="feed-list" role="list">
-          <li>
+          <li
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setContextMenu({ type: 'all', x: event.clientX, y: event.clientY });
+            }}
+          >
             <button
               type="button"
               className={`feed-row ${state.ui.activeFeedId === ALL_FEEDS ? 'is-active' : ''}`}
-              onClick={() => store.setActiveFeed(ALL_FEEDS)}
+              onClick={selectAll}
               aria-current={state.ui.activeFeedId === ALL_FEEDS ? 'page' : undefined}
             >
               <span className="feed-icon feed-icon--all" aria-hidden="true">
@@ -507,7 +725,7 @@ export function Sidebar({
           </li>
 
           {folders.map((folder) => {
-            const isOpen = !collapsed[folder.name];
+            const isOpen = !isCollapsed(folder.name);
             const isActive = state.ui.activeFeedId === folderViewId(folder.name);
             const folderUnread = folder.feeds.reduce(
               (sum, feed) => sum + unreadCount(state, feed.id),
@@ -520,25 +738,12 @@ export function Sidebar({
                 data-folder-name={folder.name}
               >
                 <div
-                  className="folder-header"
-                  onMouseEnter={() => setHoveredFolder(folder.name)}
-                  onMouseLeave={() => setHoveredFolder(null)}
+                  className={`folder-header ${isActive ? 'is-active' : ''}`}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     setContextMenu({ type: 'folder', name: folder.name, x: event.clientX, y: event.clientY });
                   }}
                 >
-                  <button
-                    type="button"
-                    className="icon-button folder-row__toggle"
-                    onClick={() => toggleFolder(folder.name)}
-                    aria-expanded={isOpen}
-                    aria-label={isOpen ? `Collapse ${folder.name}` : `Expand ${folder.name}`}
-                    title={isOpen ? 'Collapse' : 'Expand'}
-                  >
-                    <Icon name="chevronDown" size={14} className={isOpen ? undefined : 'caret--collapsed'} />
-                  </button>
-
                   {renamingFolder === folder.name ? (
                     <div className="feed-row folder-row folder-row--renaming">
                       <Icon name="folder" size={15} className="folder-row__icon" />
@@ -556,10 +761,20 @@ export function Sidebar({
                     <button
                       type="button"
                       className={`feed-row folder-row ${isActive ? 'is-active' : ''}`}
-                      onClick={() => selectFolder(folder.name)}
+                      onClick={() => activateFolder(folder.name)}
+                      aria-expanded={isOpen}
                       aria-current={isActive ? 'page' : undefined}
-                      title={`Show articles from “${folder.name}”`}
+                      title={
+                        isActive && isOpen
+                          ? `Collapse “${folder.name}”`
+                          : `Show articles from “${folder.name}”`
+                      }
                     >
+                      <Icon
+                        name="chevronDown"
+                        size={14}
+                        className={`folder-row__caret ${isOpen ? '' : 'caret--collapsed'}`}
+                      />
                       <Icon name="folder" size={15} className="folder-row__icon" />
                       <span className="feed-row__title">{folder.name}</span>
                       {folderUnread > 0 && (
@@ -568,16 +783,30 @@ export function Sidebar({
                     </button>
                   )}
 
-                  {renamingFolder !== folder.name && hoveredFolder === folder.name && (
-                    <button
-                      type="button"
-                      className="feed-row__remove icon-button"
-                      onClick={() => onRemoveFolder(folder.name)}
-                      aria-label={`Delete folder ${folder.name}`}
-                      title={`Delete folder “${folder.name}”`}
-                    >
-                      <Icon name="trash" size={15} />
-                    </button>
+                  {renamingFolder !== folder.name && (
+                    <div className="feed-row__actions">
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={(event) => {
+                          const { x, y } = menuAtButton(event);
+                          setContextMenu({ type: 'folder', name: folder.name, x, y });
+                        }}
+                        aria-label={`More actions for folder ${folder.name}`}
+                        title="More actions"
+                      >
+                        <Icon name="more" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        onClick={() => onRemoveFolder(folder.name)}
+                        aria-label={`Delete folder ${folder.name}`}
+                        title={`Delete folder “${folder.name}”`}
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -619,7 +848,9 @@ export function Sidebar({
           items={
             contextMenu.type === 'feed'
               ? feedContextItems(contextMenu.feed)
-              : folderContextItems(contextMenu.name)
+              : contextMenu.type === 'folder'
+                ? folderContextItems(contextMenu.name)
+                : allContextItems()
           }
           onClose={() => setContextMenu(null)}
         />

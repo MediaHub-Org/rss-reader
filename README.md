@@ -89,8 +89,8 @@ Run the test suites (`npm run dev` for the first, `npm run build && npm run prev
 for the second):
 
 ```bash
-npm run test:e2e      # 46 checks against live feeds → test-artifacts/
-npm run test:pwa      # 16 installability + offline checks
+npm run test:e2e      # end-to-end smoke tests against bundled fixture feeds → test-artifacts/
+npm run test:pwa      # installability + offline checks
 ```
 
 ---
@@ -98,21 +98,37 @@ npm run test:pwa      # 16 installability + offline checks
 ## Features
 
 **Feeds** — subscribe by URL or by website (the alternate feed link is discovered
-automatically), validate before fetching, per-feed error state with retry, unsubscribe
-with confirmation, unread badges, favicons with a letter-avatar fallback.
+automatically), validate before fetching, per-feed error state, unsubscribe with
+confirmation, unread badges, favicons with a letter-avatar fallback.
 
-**Reading** — chronological list with infinite scroll (windowed rendering), article
-detail with sanitized HTML, relative-URL resolution against the article base URL,
-read/unread per article plus bulk mark read/unread, sort by newest / oldest / feed name,
-full-text search over the current view.
+**Folders & sidebar** — A–Z folders with feeds A–Z inside, filter a view by folder,
+create empty folders, add/rename/move/delete feeds and folders, drag-resize the
+sidebar (desktop), and a resizable toolbar with feed sort order and a single
+collapse/expand-all control. Collapsed folders persist across reloads. On mobile the
+feed list is an off-canvas drawer that closes after you pick something.
 
-**Portability** — export/import **OPML** (standard, subscriptions only) and a **JSON
-backup** (subscriptions *and* read status). Import validates the file, previews what it
-found, skips duplicates, and rejects invalid `javascript:` URLs.
+**Right-click actions** — feed, folder, article card and article-link context menus:
+open, refresh, mark read/unread, copy URL, rename, move, add a feed to a folder,
+collapse/expand, delete and more. Menus are keyboard-navigable and render at the
+cursor even over the transformed mobile drawer.
 
-**Media** — YouTube URLs are detected in titles, links and content (no API key; the id is
-parsed from the URL). By default videos open in a new tab; switch on *Embed YouTube
-videos* in Settings to render a `youtube-nocookie.com` iframe inline.
+**Reading** — card grid as the default view, links with source labels, article detail
+with sanitized HTML, relative-URL resolution against the article base URL, read/unread
+per article plus bulk mark read/unread, sort by newest / oldest / feed name, full-text
+search over the current view.
+
+**Portability** — export/import **OPML** (standard, subscriptions and folders including
+empty ones) and a **JSON backup** (subscriptions, folders *and* read status). Import
+validates the file, previews what it found, skips duplicates, and rejects invalid
+`javascript:` URLs. The **OPML XML** editor shows a diff (added / updated / removed)
+before replacing your subscriptions. **Manage** lists every feed and empty folder with
+select-all/none and inline deletion confirmation.
+
+**Media** — YouTube URLs are detected in titles, links and content (no API key; the id
+is parsed from the URL). Videos embed inline through `youtube-nocookie.com` by default;
+turn *Embed YouTube videos* off in Settings to open them in a new tab instead. An
+optional YouTube Data API key raises channel/playlist feeds from ~15 to 50 items.
+Podcast audio enclosures render an inline player with an inline card badge.
 
 **Customization** — light/dark/system theme, comfortable/compact list density, reader
 font size, hide-read filter. All persisted in `localStorage` and applied before first
@@ -147,14 +163,17 @@ src/
     fetchFeed.ts       layered CORS strategy + homepage → feed discovery
     sanitize.ts        DOMPurify config: allow-list, relative URLs, safe links
     youtube.ts         video-id extraction (watch, youtu.be, shorts, live, embed)
-    opml.ts            OPML + JSON export/import, XML escaping, validation
+    youtubeApi.ts      optional YouTube Data API path for channel/playlist feeds
+    opml.ts            OPML + JSON export/import, XML escaping, empty folders, validation
+    clipboard.ts       clipboard write with a legacy fallback
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts
   store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors
-  components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs, toasts
+  components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs, context menu, toasts
   styles/
     theme.css          design tokens: light/dark palettes, density, font size
     app.css            layout and components
+    responsive.css     breakpoints and touch/input capability queries
 ```
 
 ### Key decisions

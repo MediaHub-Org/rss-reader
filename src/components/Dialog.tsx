@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 interface DialogProps {
   open: boolean;
@@ -14,10 +14,21 @@ interface DialogProps {
 /**
  * Accessible modal dialog: role=dialog, aria-labelledby, focus moved in on open
  * and restored on close, Escape to dismiss, Tab cycled inside the dialog.
+ *
+ * The lifecycle effect deliberately depends only on `open`: `onClose` is often
+ * an inline function that gets a new identity on every parent render. Keeping
+ * it in the dependency list made the effect re-run (and steal focus back to
+ * the first control) while typing in an input or textarea.
  */
 export function Dialog({ open, title, onClose, children, footer, size = 'sm' }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const titleId = useId();
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +50,7 @@ export function Dialog({ open, title, onClose, children, footer, size = 'sm' }: 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panel) return;
@@ -71,7 +82,7 @@ export function Dialog({ open, title, onClose, children, footer, size = 'sm' }: 
       document.body.style.overflow = previousOverflow;
       restoreTo.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -86,12 +97,12 @@ export function Dialog({ open, title, onClose, children, footer, size = 'sm' }: 
         className={`dialog dialog--${size}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dialog-title"
+        aria-labelledby={titleId}
         ref={panelRef}
         tabIndex={-1}
       >
         <header className="dialog__header">
-          <h2 id="dialog-title" className="dialog__title">
+          <h2 id={titleId} className="dialog__title">
             {title}
           </h2>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">

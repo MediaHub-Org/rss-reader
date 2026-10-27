@@ -80,9 +80,10 @@ const feedOutline = (feed: ExportFeed, indent: string): string =>
  *
  * Feeds are grouped into nested folder outlines — folders A–Z, and the feeds
  * inside each folder A–Z — so the structure survives an export → import
- * round-trip (or a trip through another reader).
+ * round-trip (or a trip through another reader). `folders` carries explicitly
+ * created folders with no feeds yet, which would otherwise disappear.
  */
-export function exportOpml(feeds: Feed[]): string {
+export function exportOpml(feeds: Feed[], folders: string[] = []): string {
   const now = new Date().toUTCString();
   const byTitle = (a: Feed, b: Feed) => byName(a.title, b.title);
 
@@ -97,17 +98,20 @@ export function exportOpml(feeds: Feed[]): string {
     grouped.set(folder, [...(grouped.get(folder) ?? []), feed]);
   }
 
-  const folderOutlines = [...grouped.entries()]
-    .sort(([a], [b]) => byName(a, b))
-    .map(
-      ([folder, list]) =>
-        `    <outline text="${escapeXml(folder)}" title="${escapeXml(folder)}">\n` +
-        list
-          .sort(byTitle)
-          .map((feed) => feedOutline(feed, '      '))
-          .join('\n') +
-        `\n    </outline>`
+  const folderNames = new Set<string>(folders.map((name) => name.trim()).filter(Boolean));
+  for (const name of grouped.keys()) folderNames.add(name);
+
+  const folderOutlines = [...folderNames].sort(byName).map((folder) => {
+    const list = (grouped.get(folder) ?? []).slice().sort(byTitle);
+    if (!list.length) {
+      return `    <outline text="${escapeXml(folder)}" title="${escapeXml(folder)}" />`;
+    }
+    return (
+      `    <outline text="${escapeXml(folder)}" title="${escapeXml(folder)}">\n` +
+      list.map((feed) => feedOutline(feed, '      ')).join('\n') +
+      `\n    </outline>`
     );
+  });
 
   const looseOutlines = loose.sort(byTitle).map((feed) => feedOutline(feed, '    '));
 
@@ -125,7 +129,17 @@ ${[...folderOutlines, ...looseOutlines].join('\n')}
 }
 
 /** Full backup including read state. */
-export function exportJson(feeds: Feed[], readIds: Record<string, true>): string {
+export function exportJson(
+  feeds: Feed[],
+  readIds: Record<string, true>,
+  folders: string[] = []
+): string {
+  const folderNames = new Set<string>(folders.map((name) => name.trim()).filter(Boolean));
+  for (const feed of feeds) {
+    const folder = feed.folder?.trim();
+    if (folder) folderNames.add(folder);
+  }
+
   return JSON.stringify(
     {
       app: 'rss-reader',
@@ -138,6 +152,8 @@ export function exportJson(feeds: Feed[], readIds: Record<string, true>): string
         folder: f.folder,
         addedAt: f.addedAt,
       })),
+      // Empty folders have no feed to carry the name, so list them explicitly.
+      folders: [...folderNames].sort(byName),
       readIds: Object.keys(readIds),
     },
     null,
@@ -169,9 +185,12 @@ function parseOpml(text: string): ImportResult {
   /**
    * Walk the outline tree so folder nesting survives: a feed inside
    * <outline text="News"> inherits that folder, and deeper nesting is joined
-   * with " / " (e.g. "News / Tech"). A node without xmlUrl is a folder.
+   * with " / " (e.g. "News / Tech"). A node without xmlUrl is a folder;
+   * folder-only subtrees are recorded too, so empty folders round-trip.
    */
-  const walk = (node: Element, ancestors: string[]): void => {
+  const walk = (node: Element, ancestors: string[]): number => {
+    let count = 0;
+
     for (const child of Array.from(node.children)) {
       if (child.localName.toLowerCase() !== 'outline') continue;
 
@@ -195,20 +214,26 @@ function parseOpml(text: string): ImportResult {
           siteUrl: child.getAttribute('htmlUrl') || undefined,
           folder,
         });
+        count++;
         continue;
       }
 
       // Folder/group node: recurse with its name on the ancestor stack.
       const name = (child.getAttribute('title') || child.getAttribute('text') || '').trim();
-      walk(child, name ? [...ancestors, name] : ancestors);
+      const next = name ? [...ancestors, name] : ancestors;
+      const childCount = walk(child, next);
+      if (childCount === 0 && name) folderNames.add(next.join(' / '));
+      count += childCount;
     }
+
+    return count;
   };
 
   const body = doc.querySelector('body') ?? root;
   walk(body, []);
 
-  if (!feeds.length) {
-    throw new ImportError('No valid feed URLs were found in that OPML file.');
+  if (!feeds.length && !folderNames.size) {
+    throw new ImportError('No valid feed URLs or folders were found in that OPML file.');
   }
   return {
     feeds: sortImportedFeeds(feeds),
@@ -227,14 +252,26 @@ function parseJsonBackup(text: string): ImportResult {
   }
 
   const warnings: string[] = [];
-  const rawFeeds = Array.isArray(data?.feeds) ? data.feeds : null;
-  if (!rawFeeds) {
+  const hasFeeds = Array.isArray(data?.feeds);
+  const hasFolders = Array.isArray(data?.folders);
+  if (!hasFeeds && !hasFolders) {
     throw new ImportError('That JSON file is not an RSS Reader backup.');
   }
+  const rawFeeds: any[] = hasFeeds ? data.feeds : [];
 
   const feeds: ExportFeed[] = [];
   const folderNames = new Set<string>();
   const seen = new Set<string>();
+
+  // Explicit folder list first, so folders with no feeds survive.
+  if (hasFolders) {
+    for (const name of data.folders) {
+      if (typeof name !== 'string') continue;
+      const folder = name.trim();
+      if (folder) folderNames.add(folder);
+    }
+  }
+
   for (const entry of rawFeeds) {
     const url = normalizeUrl(String(entry?.url ?? ''));
     if (!url) {
@@ -258,7 +295,9 @@ function parseJsonBackup(text: string): ImportResult {
     for (const id of data.readIds) if (typeof id === 'string') readIds[id] = true;
   }
 
-  if (!feeds.length) throw new ImportError('No valid feed URLs were found in that backup.');
+  if (!feeds.length && !folderNames.size) {
+    throw new ImportError('No valid feed URLs or folders were found in that backup.');
+  }
   return {
     feeds: sortImportedFeeds(feeds),
     readIds,
@@ -274,7 +313,7 @@ export function importSubscriptions(text: string): ImportResult {
   if (!trimmed) throw new ImportError('That file is empty.');
 
   if (trimmed.startsWith('{')) return parseJsonBackup(trimmed);
-  if (/^<\?xml|^<opml|<!doctype opml/i.test(trimmed)) return parseOpml(trimmed);
+  if (trimmed.startsWith('<')) return parseOpml(trimmed);
 
   throw new ImportError('Unsupported file — expected an OPML or JSON backup.');
 }

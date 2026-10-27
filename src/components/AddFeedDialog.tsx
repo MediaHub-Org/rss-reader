@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/opml';
@@ -6,6 +6,8 @@ import { Dialog } from './Dialog';
 
 interface AddFeedDialogProps {
   open: boolean;
+  /** Preselect a folder (e.g. “Add feed” from a folder's context menu). */
+  initialFolder?: string;
   onClose: () => void;
 }
 
@@ -16,19 +18,30 @@ const SUGGESTIONS = [
   { label: 'NASA', url: 'https://www.nasa.gov/feed/' },
 ];
 
-export function AddFeedDialog({ open, onClose }: AddFeedDialogProps) {
+export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogProps) {
   const state = useStore();
   const [value, setValue] = useState('');
-  const [folder, setFolder] = useState('');
+  const [folder, setFolder] = useState(initialFolder ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Start each visit clean, seeded with the folder the dialog was opened from.
+  useEffect(() => {
+    if (!open) return;
+    setValue('');
+    setFolder(initialFolder ?? '');
+    setError(null);
+  }, [open, initialFolder]);
+
   const folders = useMemo(
     () =>
-      [...new Set(state.feeds.map((f) => f.folder?.trim()).filter(Boolean) as string[])].sort(
-        byName
-      ),
-    [state.feeds]
+      [
+        ...new Set([
+          ...state.folders,
+          ...state.feeds.map((f) => f.folder?.trim()).filter(Boolean) as string[],
+        ]),
+      ].sort(byName),
+    [state.feeds, state.folders]
   );
 
   const submit = async (raw: string) => {

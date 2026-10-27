@@ -10,6 +10,13 @@
   .article-card__toggle {
     opacity: 1;
   }
+
+  /* Right-click is not available there either; the row's “more” button must
+     stay visible so feed/folder actions are reachable. */
+  .feed-row__actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* Medium-narrow desktops / tablets (≤ 62.5rem / 1000px) */

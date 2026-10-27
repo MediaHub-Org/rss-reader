@@ -216,12 +216,11 @@
   width: auto;
 }
 
-.folder-row__toggle {
+/* A folder row has one click target: the row both filters and toggles its
+   disclosure state, so the caret is an indicator rather than a second button. */
+.folder-row__caret {
   flex: 0 0 auto;
   color: var(--faint);
-}
-
-.folder-row__toggle svg {
   transition: transform var(--transition);
 }
 
@@ -245,13 +244,38 @@
   padding-left: var(--sidebar-nested-indent);
 }
 
-.feed-row__remove {
+.feed-row__actions {
   position: absolute;
   right: var(--space-1);
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.0625rem;
+  border-radius: var(--radius-sm);
   background: var(--panel);
   box-shadow: var(--shadow-sm);
+  /* Rendered for every row (keyboard/touch reachability), revealed on hover,
+     focus, or when the row is the active view. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+
+.feed-item:hover > .feed-row__actions,
+.feed-item:focus-within > .feed-row__actions,
+.feed-item.is-active > .feed-row__actions,
+.folder-header:hover > .feed-row__actions,
+.folder-header:focus-within > .feed-row__actions,
+.folder-header.is-active > .feed-row__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.feed-row__actions .icon-button {
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 .badge {
@@ -585,6 +609,29 @@
 
 .context-menu__item:hover {
   background: var(--accent-soft);
+}
+
+.context-menu__item:focus-visible {
+  outline: none;
+  background: var(--accent-soft);
+}
+
+.context-menu__item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.context-menu__item:disabled:hover {
+  background: transparent;
+}
+
+.context-menu__item.is-danger {
+  color: var(--danger);
+}
+
+.context-menu__item.is-danger:hover,
+.context-menu__item.is-danger:focus-visible {
+  background: var(--danger-soft);
 }
 
 .context-menu__check {
@@ -1914,6 +1961,52 @@ kbd {
   padding: var(--space-1) var(--space-2);
 }
 
+.manage-folder__empty {
+  padding: var(--space-2) var(--space-3);
+  color: var(--faint);
+  font-size: var(--text-xs);
+  font-style: italic;
+}
+
+/* Inline confirmation: no second Dialog stacked over this one, and Enter
+   confirms because the destructive button receives focus. */
+.manage-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0.0625rem solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+}
+
+.manage-confirm__text {
+  flex: 1 1 16rem;
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.manage-confirm__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* OPML XML diff preview colours. */
+.import-preview__list .diff-added {
+  color: var(--success);
+}
+
+.import-preview__list .diff-updated {
+  color: var(--accent);
+}
+
+.import-preview__list .diff-removed {
+  color: var(--danger);
+}
+
 .manage-folder__feeds {
   list-style: none;
   margin: 0;
@@ -1984,6 +2077,11 @@ kbd {
   line-height: 1.5;
   resize: vertical;
   white-space: pre;
+}
+
+.opml-editor::placeholder {
+  color: var(--faint);
+  opacity: 0.75;
 }
 
 /* --------------------------------- Toasts --------------------------------- */

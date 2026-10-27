@@ -18,6 +18,7 @@ const STALE_AFTER_MS = 10 * 60 * 1000;
 export default function App() {
   const state = useStore();
   const [addOpen, setAddOpen] = useState(false);
+  const [addFolder, setAddFolder] = useState<string | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
   const [dataTab, setDataTab] = useState<DataTab>('import');
@@ -137,6 +138,7 @@ export default function App() {
         }
         case 'a': {
           event.preventDefault();
+          setAddFolder(undefined);
           setAddOpen(true);
           break;
         }
@@ -168,7 +170,14 @@ export default function App() {
 
       <div className="app__body">
         <Sidebar
-          onAddFeed={() => setAddOpen(true)}
+          onAddFeed={() => {
+            setAddFolder(undefined);
+            setAddOpen(true);
+          }}
+          onAddFeedInFolder={(folder) => {
+            setAddFolder(folder);
+            setAddOpen(true);
+          }}
           onUnsubscribe={setConfirmFeed}
           onRemoveFolder={setConfirmFolder}
           onClose={closeSidebar}
@@ -194,7 +203,14 @@ export default function App() {
         </div>
       </div>
 
-      <AddFeedDialog open={addOpen} onClose={() => setAddOpen(false)} />
+      <AddFeedDialog
+        open={addOpen}
+        initialFolder={addFolder}
+        onClose={() => {
+          setAddOpen(false);
+          setAddFolder(undefined);
+        }}
+      />
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
