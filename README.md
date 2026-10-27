@@ -104,9 +104,10 @@ confirmation, unread badges, favicons with a letter-avatar fallback.
 **Folders & sidebar** — A–Z folders with feeds A–Z inside, filter a view by folder,
 create empty folders, add/rename/move/delete feeds and folders, drag-resize the
 sidebar (desktop), and a resizable toolbar with feed sort order and a single
-collapse/expand-all control. Each folder row has two targets: its caret only
-expands/collapses the feed list, while the name filters the view by that folder
-(expanding it if it was collapsed), so reading never accidentally hides the list.
+collapse/expand-all control. Each folder row has two targets: its caret (on the
+left) is the **only** thing that expands or collapses the feed list, while the name
+filters the view by that folder without changing the collapse state, so clicking a
+collapsed folder never pops its list open and reading never hides it by accident.
 Collapsed folders persist across reloads. On mobile the feed list is an off-canvas
 drawer that closes after you pick something.
 

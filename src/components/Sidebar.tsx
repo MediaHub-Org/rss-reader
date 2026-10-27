@@ -212,12 +212,11 @@ export function Sidebar({
   };
 
   /**
-   * Two click targets per folder row:
-   *   caret                → toggle the feed list (never changes the view)
-   *   name/row             → filter by the folder, expanding it if collapsed
+   * The name is a plain filter: it never expands or collapses the folder.
+   * Disclosure belongs to the caret on the left, so clicking a collapsed
+   * folder filters its articles but leaves the feed list as it was.
    */
   const openFolder = (name: string) => {
-    if (isCollapsed(name)) setFolderCollapsed(name, false);
     selectFolder(name);
   };
 
@@ -461,51 +460,52 @@ export function Sidebar({
   };
 
   /**
-   * Reveal: expand the path to a feed or folder row (if collapsed) and
-   * scroll it into view, without changing what's selected as the active
-   * filter. Used both automatically (below) and from the toolbar's
-   * "Reveal active feed" button, for when the view is fully collapsed and
-   * you've lost track of where you are.
+   * Reveal: scroll a feed or folder row into view. Expanding the path is
+   * opt-in (`expand = true`) and only used by the explicit "Reveal active
+   * feed" button: plain navigation must never open a collapsed folder.
    */
-  const revealRow = (selector: string, folderName?: string) => {
-    if (folderName && isCollapsed(folderName)) setFolderCollapsed(folderName, false);
+  const revealRow = (selector: string, folderName?: string, expand = false) => {
+    if (expand && folderName && isCollapsed(folderName)) {
+      setFolderCollapsed(folderName, false);
+    }
     requestAnimationFrame(() => {
       navRef.current?.querySelector(selector)?.scrollIntoView({ block: 'nearest' });
     });
   };
 
-  const revealFeed = (feedId: string) => {
+  const revealFeed = (feedId: string, expand = false) => {
     const folderName = folders.find((f) => f.feeds.some((feed) => feed.id === feedId))?.name;
-    revealRow(`[data-feed-id="${CSS.escape(feedId)}"]`, folderName);
+    revealRow(`[data-feed-id="${CSS.escape(feedId)}"]`, folderName, expand);
   };
 
-  const revealFolder = (name: string) => {
-    revealRow(`[data-folder-name="${CSS.escape(name)}"]`, name);
+  const revealFolder = (name: string, expand = false) => {
+    revealRow(`[data-folder-name="${CSS.escape(name)}"]`, name, expand);
   };
 
   /** What "reveal" targets right now: the open article's feed, else the
    *  active filter (a feed, a folder view, or nothing for "All articles"). */
-  const revealActiveTarget = () => {
+  const revealActiveTarget = (expand = false) => {
     const article = state.ui.activeArticleId
       ? Object.values(state.articles)
           .flat()
           .find((a) => a.id === state.ui.activeArticleId)
       : null;
     if (article) {
-      revealFeed(article.feedId);
+      revealFeed(article.feedId, expand);
       return;
     }
     const folderName = folderNameFromViewId(state.ui.activeFeedId);
     if (folderName) {
-      revealFolder(folderName);
+      revealFolder(folderName, expand);
       return;
     }
     if (state.ui.activeFeedId && state.ui.activeFeedId !== ALL_FEEDS) {
-      revealFeed(state.ui.activeFeedId);
+      revealFeed(state.ui.activeFeedId, expand);
     }
   };
 
-  // Automatic: whenever the open article or the active filter changes.
+  // Automatic: keep the active row visible, but never change what is
+  // collapsed/expanded — that is the caret's job.
   useEffect(() => {
     revealActiveTarget();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -682,7 +682,7 @@ export function Sidebar({
             <button
               type="button"
               className="icon-button"
-              onClick={revealActiveTarget}
+              onClick={() => revealActiveTarget(true)}
               aria-label="Reveal active feed"
               title="Reveal active feed"
             >

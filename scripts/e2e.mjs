@@ -703,8 +703,15 @@ try {
   check('Only the caret collapses the folder, without changing the view', caretKeepsView);
   await firstFolderRow.click();
   check(
-    'Clicking a collapsed folder row expands and filters in one click',
-    (await firstFolderToggle.getAttribute('aria-expanded')) === 'true'
+    'Clicking a collapsed folder filters it without expanding',
+    (await firstFolderToggle.getAttribute('aria-expanded')) === 'false' &&
+      (await firstFolderRow.getAttribute('aria-current')) === 'page'
+  );
+  await firstFolderToggle.click();
+  check(
+    'Caret expands a filtered folder without changing the view',
+    (await firstFolderToggle.getAttribute('aria-expanded')) === 'true' &&
+      (await firstFolderRow.getAttribute('aria-current')) === 'page'
   );
 
   const folderToggle = page.locator('.sidebar__toolbar button[aria-label*="all folders"]');
