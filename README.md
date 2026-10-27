@@ -110,7 +110,9 @@ feed list is an off-canvas drawer that closes after you pick something.
 **Right-click actions** — feed, folder, article card and article-link context menus:
 open, refresh, mark read/unread, copy URL, rename, move, add a feed to a folder,
 collapse/expand, delete and more. Menus are keyboard-navigable and render at the
-cursor even over the transformed mobile drawer.
+cursor even over the transformed mobile drawer. “Move to folder…” opens a searchable
+picker (type to filter, ↑/↓ then Enter) instead of a menu that grows one row per
+folder; “New folder…” can create the destination on the spot.
 
 **Reading** — card grid as the default view, links with source labels, article detail
 with sanitized HTML, relative-URL resolution against the article base URL, read/unread
@@ -121,8 +123,10 @@ search over the current view.
 empty ones) and a **JSON backup** (subscriptions, folders *and* read status). Import
 validates the file, previews what it found, skips duplicates, and rejects invalid
 `javascript:` URLs. The **OPML XML** editor shows a diff (added / updated / removed)
-before replacing your subscriptions. **Manage** lists every feed and empty folder with
-select-all/none and inline deletion confirmation.
+before replacing your subscriptions. **Manage** splits into **Feeds** and **Folders**:
+each has its own select-all/none, **Move selected…** (same searchable picker) and
+**Delete selected**, with one combined inline confirmation. Moving folders merges them
+— their feeds go to the destination and the empty folder disappears.
 
 **Media** — YouTube URLs are detected in titles, links and content (no API key; the id
 is parsed from the URL). Videos embed inline through `youtube-nocookie.com` by default;
@@ -169,7 +173,7 @@ src/
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts
   store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors
-  components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs, context menu, toasts
+  components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs (folder picker included), context menu, toasts
   styles/
     theme.css          design tokens: light/dark palettes, density, font size
     app.css            layout and components

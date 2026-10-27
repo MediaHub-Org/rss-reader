@@ -469,6 +469,149 @@ export class Store {
   }
 
   /**
+   * Move several feeds at once, in a single state update. Feeds already in the
+   * destination are skipped, so the return value is the number that changed.
+   */
+  moveFeedsToFolder(feedIds: string[], folder: string | undefined): number {
+    const next = folder?.trim() || undefined;
+    const targets = new Set(feedIds);
+    let changed = 0;
+
+    const feeds = this.state.feeds.map((feed) => {
+      if (!targets.has(feed.id)) return feed;
+      if ((feed.folder?.trim() || undefined) === next) return feed;
+      changed += 1;
+      return { ...feed, folder: next };
+    });
+
+    if (!changed) return 0;
+    this.update({ feeds });
+    this.schedulePersist();
+    return changed;
+  }
+
+  /**
+   * Merge folders: every feed in `sources` moves to `target` (or becomes
+   * ungrouped when it is undefined) and the source folder records disappear.
+   * One update, one notification.
+   */
+  mergeFolders(
+    sources: string[],
+    target: string | undefined
+  ): { feeds: number; folders: number } {
+    const next = target?.trim() || undefined;
+    const sourceSet = new Set(
+      sources.map((name) => name.trim()).filter((name) => name && name !== next)
+    );
+    if (!sourceSet.size) return { feeds: 0, folders: 0 };
+
+    let moved = 0;
+    const feeds = this.state.feeds.map((feed) => {
+      if (!sourceSet.has(feed.folder?.trim() ?? '')) return feed;
+      moved += 1;
+      return { ...feed, folder: next };
+    });
+
+    const removedRecords = this.state.folders.filter((name) => sourceSet.has(name));
+    let folders = this.state.folders.filter((name) => !sourceSet.has(name));
+
+    // Keep an otherwise-empty destination visible after the merge.
+    if (next && !folders.includes(next) && !feeds.some((f) => f.folder === next)) {
+      folders = [...folders, next];
+    }
+
+    if (moved || removedRecords.length) {
+      const activeFolder = folderNameFromViewId(this.state.ui.activeFeedId);
+      const activeMoved = activeFolder !== null && sourceSet.has(activeFolder);
+
+      this.update({
+        feeds,
+        folders,
+        ui: activeMoved
+          ? {
+              ...this.state.ui,
+              activeFeedId: next ? folderViewId(next) : ALL_FEEDS,
+              activeArticleId: null,
+            }
+          : this.state.ui,
+      });
+      this.schedulePersist();
+    }
+
+    const collapsed = this.state.prefs.collapsedFolders;
+    const nextCollapsed = collapsed.filter((name) => !sourceSet.has(name));
+    if (nextCollapsed.length !== collapsed.length) {
+      this.setPreferences({ collapsedFolders: nextCollapsed });
+    }
+
+    const folderCount = removedRecords.length || sourceSet.size;
+    if (moved || folderCount) {
+      this.notify(
+        'success',
+        next
+          ? `Merged ${folderCount} folder${folderCount === 1 ? '' : 's'} into “${next}” (${
+              moved === 1 ? '1 feed' : `${moved} feeds`
+            })`
+          : `Removed ${folderCount} folder${folderCount === 1 ? '' : 's'}; ${moved} feed${
+              moved === 1 ? '' : 's'
+            } now ungrouped`
+      );
+    }
+
+    return { feeds: moved, folders: folderCount };
+  }
+
+  /**
+   * Delete several folders in one go: their feeds, their records, their
+   * collapsed state, and any view pointing at them. One notification.
+   */
+  removeFolders(folderNames: string[]): { folders: number; feeds: number } {
+    const targets = new Set(folderNames.map((name) => name.trim()).filter(Boolean));
+    if (!targets.size) return { folders: 0, feeds: 0 };
+
+    const affected = this.state.feeds.filter((feed) =>
+      targets.has(feed.folder?.trim() ?? '')
+    );
+    const namesWithFeeds = new Set(affected.map((feed) => feed.folder!.trim()));
+    const removedRecords = this.state.folders.filter((name) => targets.has(name));
+    const removed = affected.length
+      ? this.removeFeeds(
+          affected.map((feed) => feed.id),
+          { silent: true }
+        )
+      : 0;
+
+    const activeFolder = folderNameFromViewId(this.state.ui.activeFeedId);
+    const activeGone = activeFolder !== null && targets.has(activeFolder);
+
+    this.update({
+      folders: this.state.folders.filter((name) => !targets.has(name)),
+      ui: activeGone
+        ? { ...this.state.ui, activeFeedId: ALL_FEEDS, activeArticleId: null }
+        : this.state.ui,
+    });
+    this.schedulePersist();
+
+    const collapsed = this.state.prefs.collapsedFolders;
+    const nextCollapsed = collapsed.filter((name) => !targets.has(name));
+    if (nextCollapsed.length !== collapsed.length) {
+      this.setPreferences({ collapsedFolders: nextCollapsed });
+    }
+
+    const folderCount = new Set([...removedRecords, ...namesWithFeeds]).size;
+    if (folderCount) {
+      this.notify(
+        'success',
+        `Removed ${folderCount} folder${folderCount === 1 ? '' : 's'}${
+          removed ? ` (${removed} feed${removed === 1 ? '' : 's'})` : ''
+        }`
+      );
+    }
+
+    return { folders: folderCount, feeds: removed };
+  }
+
+  /**
    * Rename a folder: updates the explicit empty-folder record (if any) and
    * every feed currently in it. Blocks renaming onto an existing folder's
    * name, same collision rule as createFolder.

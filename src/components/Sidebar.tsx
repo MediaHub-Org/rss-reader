@@ -15,6 +15,7 @@ import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
 import { Dropdown, type DropdownOption } from './Dropdown';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
+import { FolderPickerDialog } from './FolderPickerDialog';
 
 type ContextTarget =
   | { type: 'feed'; feed: Feed; x: number; y: number }
@@ -83,6 +84,8 @@ export function Sidebar({
   const [newFolderName, setNewFolderName] = useState('');
   /** Feed to move once the “New folder…” flow (started from its menu) finishes. */
   const [moveAfterCreate, setMoveAfterCreate] = useState<string | null>(null);
+  /** Feed whose “Move to folder…” picker is open. */
+  const [moveFeed, setMoveFeed] = useState<Feed | null>(null);
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextTarget | null>(null);
@@ -325,11 +328,8 @@ export function Sidebar({
   const feedContextItems = (feed: Feed): ContextMenuItem[] => {
     const ids = (state.articles[feed.id] ?? []).map((article) => article.id);
     const unread = unreadCount(state, feed.id);
-    const otherFolders = folders
-      .map((folder) => folder.name)
-      .filter((name) => name !== feed.folder?.trim());
 
-    const items: ContextMenuItem[] = [
+    return [
       {
         icon: 'external',
         label: 'Open website',
@@ -359,36 +359,33 @@ export function Sidebar({
       { icon: 'copy', label: 'Copy feed URL', onSelect: () => void copyValue(feed.url, 'Feed URL') },
       { type: 'divider' },
       { icon: 'pencil', label: 'Rename feed', onSelect: () => startRenameFeed(feed) },
-      { type: 'label', label: 'Move to folder' },
+      // One searchable picker instead of one menu item per folder: the menu
+      // stays short no matter how many folders exist.
+      { icon: 'folder', label: 'Move to folder…', onSelect: () => setMoveFeed(feed) },
+      { icon: 'folderPlus', label: 'New folder…', onSelect: () => beginCreateFolder(feed.id) },
+      { type: 'divider' },
+      {
+        icon: 'trash',
+        label: 'Unsubscribe',
+        danger: true,
+        onSelect: () => onUnsubscribe(feed),
+      },
     ];
+  };
 
-    if (feed.folder) {
-      items.push({
-        icon: 'folder',
-        label: 'No folder',
-        onSelect: () => store.moveFeedToFolder(feed.id, undefined),
-      });
+  const pickFolderForFeed = (folder: string | undefined) => {
+    const feed = moveFeed;
+    setMoveFeed(null);
+    if (!feed) return;
+    const result = store.moveFeedToFolder(feed.id, folder);
+    if (!result.ok) {
+      store.notify('error', result.message ?? 'Could not move that feed.');
+      return;
     }
-    for (const name of otherFolders) {
-      items.push({
-        icon: 'folder',
-        label: name,
-        onSelect: () => store.moveFeedToFolder(feed.id, name),
-      });
-    }
-    items.push({
-      icon: 'folderPlus',
-      label: 'New folder…',
-      onSelect: () => beginCreateFolder(feed.id),
-    });
-    items.push({ type: 'divider' });
-    items.push({
-      icon: 'trash',
-      label: 'Unsubscribe',
-      danger: true,
-      onSelect: () => onUnsubscribe(feed),
-    });
-    return items;
+    store.notify(
+      'success',
+      folder ? `Moved “${feed.title}” to “${folder}”` : `Removed “${feed.title}” from its folder`
+    );
   };
 
   const folderContextItems = (name: string): ContextMenuItem[] => {
@@ -839,6 +836,15 @@ export function Sidebar({
         aria-orientation="vertical"
         aria-label="Resize sidebar"
         title="Drag to resize"
+      />
+
+      <FolderPickerDialog
+        open={moveFeed !== null}
+        title={moveFeed ? `Move “${moveFeed.title}” to…` : 'Move to folder'}
+        folders={folders.map((folder) => folder.name)}
+        current={moveFeed?.folder?.trim() || undefined}
+        onClose={() => setMoveFeed(null)}
+        onPick={pickFolderForFeed}
       />
 
       {contextMenu && (

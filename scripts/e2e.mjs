@@ -436,6 +436,28 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.context-menu', { state: 'detached' });
 
+  /* ------- feed context menu → searchable “Move to folder…” picker ------ */
+  await page.locator('.sidebar .feed-item').first().click({ button: 'right' });
+  await page.waitForSelector('.context-menu');
+  await page.click('.context-menu__item:has-text("Move to folder")');
+  await page.waitForSelector('.folder-picker__list');
+  check('Feed context menu opens the searchable folder picker', true);
+  await page.fill('.folder-picker__search input', 'zeb');
+  const pickerLabels = await page.$$eval('.folder-picker__option .folder-picker__label', (nodes) =>
+    nodes.map((node) => node.textContent)
+  );
+  check(
+    'Folder picker filters the list as you type',
+    pickerLabels.length === 1 && /Zebra/.test(pickerLabels[0] || ''),
+    pickerLabels.join(', ')
+  );
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.folder-picker', { state: 'detached' });
+  const movedByPicker = await page
+    .locator('.sidebar .folder-group:has-text("Zebra Video") .feed-item')
+    .count();
+  check('Enter in the picker moves the feed', movedByPicker >= 1, `${movedByPicker} in Zebra Video`);
+
   /* ------------------- Manage (select all/none/folder) ----------------- */
   await openDataTab('Manage');
   await page.waitForSelector('#panel-manage');
@@ -449,6 +471,54 @@ try {
     `${allCountText?.trim()} → ${noneCountText?.trim()}`
   );
 
+  /* ------------------- bulk move feeds from Manage ---------------------- */
+  const manageFeedChecks = page.locator('#manage-feeds .manage-item input[type="checkbox"]');
+  const feedsToMove = Math.min(2, await manageFeedChecks.count());
+  for (let i = 0; i < feedsToMove; i += 1) await manageFeedChecks.nth(i).check();
+  await page.click('#manage-feeds button:has-text("Move selected")');
+  await page.waitForSelector('.folder-picker__list');
+  check('Manage offers bulk move through the same picker', true);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.folder-picker', { state: 'detached' });
+  check(
+    'Escape closes only the stacked picker, not the dialog under it',
+    (await page.locator('#panel-manage').count()) === 1
+  );
+  await page.click('#manage-feeds button:has-text("Move selected")');
+  await page.waitForSelector('.folder-picker__list');
+  await page.fill('.folder-picker__search input', 'zebra');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.folder-picker', { state: 'detached' });
+  const zebraFeeds = await page
+    .locator('.sidebar .folder-group:has-text("Zebra Video") .feed-item')
+    .count();
+  check('Bulk move puts every selected feed in the folder', zebraFeeds >= feedsToMove, `${zebraFeeds} feeds in Zebra Video`);
+
+  /* ----------------------- folders tab (bulk) --------------------------- */
+  await page.click('#manage-tab-folders');
+  await page.waitForSelector('#manage-folders');
+  await page.click('#manage-folders button:has-text("Select all")');
+  const foldersSelected = (await page.textContent('#manage-folders .manage-toolbar__count'))?.trim();
+  check('Folders tab supports multiple selection', /^[1-9]\d* selected$/.test(foldersSelected || ''), foldersSelected || '');
+  await page.click('#manage-folders button:has-text("Select none")');
+
+  /* multi-folder delete: combined confirmation, cancelled here so the rest of
+     the suite keeps its folders */
+  const folderRowChecks = page.locator('#manage-folders .manage-folder-row input[type="checkbox"]');
+  await folderRowChecks.nth(0).check();
+  await folderRowChecks.nth(1).check();
+  await page.click('#manage-folders button:has-text("Delete selected")');
+  await page.waitForSelector('.manage-confirm');
+  const multiDeleteText = (await page.textContent('.manage-confirm__text'))?.trim();
+  check(
+    'Deleting several folders shows one combined confirmation',
+    /2 folders/.test(multiDeleteText || ''),
+    multiDeleteText
+  );
+  await page.click('.manage-confirm button:has-text("Cancel")');
+  await page.waitForSelector('.manage-confirm', { state: 'detached' });
+  await page.click('#manage-folders button:has-text("Select none")');
+
   const foldersBeforeDelete = await page.locator('.sidebar .folder-group').count();
   await page.click('.manage-folder__delete >> nth=0');
   await page.waitForSelector('.manage-confirm');
@@ -461,6 +531,31 @@ try {
   );
   const foldersRemaining = await page.locator('.sidebar .folder-group').count();
   check('Delete folder removes the folder and its feeds', foldersRemaining === foldersBeforeDelete - 1, `${foldersRemaining} folder(s) left`);
+
+  /* ------------------ merge a folder into another one ------------------- */
+  const sourceFolder = (
+    await page.locator('#manage-folders .manage-folder-row .manage-folder__name').first().textContent()
+  )?.trim();
+  const foldersBeforeMerge = await page.locator('.sidebar .folder-group').count();
+  await page.locator('#manage-folders .manage-folder-row').first().locator('input[type="checkbox"]').check();
+  await page.click('#manage-folders button:has-text("Move selected")');
+  await page.waitForSelector('.folder-picker__list');
+  const mergeOptions = await page.$$eval('.folder-picker__option .folder-picker__label', (nodes) =>
+    nodes.map((node) => node.textContent || '')
+  );
+  check(
+    'Folder merge excludes the folders being moved',
+    Boolean(sourceFolder) && !mergeOptions.includes(sourceFolder),
+    mergeOptions.join(', ')
+  );
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.folder-picker', { state: 'detached' });
+  const foldersAfterMerge = await page.locator('.sidebar .folder-group').count();
+  check(
+    'Merging a folder removes it and keeps its feeds',
+    foldersAfterMerge === foldersBeforeMerge - 1,
+    `${foldersBeforeMerge} → ${foldersAfterMerge}`
+  );
 
   /* ----------------------- OPML XML live editor ------------------------ */
   await page.click('#tab-xml');

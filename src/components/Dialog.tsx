@@ -9,6 +9,12 @@ interface DialogProps {
   footer?: ReactNode;
   /** Extra class for sizing (wide dialogs for settings/import). */
   size?: 'sm' | 'md' | 'lg';
+  /**
+   * Yield Escape/Tab handling to a dialog stacked on top of this one. Without
+   * it, two open dialogs both listen on `document` and one Escape would close
+   * both, and each would fight over the Tab cycle.
+   */
+  suspended?: boolean;
 }
 
 /**
@@ -20,15 +26,28 @@ interface DialogProps {
  * it in the dependency list made the effect re-run (and steal focus back to
  * the first control) while typing in an input or textarea.
  */
-export function Dialog({ open, title, onClose, children, footer, size = 'sm' }: DialogProps) {
+export function Dialog({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+  size = 'sm',
+  suspended = false,
+}: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
+  const suspendedRef = useRef(suspended);
   const titleId = useId();
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    suspendedRef.current = suspended;
+  }, [suspended]);
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +67,7 @@ export function Dialog({ open, title, onClose, children, footer, size = 'sm' }: 
     (focusable ?? panel)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (suspendedRef.current) return;
       if (event.key === 'Escape') {
         event.stopPropagation();
         onCloseRef.current();
