@@ -95,6 +95,29 @@ npm run test:pwa      # installability + offline checks
 
 ---
 
+## Desktop app (Tauri)
+
+The same UI ships as a native desktop app (Tauri 2 + the system WebView). There is
+no Node process, no local server and no CORS proxy at runtime: feed requests are made
+from Rust (`fetch_feed`) with the same SSRF/HTTPS/size guards as the web proxy, and
+external links open in your default browser.
+
+```bash
+npm run desktop:dev            # dev window, hot reload
+npm run desktop:build          # Windows installer → src-tauri/target/release/bundle/nsis/
+```
+
+Prerequisites: Rust (MSVC toolchain) and WebView2 on Windows. Linux/macOS builds use
+the same commands on those systems (WebKitGTK / WKWebView; Linux media codecs are the
+one thing to verify per distro). The Windows installer is unsigned for now, so
+SmartScreen may ask for confirmation.
+
+The desktop origin is different from `localhost:4173`, so the first run starts empty.
+Export a **full backup** from the web/PWA version and import it to keep feeds,
+folders, read state, preferences and cached articles.
+
+---
+
 ## Features
 
 **Feeds** — subscribe by URL or by website (the alternate feed link is discovered
@@ -131,7 +154,9 @@ forward still reaches the article afterwards. Jumping between articles with `j`/
 reuses one history entry, so Back always means “back to the list”, not “previous article”.
 
 **Portability** — export/import **OPML** (standard, subscriptions and folders including
-empty ones) and a **JSON backup** (subscriptions, folders *and* read status). Import
+empty ones) and a **full JSON backup** (subscriptions, folders, read status,
+preferences *and* every cached article, so a new device/origin can be rebuilt
+without refetching; the YouTube API key is deliberately not included). Import
 validates the file, previews what it found, skips duplicates, and rejects invalid
 `javascript:` URLs. The **OPML XML** editor shows a diff (added / updated / removed)
 before replacing your subscriptions. **Manage** splits into **Feeds** and **Folders**:
@@ -178,6 +203,10 @@ focus rings, keyboard navigation throughout.
 server/
   proxy-lib.mjs        shared fetch proxy: validation, SSRF guard, HTTPS upgrade, size cap
   proxy.mjs            standalone proxy server (`npm run proxy`)
+src-tauri/
+  src/fetch.rs         desktop feed fetch: HTTPS-first, SSRF guard, redirect/time/size caps
+  src/main.rs          native window, save dialog and external-link opener
+  tauri.conf.json      window, CSP, installer metadata
 src/
   lib/
     feedParser.ts      rss-parser wrapper → normalized Feed/Article types
@@ -186,8 +215,9 @@ src/
     youtube.ts         video-id extraction (watch, youtu.be, shorts, live, embed)
     embeds.ts          provider detection + keyless embed URLs (Vimeo, Spotify, …, YouTube)
     youtubeApi.ts      optional YouTube Data API path for channel/playlist feeds
-    opml.ts            OPML + JSON export/import, XML escaping, empty folders, validation
+    opml.ts            OPML + full JSON backup (incl. cached articles), validation
     clipboard.ts       clipboard write with a legacy fallback
+    desktop.ts         Tauri bridge: native save, external links, environment check
     viewHistory.ts     browser-history bridge: back/forward across views (no router)
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts
@@ -203,7 +233,9 @@ src/
 
 **No backend.** Everything is client-side; state lives in `localStorage`
 (subscriptions, read status, preferences) and IndexedDB (cached articles), with a quota
-guard that evicts the cache before it can lose your subscriptions.
+guard that evicts the cache before it can lose your subscriptions. The web build uses
+the small local proxy only when CORS blocks a feed; the desktop build makes the same
+request natively, with no server at all.
 
 **CORS: layered fetch.** Each feed fetch tries, in order:
 

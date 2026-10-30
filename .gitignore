@@ -1,6 +1,8 @@
 node_modules/
 dist/
 test-artifacts/
+src-tauri/target/
+src-tauri/gen/schemas/
 *.log
 *.tsbuildinfo
 .DS_Store

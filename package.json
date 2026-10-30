@@ -12,10 +12,15 @@
     "typecheck": "tsc -b --noEmit",
     "test:e2e": "node scripts/e2e.mjs",
     "test:pwa": "node scripts/verify-pwa.mjs",
+    "desktop:dev": "tauri dev",
+    "desktop:check": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "desktop:build": "tauri build",
+    "desktop:build:debug": "tauri build --debug",
     "icons": "node scripts/make-icons.mjs",
     "proxy": "node server/proxy.mjs"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.12.4",
     "dompurify": "^3.2.4",
     "events": "^3.3.0",
     "react": "^18.3.1",
@@ -23,6 +28,7 @@
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^22.20.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

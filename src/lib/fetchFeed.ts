@@ -11,6 +11,7 @@
  */
 import { looksLikeFeed, parseFeedXml, type ParseResult } from './feedParser';
 import { extractYouTubeFeedTarget, fetchYouTubeChannelFeed } from './youtubeApi';
+import { invokeDesktop, isDesktopApp } from './desktop';
 
 export const PROXY_URL: string | undefined =
   (import.meta.env.VITE_PROXY_URL as string | undefined) || undefined;
@@ -21,7 +22,7 @@ const PUBLIC_PROXIES = [
   (url: string) => `https://r.jina.ai/${url}`, // last resort: returns extracted text
 ];
 
-export type Via = 'direct' | 'local-proxy' | 'public-proxy';
+export type Via = 'native' | 'direct' | 'local-proxy' | 'public-proxy';
 
 export interface FetchFeedResult {
   body: string;
@@ -43,6 +44,26 @@ export class FeedFetchError extends Error {
 
 /** Fetch raw text, trying each strategy in turn. */
 async function getText(url: string): Promise<{ text: string; via: Via; finalUrl: string }> {
+  // Desktop: one native request, no CORS and no third-party proxy.
+  if (isDesktopApp()) {
+    try {
+      const result = await invokeDesktop<{
+        body: string;
+        finalUrl: string;
+        status: number;
+        contentType: string;
+      }>('fetch_feed', { url });
+      if (!result.body.trim()) {
+        throw new FeedFetchError('The feed returned an empty response.', result.status);
+      }
+      return { text: result.body, via: 'native', finalUrl: result.finalUrl || url };
+    } catch (err) {
+      if (err instanceof FeedFetchError) throw err;
+      const message = typeof err === 'string' ? err : String((err as Error)?.message ?? err);
+      throw new FeedFetchError(`Could not fetch this feed (${message}).`);
+    }
+  }
+
   const attempts: Array<{ via: Via; target: string; init?: RequestInit }> = [
     { via: 'direct', target: url },
     { via: 'local-proxy', target: `${PROXY_URL || '/proxy'}?url=${encodeURIComponent(url)}` },
