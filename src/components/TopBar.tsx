@@ -31,6 +31,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         sort: state.ui.sort,
         query: state.ui.query,
         hideRead: state.prefs.hideRead,
+        searchAll: state.ui.searchAllFeeds,
       }),
     [state]
   );
@@ -62,6 +63,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         <p className="topbar__meta">
           {visible.length} {visible.length === 1 ? 'article' : 'articles'}
           {unreadInView > 0 ? ` · ${unreadInView} unread` : ''}
+          {state.ui.query && state.ui.searchAllFeeds ? ' · all feeds' : ''}
         </p>
       </div>
 

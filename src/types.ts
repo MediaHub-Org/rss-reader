@@ -106,6 +106,8 @@ export interface Article {
   summary: string;
   /** Feed-provided HTML, relative URLs already resolved, sanitized on render. */
   contentHtml: string;
+  /** Lower-cased plain text for full-text search (optional for older cache). */
+  searchText?: string;
   author?: string;
   publishedAt: number;
   /** Best still image for the card (enclosure / media:content / first <img>). */
@@ -132,6 +134,8 @@ export interface UiState {
   activeArticleId: string | null;
   sort: SortMode;
   query: string;
+  /** When true, a non-empty query searches every feed, not just the view. */
+  searchAllFeeds: boolean;
   sidebarOpen: boolean;
 }
 

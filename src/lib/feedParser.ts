@@ -27,9 +27,9 @@ const parser = new Parser({
 type RawItem = Record<string, any>;
 type RawFeed = Record<string, any>;
 
-/** Strip markup down to a readable plain-text excerpt. */
-export function toExcerpt(html: string, limit = 240): string {
-  const text = html
+/** Strip markup down to readable plain text. */
+export function toPlainText(html: string): string {
+  return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
@@ -41,6 +41,11 @@ export function toExcerpt(html: string, limit = 240): string {
     .replace(/&#39;/gi, "'")
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Strip markup down to a readable plain-text excerpt. */
+export function toExcerpt(html: string, limit = 240): string {
+  const text = toPlainText(html);
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
@@ -161,6 +166,12 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
       ? `${html}<figure class="feed-image"><img src="${image}" alt="" loading="lazy"></figure>`
       : html;
 
+  const author =
+    pickString(item.author) ?? pickString(item['dcCreator']) ?? pickString(item.creator);
+  const searchText = `${title}\n${toPlainText(decoratedHtml)}\n${author ?? ''}`
+    .slice(0, 60_000)
+    .toLowerCase();
+
   return {
     id: articleId(feedId, { guid, link, title, publishedAt, youtubeId }),
     feedId,
@@ -168,7 +179,8 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
     link,
     summary: toExcerpt(decoratedHtml || title),
     contentHtml: decoratedHtml,
-    author: pickString(item.author) ?? pickString(item['dcCreator']) ?? pickString(item.creator),
+    searchText,
+    author,
     publishedAt,
     thumbnail: image ?? (youtubeId ? thumbnailUrl(youtubeId) : undefined),
     youtubeId,

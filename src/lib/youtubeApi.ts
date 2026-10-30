@@ -111,6 +111,7 @@ export async function fetchYouTubeChannelFeed(
       const publishedAt = pickDate(item.contentDetails?.videoPublishedAt, snippet.publishedAt);
       const description = typeof snippet.description === 'string' ? snippet.description : '';
       const contentHtml = description ? `<p>${escapeHtml(description).replace(/\n/g, '<br>')}</p>` : '';
+      const author = snippet.videoOwnerChannelTitle || snippet.channelTitle;
 
       return {
         id: articleId(feedId, { youtubeId: videoId, title, publishedAt }),
@@ -119,7 +120,8 @@ export async function fetchYouTubeChannelFeed(
         link: watchUrl(videoId),
         summary: toExcerpt(description || title),
         contentHtml,
-        author: snippet.videoOwnerChannelTitle || snippet.channelTitle,
+        searchText: `${title}\n${description}\n${author ?? ''}`.slice(0, 60_000).toLowerCase(),
+        author,
         publishedAt,
         thumbnail: thumbnailUrl(videoId),
         youtubeId: videoId,

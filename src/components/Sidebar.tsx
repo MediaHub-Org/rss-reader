@@ -643,13 +643,31 @@ export function Sidebar({
           ref={searchRef}
           type="search"
           className="search__input"
-          placeholder="Search articles"
+          placeholder="Search articles (full text)"
           aria-label="Search articles"
           value={state.ui.query}
           onChange={(event) => store.setQuery(event.target.value)}
           onKeyDown={onSearchKey}
           spellCheck={false}
         />
+        <button
+          type="button"
+          className={`search__scope ${state.ui.searchAllFeeds ? 'is-active' : ''}`}
+          aria-pressed={state.ui.searchAllFeeds}
+          aria-label={
+            state.ui.searchAllFeeds
+              ? 'Search current view instead of all feeds'
+              : 'Search all feeds instead of the current view'
+          }
+          title={
+            state.ui.searchAllFeeds
+              ? 'Searching all feeds — click for current view'
+              : 'Searching current view — click for all feeds'
+          }
+          onClick={() => store.setSearchAllFeeds(!state.ui.searchAllFeeds)}
+        >
+          {state.ui.searchAllFeeds ? 'All' : 'View'}
+        </button>
       </div>
 
       <div className="sidebar__toolbar">

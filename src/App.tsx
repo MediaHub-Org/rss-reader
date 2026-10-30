@@ -83,6 +83,16 @@ export default function App() {
     [state]
   );
 
+  /* Opening or switching an article starts at the top of the reading pane,
+     even when the pane element itself stays mounted in the split layout. */
+  useEffect(() => {
+    if (!state.ui.activeArticleId) return;
+    const pane = document.querySelector<HTMLElement>(
+      '.content-area__detail, .content-area'
+    );
+    pane?.scrollTo({ top: 0 });
+  }, [state.ui.activeArticleId]);
+
   /* desktop tray: close-to-tray preference, login item, unread tooltip and
      the tray's "Refresh feeds" action */
   useEffect(() => {
@@ -123,6 +133,7 @@ export default function App() {
         sort: state.ui.sort,
         query: state.ui.query,
         hideRead: state.prefs.hideRead,
+        searchAll: state.ui.searchAllFeeds,
       }),
     [state]
   );
@@ -231,6 +242,7 @@ export default function App() {
       className="app"
       data-sidebar-open={state.ui.sidebarOpen}
       data-sidebar-collapsed={state.prefs.sidebarCollapsed}
+      data-article-open={Boolean(state.ui.activeArticleId)}
     >
       <a className="skip-link" href="#main-content">
         Skip to content
@@ -261,11 +273,18 @@ export default function App() {
             onSettings={() => setSettingsOpen(true)}
           />
 
-          <main className="content-area" id="main-content" tabIndex={-1}>
-            {state.ui.activeArticleId ? (
-              <ArticleDetail />
-            ) : (
+          <main
+            className={`content-area ${state.ui.activeArticleId ? 'content-area--split' : ''}`}
+            id="main-content"
+            tabIndex={-1}
+          >
+            <div className="content-area__list">
               <ArticleList onAddFeed={() => setAddOpen(true)} onImport={() => setDataOpen(true)} />
+            </div>
+            {state.ui.activeArticleId && (
+              <div className="content-area__detail">
+                <ArticleDetail />
+              </div>
             )}
           </main>
         </div>

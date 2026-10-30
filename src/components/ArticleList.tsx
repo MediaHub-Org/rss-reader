@@ -28,6 +28,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
         sort: state.ui.sort,
         query: state.ui.query,
         hideRead: state.prefs.hideRead,
+        searchAll: state.ui.searchAllFeeds,
       }),
     [state]
   );

@@ -36,6 +36,20 @@ const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
 
+/** The split layout keeps the grid mounted; use the app flag to know the view. */
+const waitForList = () =>
+  page.waitForFunction(
+    () => document.querySelector('.app')?.getAttribute('data-article-open') === 'false',
+    undefined,
+    { timeout: 5_000 }
+  );
+const waitForDetail = () =>
+  page.waitForFunction(
+    () => document.querySelector('.app')?.getAttribute('data-article-open') === 'true',
+    undefined,
+    { timeout: 5_000 }
+  );
+
 /**
  * Settings is reached from the top bar now (the old sidebar footer is gone);
  * Import/Export/Manage live in Settings → Data.
@@ -116,6 +130,11 @@ try {
   /* --------------------------- article detail -------------------------- */
   await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail .content');
+  check(
+    'Wide desktop keeps the list and article side by side',
+    (await page.locator('.content-area--split .article-grid').count()) === 1 &&
+      (await page.locator('.content-area--split .detail').count()) === 1
+  );
   const html = await page.innerHTML('.detail .content');
   check('Article content rendered', html.trim().length > 100, `${html.length} chars`);
   check('No <script> injected from feed HTML', !/<script/i.test(html));
@@ -144,6 +163,7 @@ try {
 
   /* read state — opening the article already marked it read */
   await page.click('.detail .ghost-button:has-text("Back")');
+  await waitForList();
   await page.waitForSelector('.article-grid');
   const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');
   check('Read state reflected in list', /is-read/.test(firstRowRead || ''), firstRowRead);
@@ -204,7 +224,37 @@ try {
   await page.fill('.search__input', 'zzzzz-no-match-zzzzz');
   const noMatch = await page.textContent('.empty-state h2').catch(() => '');
   check('Search shows empty state for no matches', /No matches/i.test(noMatch || ''), noMatch?.trim());
+  await page.fill('.search__input', 'comfortably');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
+  const bodyMatch = (await page.textContent('.article-card__title'))?.trim();
+  check(
+    'Search includes article body text',
+    /Fixture story two/i.test(bodyMatch || ''),
+    bodyMatch || ''
+  );
   await page.fill('.search__input', '');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 1);
+
+  await page.click('.sidebar .feed-row:has-text("BBC")');
+  await page.waitForSelector('.article-card');
+  await page.fill('.search__input', 'comfortably');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 0);
+  check(
+    'Search defaults to the current view',
+    (await page.getAttribute('.search__scope', 'aria-pressed')) === 'false'
+  );
+  await page.click('.search__scope');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
+  const scopedMatch = (await page.textContent('.article-card__title'))?.trim();
+  check(
+    'Search all feeds finds body matches outside the current view',
+    /Fixture story two/i.test(scopedMatch || ''),
+    scopedMatch || ''
+  );
+  await page.click('.search__scope');
+  await page.fill('.search__input', '');
+  await page.click('.sidebar .feed-row:has-text("All articles")');
+  await page.waitForSelector('.article-card');
   await pickSort('Newest first');
 
   /* ------------------------- theme + settings -------------------------- */
@@ -462,6 +512,7 @@ try {
   await page.waitForSelector('.detail');
   check('Keyboard j opens an article', true);
   await page.keyboard.press('Escape');
+  await waitForList();
   await page.waitForSelector('.article-grid');
   check('Escape returns to list', true);
 
@@ -470,10 +521,12 @@ try {
   // history traversal covers them.
   const browserBackToGrid = async () => {
     await page.evaluate(() => window.history.back());
+    await waitForList();
     await page.waitForSelector('.article-grid');
   };
   const browserForwardToDetail = async () => {
     await page.evaluate(() => window.history.forward());
+    await waitForDetail();
     await page.waitForSelector('.detail');
   };
 
@@ -493,7 +546,7 @@ try {
   // Escape must step back through the same stack, not push a duplicate entry,
   // or forward would not return to the article.
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.article-grid');
+  await waitForList();
   await browserForwardToDetail();
   check('Escape reuses history, so forward still reaches the article', true);
   await browserBackToGrid();
@@ -541,7 +594,7 @@ try {
   );
   const secondArticleTitle = (await page.textContent('.detail__title'))?.trim();
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.article-grid');
+  await waitForList();
   check(
     'Escape from a j/k-opened article returns to the list',
     Boolean(secondArticleTitle) && secondArticleTitle !== firstArticleTitle,

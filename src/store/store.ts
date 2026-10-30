@@ -19,6 +19,7 @@ import { resolveImportedFeedId } from '../lib/feedId';
 import { isRetryDue, retryDelayMs } from '../lib/backoff';
 import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { queueNewArticles } from '../lib/notifications';
+import { articleMatches } from '../lib/search';
 import { normalizeFeedUrl } from '../lib/url';
 import {
   loadFeeds,
@@ -53,6 +54,7 @@ function initialState(): AppState {
       activeArticleId: null,
       sort: 'date-desc',
       query: '',
+      searchAllFeeds: false,
       sidebarOpen: false,
     },
     toasts: [],
@@ -1053,6 +1055,10 @@ export class Store {
     this.update({ ui: { ...this.state.ui, query } });
   }
 
+  setSearchAllFeeds(searchAllFeeds: boolean): void {
+    this.update({ ui: { ...this.state.ui, searchAllFeeds } });
+  }
+
   setSidebarOpen(sidebarOpen: boolean): void {
     this.update({ ui: { ...this.state.ui, sidebarOpen } });
   }
@@ -1080,31 +1086,37 @@ export function unreadCount(state: AppState, feedId: string): number {
 /** Every article in scope (one feed, or all), filtered, sorted, and query-matched. */
 export function selectArticles(
   state: AppState,
-  options: { feedId: string | null; sort: SortMode; query: string; hideRead?: boolean }
+  options: {
+    feedId: string | null;
+    sort: SortMode;
+    query: string;
+    hideRead?: boolean;
+    searchAll?: boolean;
+  }
 ): Article[] {
   const feedId = options.feedId ?? ALL_FEEDS;
   const folderName = folderNameFromViewId(feedId);
-  const source =
-    feedId === ALL_FEEDS
-      ? Object.values(state.articles).flat()
-      : folderName !== null
-        ? state.feeds
-            .filter((f) => f.folder === folderName)
-            .flatMap((f) => state.articles[f.id] ?? [])
-        : (state.articles[feedId] ?? []);
+  const needle = options.query.trim();
 
-  const needle = options.query.trim().toLowerCase();
+  // A query with "all feeds" ignores the sidebar filter; with an empty query
+  // the scope button has no effect.
+  const source =
+    needle && options.searchAll
+      ? Object.values(state.articles).flat()
+      : feedId === ALL_FEEDS
+        ? Object.values(state.articles).flat()
+        : folderName !== null
+          ? state.feeds
+              .filter((f) => f.folder === folderName)
+              .flatMap((f) => state.articles[f.id] ?? [])
+          : (state.articles[feedId] ?? []);
+
   let list = source;
 
   if (options.hideRead) list = list.filter((a) => !state.readIds[a.id]);
 
   if (needle) {
-    list = list.filter(
-      (a) =>
-        a.title.toLowerCase().includes(needle) ||
-        a.summary.toLowerCase().includes(needle) ||
-        (a.author ?? '').toLowerCase().includes(needle)
-    );
+    list = list.filter((article) => articleMatches(article, needle));
   }
 
   const feedTitle = (id: string) => state.feeds.find((f) => f.id === id)?.title ?? '';

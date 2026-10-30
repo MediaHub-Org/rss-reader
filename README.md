@@ -166,8 +166,10 @@ folder; “New folder…” can create the destination on the spot.
 
 **Reading** — card grid as the default view, links with source labels, article detail
 with sanitized HTML, relative-URL resolution against the article base URL, read/unread
-per article plus bulk mark read/unread, sort by newest / oldest / feed name, full-text
-search over the current view.
+per article plus bulk mark read/unread, sort by newest / oldest / feed name, and
+full-text search over titles, summaries and article bodies with a **View / All feeds**
+scope. On wide screens the list and article stay side by side in two panes; narrow
+windows keep the single-pane list ⇄ detail flow.
 
 **History** — the browser's own back/forward works inside the reader, including a
 mouse's side buttons, `Alt+←`/`Alt+→` and the back swipe on Android: it closes the open
@@ -259,6 +261,7 @@ src/
     viewHistory.ts     browser-history bridge: back/forward across views (no router)
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts, feedId.ts
+    search.ts          full-text matching (precomputed + legacy fallback)
   store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors
   components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs (folder picker included), context menu, toasts
   styles/
@@ -328,7 +331,6 @@ otherwise make CORS-mode subresources miss the cache.
   moves all of them.
 - Periodic refresh is 15 minutes while the tab is visible; feeds are also refreshed on
   launch.
-- Article view is single-pane (list ⇄ detail); a two-pane desktop layout is a natural
-  next step.
+- Article view is single-pane below 1100 px; wide windows use the two-pane layout.
 - Feed icons depend on the site's favicon resolving; failures fall back to a letter
   avatar.

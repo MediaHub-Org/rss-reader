@@ -130,6 +130,7 @@ function cleanBackupArticle(raw: unknown, feedId: string, oldFeedId: string): Ar
     link: stringValue(raw.link),
     summary: stringValue(raw.summary) ?? '',
     contentHtml: stringValue(raw.contentHtml) ?? '',
+    searchText: stringValue(raw.searchText),
     author: stringValue(raw.author),
     publishedAt: Number.isFinite(publishedAt) ? publishedAt : Date.now(),
     thumbnail: stringValue(raw.thumbnail),
