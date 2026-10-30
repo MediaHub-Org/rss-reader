@@ -11,8 +11,10 @@ import { ArticleDetail } from './components/ArticleDetail';
 import { AddFeedDialog } from './components/AddFeedDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { DataDialog, type DataTab } from './components/DataDialog';
+import { BackupsDialog } from './components/BackupsDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Toasts } from './components/Toasts';
+import { AUTO_BACKUP_CHECK_MS, maybeAutoBackup } from './lib/backups';
 
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const STALE_AFTER_MS = 10 * 60 * 1000;
@@ -24,6 +26,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
   const [dataTab, setDataTab] = useState<DataTab>('import');
+  const [backupsOpen, setBackupsOpen] = useState(false);
   const [confirmFeed, setConfirmFeed] = useState<Feed | null>(null);
   const [confirmFolder, setConfirmFolder] = useState<string | null>(null);
   const lastRefreshed = useRef(0);
@@ -35,6 +38,22 @@ export default function App() {
   useEffect(() => {
     void store.hydrate();
   }, []);
+
+  /* daily desktop snapshots: at launch (after the cache hydrates), then checked periodically */
+  useEffect(() => {
+    if (!state.hydrated) return;
+    void maybeAutoBackup();
+    const timer = setInterval(() => void maybeAutoBackup(), AUTO_BACKUP_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [state.hydrated]);
+
+  /* After adding/importing feeds, give the article cache a moment to settle,
+     then take the first snapshot if none exists yet. */
+  useEffect(() => {
+    if (!state.hydrated || state.feeds.length === 0) return;
+    const timer = setTimeout(() => void maybeAutoBackup(), 30_000);
+    return () => clearTimeout(timer);
+  }, [state.hydrated, state.feeds.length]);
 
   /* periodic refresh, paused while the tab is hidden */
   useEffect(() => {
@@ -240,8 +259,13 @@ export default function App() {
           setDataTab('manage');
           setDataOpen(true);
         }}
+        onBackups={() => {
+          setSettingsOpen(false);
+          setBackupsOpen(true);
+        }}
       />
       <DataDialog open={dataOpen} initialTab={dataTab} onClose={() => setDataOpen(false)} />
+      <BackupsDialog open={backupsOpen} onClose={() => setBackupsOpen(false)} />
 
       <ConfirmDialog
         open={Boolean(confirmFeed)}

@@ -2500,3 +2500,67 @@ kbd {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* Backups dialog. */
+.backup-path {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.backup-path code {
+  overflow-wrap: anywhere;
+}
+
+.backup-empty {
+  margin: var(--space-3) 0;
+  color: var(--muted);
+}
+
+.backup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 20rem;
+  overflow: auto;
+}
+
+.backup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+
+.backup-row__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.backup-row__meta span {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.backup-row__actions {
+  display: flex;
+  gap: var(--space-1);
+  flex: 0 0 auto;
+}
+
+.button--danger-text {
+  color: var(--danger);
+}
+
+.settings-data-actions {
+  flex-wrap: wrap;
+}

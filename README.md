@@ -117,6 +117,10 @@ The desktop origin is different from `localhost:4173`, so the first run starts e
 Export a **full backup** from the web/PWA version and import it to keep feeds,
 folders, read state, preferences and cached articles.
 
+The desktop app also keeps the newest **seven daily snapshots** under its data folder
+(`…\com.mediahub.rssreader\backups`). **Settings → Data → Backups** can create one on
+demand, restore a snapshot (replace) or delete old ones.
+
 ---
 
 ## Features
@@ -163,7 +167,8 @@ validates the file, previews what it found, skips duplicates, and rejects invali
 before replacing your subscriptions. **Manage** splits into **Feeds** and **Folders**:
 each has its own select-all/none, **Move selected…** (same searchable picker) and
 **Delete selected**, with one combined inline confirmation. Moving folders merges them
-— their feeds go to the destination and the empty folder disappears.
+— their feeds go to the destination and the empty folder disappears. On desktop,
+**Backups** keeps rotating automatic snapshots and restores them with one click.
 
 **Media** — YouTube URLs are detected in titles, links and content (no API key; the id
 is parsed from the URL), and **Vimeo, Spotify, SoundCloud, Deezer and Apple
@@ -207,6 +212,7 @@ server/
 src-tauri/
   src/fetch.rs         desktop feed fetch: pooled client, redirect/time/size caps
   src/url_policy.rs    URL/SSRF policy + unit tests (private ranges, HTTPS upgrade)
+  src/backups.rs       rotating on-disk snapshots + validation/rotation tests
   src/main.rs          native window, save dialog and external-link opener
   tauri.conf.json      window, CSP, installer metadata
 src/
@@ -225,6 +231,8 @@ src/
       types.ts         shared feed/import types, URL and folder helpers
     clipboard.ts       clipboard write with a legacy fallback
     desktop.ts         Tauri bridge: native save, external links, environment check
+    backups.ts         desktop snapshots: list/create/read/delete + daily policy
+    applyImport.ts     shared restore pipeline for Import and Backups
     viewHistory.ts     browser-history bridge: back/forward across views (no router)
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts, feedId.ts

@@ -267,6 +267,19 @@ try {
   check('Density persisted across reload', persistedDensity === 'compact', persistedDensity || '');
   await page.screenshot({ path: path.join(SHOTS, '02-dark-compact.png') });
 
+  /* --------------------------- backups panel --------------------------- */
+  await openSettings('Data');
+  await page.click('.settings-data-actions .button:has-text("Backups")');
+  await page.waitForSelector('[role="dialog"]:has-text("Backups")');
+  const backupsNote = await page.textContent('[role="dialog"]:has-text("Backups")');
+  check(
+    'Backups dialog explains that snapshots are desktop-only',
+    /desktop app/i.test(backupsNote || ''),
+    backupsNote?.replace(/\s+/g, ' ').trim().slice(0, 80)
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+
   /* --------------------------- OPML export ----------------------------- */
   await openDataTab('Export');
   await page.waitForSelector('[role="tabpanel"][id="panel-export"]');

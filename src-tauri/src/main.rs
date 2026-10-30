@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod backups;
 mod fetch;
 mod url_policy;
 
@@ -46,7 +47,11 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             fetch::fetch_feed,
             save_text_file,
-            open_external
+            open_external,
+            backups::list_auto_backups,
+            backups::create_auto_backup,
+            backups::read_auto_backup,
+            backups::delete_auto_backup
         ])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))

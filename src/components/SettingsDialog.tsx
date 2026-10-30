@@ -13,6 +13,7 @@ interface SettingsDialogProps {
   onImport: () => void;
   onExport: () => void;
   onManage: () => void;
+  onBackups: () => void;
   hasFeeds: boolean;
 }
 
@@ -89,7 +90,15 @@ function Toggle({
   );
 }
 
-export function SettingsDialog({ open, onClose, onImport, onExport, onManage, hasFeeds }: SettingsDialogProps) {
+export function SettingsDialog({
+  open,
+  onClose,
+  onImport,
+  onExport,
+  onManage,
+  onBackups,
+  hasFeeds,
+}: SettingsDialogProps) {
   const state = useStore();
   const [usage] = useState(() => estimateUsage());
   const [clearing, setClearing] = useState(false);
@@ -181,7 +190,8 @@ export function SettingsDialog({ open, onClose, onImport, onExport, onManage, ha
               <div className="setting-row">
                 <span className="setting-row__label">
                   Subscriptions
-                  <small>Import an OPML/JSON file, export your current feeds, or manage what you're subscribed to.</small>
+                  <small>Import an OPML/JSON file, export your current feeds, manage what you're
+                  subscribed to, or restore an automatic snapshot.</small>
                 </span>
               </div>
               <div className="settings-data-actions">
@@ -196,6 +206,10 @@ export function SettingsDialog({ open, onClose, onImport, onExport, onManage, ha
                 <button type="button" className="button button--ghost" onClick={onManage} disabled={!hasFeeds}>
                   <Icon name="trash" size={15} />
                   <span>Manage</span>
+                </button>
+                <button type="button" className="button button--ghost" onClick={onBackups}>
+                  <Icon name="refresh" size={15} />
+                  <span>Backups</span>
                 </button>
               </div>
 

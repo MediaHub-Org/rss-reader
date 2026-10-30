@@ -13,6 +13,7 @@ import {
 } from '../lib/portability';
 import { loadAllArticles } from '../lib/storage';
 import { countLabel } from '../lib/format';
+import { applyImport } from '../lib/applyImport';
 import { feedIdForUrl } from '../lib/feedParser';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
@@ -248,58 +249,13 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
 
   const confirmImport = async () => {
     if (!pending) return;
-    const beforeFolders = folderNamesOf(state.feeds, state.folders);
-    const addedFolders = pending.folders.filter((name) => !beforeFolders.has(name));
-    // A full restore writes its own cached articles right after this; let it
-    // win over the background refresh, which would replace them with the
-    // (possibly empty) live feed.
-    const { added, updated, skipped } = store.importFeeds(pending.feeds, {
-      folders: pending.folders,
-      skipRefresh: pending.full,
-    });
-    let readCount = 0;
-    if (pending.readIds && Object.keys(pending.readIds).length) {
-      store.mergeReadIds(pending.readIds);
-      readCount = Object.keys(pending.readIds).length;
+    try {
+      const result = await applyImport(pending);
+      store.notify(result.changed ? 'success' : 'info', result.message);
+      close();
+    } catch {
+      store.notify('error', 'Could not apply that backup.');
     }
-
-    let articleCount = 0;
-    if (pending.articles) {
-      articleCount = await store.restoreArticles(pending.articles);
-    }
-    if (pending.preferences) {
-      store.setPreferences(pending.preferences);
-    }
-
-    const parts: string[] = [];
-    if (added) parts.push(`Imported ${countLabel(added, 'feed')}`);
-    if (updated) parts.push(`${added ? 'updated' : 'Updated'} ${updated}`);
-    if (addedFolders.length) {
-      parts.push(`added ${countLabel(addedFolders.length, 'folder')}`);
-    }
-    if (skipped) parts.push(`skipped ${skipped}`);
-
-    const restored: string[] = [];
-    if (readCount) {
-      restored.push(countLabel(readCount, 'read entry', 'read entries'));
-    }
-    if (articleCount) restored.push(countLabel(articleCount, 'cached article'));
-    if (pending.preferences) restored.push('preferences');
-
-    const changed = Boolean(added || updated || addedFolders.length || restored.length);
-    let message: string;
-    if (parts.length && restored.length) {
-      message = `${parts.join(', ')} · restored ${restored.join(', ')}`;
-    } else if (parts.length) {
-      message = parts.join(', ');
-    } else if (restored.length) {
-      message = `Restored ${restored.join(', ')}`;
-    } else {
-      message = `Nothing to import — ${countLabel(skipped, 'duplicate')} skipped`;
-    }
-
-    store.notify(changed ? 'success' : 'info', message);
-    close();
   };
 
   const doExport = async (kind: 'opml' | 'json') => {

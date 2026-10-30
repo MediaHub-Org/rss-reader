@@ -30,6 +30,7 @@ import {
   saveArticles,
   loadAllArticles,
   removeArticles,
+  clearArticleCache,
 } from '../lib/storage';
 
 const HYDRATED_ARTICLE_LIMIT = 500;
@@ -813,12 +814,27 @@ export class Store {
     return count;
   }
 
+  /** Replace the whole read map, used by a full backup restore. */
+  replaceReadIds(readIds: Record<string, true>): number {
+    const next = { ...readIds };
+    this.update({ readIds: next });
+    saveReadIds(next);
+    return Object.keys(next).length;
+  }
+
   /**
    * Restore the article cache from a full backup. Every article is written to
    * IndexedDB, while the in-memory view keeps the newest HYDRATED_ARTICLE_LIMIT
    * per feed — the same shape hydration and refresh produce.
+   *
+   * `replace` clears the existing cache first, so a snapshot restore is exact.
    */
-  async restoreArticles(incoming: Record<string, Article[]>): Promise<number> {
+  async restoreArticles(
+    incoming: Record<string, Article[]>,
+    options: { replace?: boolean } = {}
+  ): Promise<number> {
+    if (options.replace) await clearArticleCache();
+
     const knownFeeds = new Set(this.state.feeds.map((feed) => feed.id));
     const visible: Record<string, Article[]> = {};
     let total = 0;
@@ -836,9 +852,14 @@ export class Store {
       await saveArticles(feedId, clean);
     }
 
-    if (!total) return 0;
+    if (!total) {
+      if (options.replace) this.update({ articles: {}, feedState: {} });
+      return 0;
+    }
 
-    const feedState: Record<string, FeedState> = { ...this.state.feedState };
+    const feedState: Record<string, FeedState> = options.replace
+      ? {}
+      : { ...this.state.feedState };
     for (const [feedId, list] of Object.entries(visible)) {
       feedState[feedId] = {
         ...(feedState[feedId] ?? { status: 'ok', articleCount: 0 }),
@@ -847,7 +868,10 @@ export class Store {
         articleCount: list.length,
       };
     }
-    this.update({ articles: { ...this.state.articles, ...visible }, feedState });
+    this.update({
+      articles: options.replace ? visible : { ...this.state.articles, ...visible },
+      feedState,
+    });
     this.schedulePersist();
     return total;
   }
