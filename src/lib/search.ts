@@ -1,6 +1,12 @@
 import type { Article } from '../types';
 
-const fallbackText = new WeakMap<Article, string>();
+export interface SearchOptions {
+  caseSensitive?: boolean;
+  fullText?: boolean;
+}
+
+const lowerCache = new WeakMap<Article, string>();
+const rawCache = new WeakMap<Article, string>();
 
 function stripHtml(html: string): string {
   return html
@@ -12,11 +18,9 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-/** Plain lower-case text for search; derived lazily for pre-searchText cache. */
-export function searchableText(article: Article): string {
-  if (article.searchText) return article.searchText;
-
-  const cached = fallbackText.get(article);
+/** Original-case text for case-sensitive body searches. */
+function rawSearchableText(article: Article): string {
+  const cached = rawCache.get(article);
   if (cached !== undefined) return cached;
 
   const text = [
@@ -25,13 +29,41 @@ export function searchableText(article: Article): string {
     article.author ?? '',
     stripHtml(article.contentHtml),
   ]
-    .join('\n')
-    .toLowerCase();
-  fallbackText.set(article, text);
+    .join('\n');
+  rawCache.set(article, text);
   return text;
 }
 
-export function articleMatches(article: Article, query: string): boolean {
-  const needle = query.trim().toLowerCase();
-  return !needle || searchableText(article).includes(needle);
+/** Plain lower-case text for search; derived lazily for pre-searchText cache. */
+export function searchableText(article: Article): string {
+  if (article.searchText) return article.searchText;
+
+  const cached = lowerCache.get(article);
+  if (cached !== undefined) return cached;
+
+  const text = rawSearchableText(article).toLowerCase();
+  lowerCache.set(article, text);
+  return text;
+}
+
+export function articleMatches(
+  article: Article,
+  query: string,
+  options: SearchOptions = {}
+): boolean {
+  const needle = query.trim();
+  if (!needle) return true;
+
+  const fullText = options.fullText !== false;
+  const caseSensitive = Boolean(options.caseSensitive);
+  const titleText = [article.title, article.summary, article.author ?? ''].join('\n');
+
+  if (!fullText) {
+    return caseSensitive
+      ? titleText.includes(needle)
+      : titleText.toLowerCase().includes(needle.toLowerCase());
+  }
+
+  if (caseSensitive) return rawSearchableText(article).includes(needle);
+  return searchableText(article).includes(needle.toLowerCase());
 }

@@ -11,6 +11,7 @@ import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { ArticleList } from './components/ArticleList';
 import { ArticleDetail } from './components/ArticleDetail';
+import { ArticleOverlay } from './components/ArticleOverlay';
 import { AddFeedDialog } from './components/AddFeedDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { DataDialog, type DataTab } from './components/DataDialog';
@@ -84,11 +85,11 @@ export default function App() {
   );
 
   /* Opening or switching an article starts at the top of the reading pane,
-     even when the pane element itself stays mounted in the split layout. */
+     even when the pane element itself stays mounted in the split/overlay. */
   useEffect(() => {
     if (!state.ui.activeArticleId) return;
     const pane = document.querySelector<HTMLElement>(
-      '.content-area__detail, .content-area'
+      '.article-overlay__dialog, .content-area__detail, .content-area'
     );
     pane?.scrollTo({ top: 0 });
   }, [state.ui.activeArticleId]);
@@ -132,7 +133,9 @@ export default function App() {
         feedId: state.ui.activeFeedId,
         sort: state.ui.sort,
         query: state.ui.query,
-        hideRead: state.prefs.hideRead,
+        filter: state.prefs.articleFilter,
+        caseSensitive: state.prefs.searchCaseSensitive,
+        fullText: state.prefs.searchFullText,
         searchAll: state.ui.searchAllFeeds,
       }),
     [state]
@@ -153,7 +156,16 @@ export default function App() {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTyping(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (document.querySelector('[role="dialog"]')) return;
+      const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
+      const overlayOnly =
+        dialogs.length === 1 && dialogs[0].classList.contains('article-overlay__dialog');
+      if (dialogs.length && !overlayOnly) return;
+      if (
+        overlayOnly &&
+        !['j', 'k', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'm'].includes(event.key)
+      ) {
+        return;
+      }
 
       const activeId = state.ui.activeArticleId;
       const index = activeId ? visibleArticles.findIndex((a) => a.id === activeId) : -1;
@@ -169,6 +181,20 @@ export default function App() {
       };
 
       switch (event.key) {
+        case 'ArrowLeft': {
+          if (index > 0) {
+            event.preventDefault();
+            openArticle(visibleArticles[index - 1].id);
+          }
+          break;
+        }
+        case 'ArrowRight': {
+          if (index >= 0 && index < visibleArticles.length - 1) {
+            event.preventDefault();
+            openArticle(visibleArticles[index + 1].id);
+          }
+          break;
+        }
         case 'j':
         case 'ArrowDown': {
           if (!visibleArticles.length) return;
@@ -236,6 +262,7 @@ export default function App() {
   }, [state, visibleArticles]);
 
   const closeSidebar = () => store.setSidebarOpen(false);
+  const cardOverlay = Boolean(state.ui.activeArticleId) && state.prefs.viewMode === 'card';
 
   return (
     <div
@@ -274,14 +301,16 @@ export default function App() {
           />
 
           <main
-            className={`content-area ${state.ui.activeArticleId ? 'content-area--split' : ''}`}
+            className={`content-area ${
+              state.ui.activeArticleId && !cardOverlay ? 'content-area--split' : ''
+            }`}
             id="main-content"
             tabIndex={-1}
           >
             <div className="content-area__list">
               <ArticleList onAddFeed={() => setAddOpen(true)} onImport={() => setDataOpen(true)} />
             </div>
-            {state.ui.activeArticleId && (
+            {state.ui.activeArticleId && !cardOverlay && (
               <div className="content-area__detail">
                 <ArticleDetail />
               </div>
@@ -289,6 +318,8 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      {cardOverlay && <ArticleOverlay />}
 
       <AddFeedDialog
         open={addOpen}

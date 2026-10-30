@@ -1,6 +1,7 @@
 import type {
   AppState,
   Article,
+  ArticleFilter,
   Feed,
   FeedState,
   Preferences,
@@ -26,10 +27,12 @@ import {
   loadFolders,
   loadPreferences,
   loadReadIds,
+  loadStarredIds,
   saveFeeds,
   saveFolders,
   savePreferences,
   saveReadIds,
+  saveStarredIds,
   saveArticles,
   loadAllArticles,
   removeArticles,
@@ -48,6 +51,7 @@ function initialState(): AppState {
     articles: {},
     feedState: {},
     readIds: {},
+    starredIds: {},
     prefs: { ...DEFAULT_PREFERENCES },
     ui: {
       activeFeedId: ALL_FEEDS,
@@ -100,6 +104,7 @@ export class Store {
       saveFeeds(this.state.feeds);
       saveFolders(this.state.folders);
       saveReadIds(this.state.readIds);
+      saveStarredIds(this.state.starredIds);
       savePreferences(this.state.prefs);
       void Promise.all(
         Object.entries(this.state.articles).map(([feedId, articles]) => saveArticles(feedId, articles))
@@ -170,8 +175,9 @@ export class Store {
     const feeds = loadFeeds();
     const folders = loadFolders();
     const readIds = loadReadIds();
+    const starredIds = loadStarredIds();
 
-    this.update({ prefs, feeds, folders, readIds });
+    this.update({ prefs, feeds, folders, readIds, starredIds });
     this.applyPreferences(prefs);
 
     const cached = await loadAllArticles();
@@ -462,11 +468,15 @@ export class Store {
 
     const articles = { ...this.state.articles };
     const feedState = { ...this.state.feedState };
+    const starred = { ...this.state.starredIds };
     for (const id of toRemove) {
+      for (const article of articles[id] ?? []) delete starred[article.id];
       delete articles[id];
       delete feedState[id];
       void removeArticles(id);
     }
+
+    const removedStarred = Object.keys(starred).length !== Object.keys(this.state.starredIds).length;
 
     const activeFolder = folderNameFromViewId(this.state.ui.activeFeedId);
     const activeGone =
@@ -480,6 +490,7 @@ export class Store {
       feeds: remaining,
       articles,
       feedState,
+      starredIds: removedStarred ? starred : this.state.starredIds,
       ui: activeGone
         ? { ...this.state.ui, activeFeedId: ALL_FEEDS, activeArticleId: null }
         : this.state.ui,
@@ -942,6 +953,37 @@ export class Store {
     return Object.keys(next).length;
   }
 
+  /* ------------------------------- starred -------------------------------- */
+
+  setStarred(articleIds: string[], starred: boolean): void {
+    if (!articleIds.length) return;
+    const next = { ...this.state.starredIds };
+    for (const id of articleIds) {
+      if (starred) next[id] = true;
+      else delete next[id];
+    }
+    this.update({ starredIds: next });
+    this.schedulePersist();
+  }
+
+  toggleStar(articleId: string): void {
+    this.setStarred([articleId], !this.state.starredIds[articleId]);
+  }
+
+  mergeStarredIds(starredIds: Record<string, true>): number {
+    const merged = { ...this.state.starredIds, ...starredIds };
+    this.update({ starredIds: merged });
+    saveStarredIds(merged);
+    return Object.keys(starredIds).length;
+  }
+
+  replaceStarredIds(starredIds: Record<string, true>): number {
+    const next = { ...starredIds };
+    this.update({ starredIds: next });
+    saveStarredIds(next);
+    return Object.keys(next).length;
+  }
+
   /**
    * Restore the article cache from a full backup. Every article is written to
    * IndexedDB, while the in-memory view keeps the newest HYDRATED_ARTICLE_LIMIT
@@ -1090,7 +1132,9 @@ export function selectArticles(
     feedId: string | null;
     sort: SortMode;
     query: string;
-    hideRead?: boolean;
+    filter?: ArticleFilter;
+    caseSensitive?: boolean;
+    fullText?: boolean;
     searchAll?: boolean;
   }
 ): Article[] {
@@ -1113,10 +1157,19 @@ export function selectArticles(
 
   let list = source;
 
-  if (options.hideRead) list = list.filter((a) => !state.readIds[a.id]);
+  if (options.filter === 'unread') {
+    list = list.filter((article) => !state.readIds[article.id]);
+  } else if (options.filter === 'starred') {
+    list = list.filter((article) => Boolean(state.starredIds[article.id]));
+  }
 
   if (needle) {
-    list = list.filter((article) => articleMatches(article, needle));
+    list = list.filter((article) =>
+      articleMatches(article, needle, {
+        caseSensitive: options.caseSensitive,
+        fullText: options.fullText,
+      })
+    );
   }
 
   const feedTitle = (id: string) => state.feeds.find((f) => f.id === id)?.title ?? '';

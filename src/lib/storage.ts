@@ -18,6 +18,7 @@ const KEYS = {
   feeds: `${NS}feeds`,
   folders: `${NS}folders`,
   read: `${NS}read`,
+  starred: `${NS}starred`,
   version: `${NS}version`,
 } as const;
 
@@ -52,12 +53,19 @@ function writeJson(key: string, value: unknown): void {
 }
 
 export function loadPreferences(): Preferences {
-  const stored = readJson<Partial<Preferences>>(KEYS.prefs, {});
+  const stored = readJson<Partial<Preferences> & { hideRead?: boolean }>(KEYS.prefs, {});
   const storedVersion = typeof stored.prefsVersion === 'number' ? stored.prefsVersion : 0;
   const prefs = { ...DEFAULT_PREFERENCES, ...stored };
+  const filter =
+    stored.articleFilter === 'unread' || stored.articleFilter === 'starred'
+      ? stored.articleFilter
+      : stored.hideRead
+        ? 'unread'
+        : 'all';
   return {
     ...prefs,
     prefsVersion: PREFS_VERSION,
+    articleFilter: filter,
     // Version 1 stored the old YouTube-only option: it defaulted to off, and
     // the first release of the wider inline-media feature carried that off
     // over as if it had been chosen, so existing profiles never saw a player.
@@ -111,6 +119,18 @@ export function saveReadIds(read: Record<string, true>): void {
     for (const id of keys.slice(-20_000)) payload[id] = true;
   }
   writeJson(KEYS.read, payload);
+}
+
+export function loadStarredIds(): Record<string, true> {
+  const starred = readJson<Record<string, true> | string[]>(KEYS.starred, {});
+  if (Array.isArray(starred)) {
+    return Object.fromEntries(starred.map((id) => [id, true] as const));
+  }
+  return starred && typeof starred === 'object' ? starred : {};
+}
+
+export function saveStarredIds(starred: Record<string, true>): void {
+  writeJson(KEYS.starred, starred);
 }
 
 /* ----------------------------- IndexedDB cache ---------------------------- */

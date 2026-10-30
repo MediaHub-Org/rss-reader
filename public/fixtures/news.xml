@@ -26,6 +26,11 @@
       <description><![CDATA[
         <p>A second article body, again comfortably longer than one hundred
         characters so the detail view has something to render.</p>
+        <p>Filler text keeps the excerpt short enough that the marker below is
+        only visible when full-text search is enabled, because excerpts are
+        capped at two hundred and forty characters while the indexed body is
+        much longer than that.</p>
+        <p>Body-only token: xylophonemarker.</p>
       ]]></description>
     </item>
     <item>

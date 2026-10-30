@@ -27,7 +27,9 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
         feedId: state.ui.activeFeedId,
         sort: state.ui.sort,
         query: state.ui.query,
-        hideRead: state.prefs.hideRead,
+        filter: state.prefs.articleFilter,
+        caseSensitive: state.prefs.searchCaseSensitive,
+        fullText: state.prefs.searchFullText,
         searchAll: state.ui.searchAllFeeds,
       }),
     [state]
@@ -56,6 +58,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
 
   const menuItems = (article: Article): ContextMenuItem[] => {
     const read = Boolean(state.readIds[article.id]);
+    const starred = Boolean(state.starredIds[article.id]);
     const feed = feedsById.get(article.feedId);
     const items: ContextMenuItem[] = [
       { icon: 'book', label: 'Open article', onSelect: () => openArticle(article) },
@@ -71,6 +74,11 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
       icon: read ? 'eyeOff' : 'eye',
       label: read ? 'Mark as unread' : 'Mark as read',
       onSelect: () => store.toggleRead(article.id),
+    });
+    items.push({
+      icon: starred ? 'starFilled' : 'star',
+      label: starred ? 'Unstar article' : 'Star article',
+      onSelect: () => store.toggleStar(article.id),
     });
     if (article.link) {
       items.push({
@@ -145,13 +153,14 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
 
   return (
     <div className="list" role="feed" aria-label="Articles">
-      <ul className="article-grid">
+      <ul className={`article-grid article-grid--${state.prefs.viewMode}`}>
         {slice.map((article) => (
           <ArticleCard
             key={article.id}
             article={article}
             feed={feedsById.get(article.feedId)}
             read={Boolean(state.readIds[article.id])}
+            starred={Boolean(state.starredIds[article.id])}
             active={state.ui.activeArticleId === article.id}
             onMenu={(target, x, y) => setMenu({ article: target, x, y })}
           />
@@ -184,11 +193,12 @@ interface ArticleCardProps {
   article: Article;
   feed?: Feed;
   read: boolean;
+  starred: boolean;
   active: boolean;
   onMenu: (article: Article, x: number, y: number) => void;
 }
 
-function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) {
+function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const time = formatRelativeTime(article.publishedAt);
   // Same detection as the reader panel, so the card and the detail agree on
@@ -221,6 +231,7 @@ function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) 
         className={[
           'article-card',
           read ? 'is-read' : '',
+          starred ? 'is-starred' : '',
           active ? 'is-active' : '',
           hasMediaBand ? 'has-media' : 'no-media',
           videoEmbed ? 'article-card--video' : '',
@@ -284,6 +295,11 @@ function ArticleCard({ article, feed, read, active, onMenu }: ArticleCardProps) 
         <div className="article-card__info">
           {feed && <FeedIcon feed={feed} className="article-card__favicon" />}
           <span className="article-card__feed">{feed?.title ?? 'Feed'}</span>
+          {starred && (
+            <span className="article-card__star" title="Starred" aria-label="Starred">
+              <Icon name="starFilled" size={12} />
+            </span>
+          )}
           {embed && (
             <span
               className="article-card__media-chip"

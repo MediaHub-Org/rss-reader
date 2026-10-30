@@ -43,3 +43,23 @@ describe('articleMatches', () => {
     expect(searchableText(a)).toContain('rareword');
   });
 });
+
+describe('search options', () => {
+  const a = article({
+    title: 'A normal title',
+    summary: 'A summary without the marker',
+    contentHtml: '<p>Body-only Special Token.</p>',
+  });
+
+  it('honours case sensitivity', () => {
+    expect(articleMatches(a, 'special')).toBe(true);
+    expect(articleMatches(a, 'special', { caseSensitive: true })).toBe(false);
+    expect(articleMatches(a, 'Special', { caseSensitive: true })).toBe(true);
+  });
+
+  it('can restrict matching to title/summary/author', () => {
+    expect(articleMatches(a, 'Special', { fullText: false })).toBe(false);
+    expect(articleMatches(a, 'normal', { fullText: false })).toBe(true);
+    expect(articleMatches(a, 'Special', { fullText: true })).toBe(true);
+  });
+});

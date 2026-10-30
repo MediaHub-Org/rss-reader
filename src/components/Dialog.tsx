@@ -15,6 +15,12 @@ interface DialogProps {
    * both, and each would fight over the Tab cycle.
    */
   suspended?: boolean;
+  /** Render the children directly, without the dialog header/body chrome. */
+  bare?: boolean;
+  /** Accessible label when `bare` is set (there is no visible title). */
+  ariaLabel?: string;
+  className?: string;
+  backdropClassName?: string;
 }
 
 /**
@@ -34,6 +40,10 @@ export function Dialog({
   footer,
   size = 'sm',
   suspended = false,
+  bare = false,
+  ariaLabel,
+  className = '',
+  backdropClassName = '',
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
@@ -69,6 +79,9 @@ export function Dialog({
     const onKeyDown = (event: KeyboardEvent) => {
       if (suspendedRef.current) return;
       if (event.key === 'Escape') {
+        // A context menu opened inside a dialog handles its own Escape; let
+        // it bubble instead of closing the whole dialog too.
+        if (document.querySelector('.context-menu')) return;
         event.stopPropagation();
         onCloseRef.current();
         return;
@@ -108,30 +121,37 @@ export function Dialog({
 
   return (
     <div
-      className="dialog-backdrop"
+      className={`dialog-backdrop ${backdropClassName}`.trim()}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
-        className={`dialog dialog--${size}`}
+        className={`dialog dialog--${size} ${bare ? 'dialog--bare' : ''} ${className}`.trim()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={bare ? undefined : titleId}
+        aria-label={bare ? ariaLabel : undefined}
         ref={panelRef}
         tabIndex={-1}
       >
-        <header className="dialog__header">
-          <h2 id={titleId} className="dialog__title">
-            {title}
-          </h2>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
-        </header>
-        <div className="dialog__body">{children}</div>
+        {bare ? (
+          children
+        ) : (
+          <>
+            <header className="dialog__header">
+              <h2 id={titleId} className="dialog__title">
+                {title}
+              </h2>
+              <button type="button" className="icon-button" onClick={onClose} aria-label="Close dialog">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </header>
+            <div className="dialog__body">{children}</div>
+          </>
+        )}
         {footer ? <footer className="dialog__footer">{footer}</footer> : null}
       </div>
     </div>

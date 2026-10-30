@@ -22,6 +22,7 @@ export interface ExportFeed {
 export interface ImportResult {
   feeds: ExportFeed[];
   readIds?: Record<string, true>;
+  starredIds?: Record<string, true>;
   format: 'opml' | 'json';
   warnings: string[];
   /** Unique folder names found in the file, sorted A–Z. */

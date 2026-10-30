@@ -272,7 +272,14 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
         const articles = await loadAllArticles();
         outcome = await downloadFile(
           'rss-reader-backup.json',
-          exportFullBackup(state.feeds, state.readIds, state.folders, state.prefs, articles),
+          exportFullBackup(
+            state.feeds,
+            state.readIds,
+            state.folders,
+            state.prefs,
+            articles,
+            state.starredIds
+          ),
           'application/json'
         );
       }

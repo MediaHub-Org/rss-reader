@@ -164,12 +164,20 @@ cursor even over the transformed mobile drawer. “Move to folder…” opens a 
 picker (type to filter, ↑/↓ then Enter) instead of a menu that grows one row per
 folder; “New folder…” can create the destination on the spot.
 
-**Reading** — card grid as the default view, links with source labels, article detail
-with sanitized HTML, relative-URL resolution against the article base URL, read/unread
-per article plus bulk mark read/unread, sort by newest / oldest / feed name, and
-full-text search over titles, summaries and article bodies with a **View / All feeds**
-scope. On wide screens the list and article stay side by side in two panes; narrow
-windows keep the single-pane list ⇄ detail flow.
+**Reading** — four layouts from the top-bar **View** menu: card grid (default), list,
+magazine (featured first story) and compact. Star articles to keep them, and filter the
+list to **All articles**, **Unread only** or **Starred only**. Links carry source labels;
+article detail renders sanitized HTML with relative-URL resolution against the article
+base URL. Read/unread works per article plus bulk **Mark as read** with all / older than
+1, 3 or 7 day cutoffs, and sort is by newest / oldest / feed name. In card view the
+reader opens in a blurred overlay with previous/next arrows over the list; in the other
+views wide screens keep list and article side by side, while narrow windows use the
+single-pane list ⇄ detail flow.
+
+**Search** — full-text search over titles, summaries and article bodies with a
+**View / All feeds** scope. The `Aa` button attached to the search field toggles
+**case-sensitive** matching and **full-text** (off matches only titles, summaries and
+authors), both persisted.
 
 **History** — the browser's own back/forward works inside the reader, including a
 mouse's side buttons, `Alt+←`/`Alt+→` and the back swipe on Android: it closes the open
@@ -179,8 +187,8 @@ forward still reaches the article afterwards. Jumping between articles with `j`/
 reuses one history entry, so Back always means “back to the list”, not “previous article”.
 
 **Portability** — export/import **OPML** (standard, subscriptions and folders including
-empty ones) and a **full JSON backup** (subscriptions, folders, read status,
-preferences *and* every cached article, so a new device/origin can be rebuilt
+empty ones) and a **full JSON backup** (subscriptions, folders, read status, starred
+articles, preferences *and* every cached article, so a new device/origin can be rebuilt
 without refetching; the YouTube API key is deliberately not included). Import
 validates the file, previews what it found, skips duplicates, and rejects invalid
 `javascript:` URLs. The **OPML XML** editor shows a diff (added / updated / removed)
@@ -202,8 +210,8 @@ instead. An optional YouTube Data API key raises channel/playlist feeds from ~15
 items. Podcast audio enclosures render a native inline player as well.
 
 **Customization** — light/dark/system theme, comfortable/compact list density, reader
-font size, hide-read filter. All persisted in `localStorage` and applied before first
-paint (no theme flash).
+font size, view mode and article filter. All persisted in `localStorage` and applied
+before first paint (no theme flash).
 
 **Accessibility** — labelled controls, focus-trapped modal dialogs, skip link, visible
 focus rings, keyboard navigation throughout.
@@ -213,6 +221,7 @@ focus rings, keyboard navigation throughout.
 | Key | Action |
 | --- | --- |
 | `j` / `k` or `↓` / `↑` | Move through articles |
+| `←` / `→` | Previous / next article (card overlay too) |
 | `Enter` / `o` | Open the selected article |
 | `m` | Toggle read/unread |
 | `r` | Refresh all feeds |

@@ -144,12 +144,6 @@ export function SettingsDialog({
                 onChange={(embedMedia) => store.setPreferences({ embedMedia })}
               />
 
-              <Toggle
-                label="Hide read articles"
-                checked={state.prefs.hideRead}
-                onChange={(hideRead) => store.setPreferences({ hideRead })}
-              />
-
               {desktop && (
                 <>
                   <Toggle

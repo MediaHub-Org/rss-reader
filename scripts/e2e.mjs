@@ -131,9 +131,8 @@ try {
   await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail .content');
   check(
-    'Wide desktop keeps the list and article side by side',
-    (await page.locator('.content-area--split .article-grid').count()) === 1 &&
-      (await page.locator('.content-area--split .detail').count()) === 1
+    'Card view opens the reader overlay over the list',
+    (await page.locator('.article-overlay__backdrop .article-overlay__dialog .detail').count()) === 1
   );
   const html = await page.innerHTML('.detail .content');
   check('Article content rendered', html.trim().length > 100, `${html.length} chars`);
@@ -224,7 +223,7 @@ try {
   await page.fill('.search__input', 'zzzzz-no-match-zzzzz');
   const noMatch = await page.textContent('.empty-state h2').catch(() => '');
   check('Search shows empty state for no matches', /No matches/i.test(noMatch || ''), noMatch?.trim());
-  await page.fill('.search__input', 'comfortably');
+  await page.fill('.search__input', 'xylophonemarker');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
   const bodyMatch = (await page.textContent('.article-card__title'))?.trim();
   check(
@@ -237,7 +236,7 @@ try {
 
   await page.click('.sidebar .feed-row:has-text("BBC")');
   await page.waitForSelector('.article-card');
-  await page.fill('.search__input', 'comfortably');
+  await page.fill('.search__input', 'xylophonemarker');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 0);
   check(
     'Search defaults to the current view',
@@ -256,6 +255,136 @@ try {
   await page.click('.sidebar .feed-row:has-text("All articles")');
   await page.waitForSelector('.article-card');
   await pickSort('Newest first');
+
+  /* ----------------------- view modes + filtering ---------------------- */
+  await page.click('.topbar__view');
+  await page.waitForSelector('.view-menu');
+  const viewMenu = (await page.textContent('.view-menu'))?.replace(/\s+/g, ' ') || '';
+  check(
+    'View menu exposes four layouts and three filters',
+    ['Card view', 'List view', 'Magazine view', 'Compact view', 'All articles', 'Unread only', 'Starred only'].every(
+      (label) => viewMenu.includes(label)
+    ),
+    viewMenu.slice(0, 90)
+  );
+
+  await page.click('.view-menu__item:has-text("List view")');
+  await page.waitForSelector('.article-grid--list');
+  check('List view applies its layout', true);
+  await page.click('.article-card >> nth=0');
+  await page.waitForSelector('.detail');
+  check(
+    'List view keeps the list and article side by side',
+    (await page.locator('.content-area--split .article-grid').count()) === 1 &&
+      (await page.locator('.content-area--split .detail').count()) === 1
+  );
+  await page.click('.detail__bar .ghost-button[aria-label="Star article"]');
+  check(
+    'Starring an article flips its action',
+    (await page.locator('.detail__bar .ghost-button[aria-label="Unstar article"]').count()) === 1
+  );
+  await page.click('.detail .ghost-button:has-text("Back")');
+  await waitForList();
+
+  for (const [label, className] of [
+    ['Compact view', 'article-grid--compact'],
+    ['Magazine view', 'article-grid--magazine'],
+    ['Card view', 'article-grid--card'],
+  ]) {
+    await page.click('.topbar__view');
+    await page.waitForSelector('.view-menu');
+    await page.click(`.view-menu__item:has-text("${label}")`);
+    await page.waitForSelector(`.${className}`);
+  }
+  check('Compact, magazine and card layouts switch cleanly', true);
+
+  await page.click('.topbar__view');
+  await page.click('.view-menu__item:has-text("Starred only")');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
+  const starredTitle = (await page.textContent('.article-card__title'))?.trim();
+  check(
+    'Starred only filters to the starred article',
+    /Fixture story one/i.test(starredTitle || ''),
+    starredTitle || ''
+  );
+
+  await page.click('.topbar__view');
+  await page.click('.view-menu__item:has-text("Unread only")');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 0);
+  check(
+    'Unread only hides read articles',
+    (await page.locator('.article-card.is-read').count()) === 0
+  );
+  await page.click('.topbar__view');
+  await page.click('.view-menu__item:has-text("All articles")');
+  await page.waitForSelector('.article-card');
+
+  /* ----------------------- card overlay arrows ------------------------- */
+  await page.click('.article-card >> nth=0');
+  await page.waitForSelector('.article-overlay__dialog');
+  const overlayFirst = (await page.textContent('.detail__title'))?.trim();
+  await page.click('.article-overlay__nav--next');
+  await page.waitForFunction(
+    (previous) => document.querySelector('.detail__title')?.textContent?.trim() !== previous,
+    overlayFirst,
+    { timeout: 5_000 }
+  );
+  const overlayNext = (await page.textContent('.detail__title'))?.trim();
+  check(
+    'Card overlay next arrow opens the next article',
+    Boolean(overlayNext) && overlayNext !== overlayFirst,
+    `${overlayFirst} → ${overlayNext}`
+  );
+  await page.click('.article-overlay__nav--prev');
+  await page.waitForFunction(
+    (expected) => document.querySelector('.detail__title')?.textContent?.trim() === expected,
+    overlayFirst,
+    { timeout: 5_000 }
+  );
+  check('Card overlay previous arrow returns', true);
+  await page.click('.article-overlay__close');
+  await waitForList();
+
+  /* -------------------------- search options --------------------------- */
+  await page.fill('.search__input', 'xylophonemarker');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
+  await page.click('.search__options');
+  await page.waitForSelector('.search-options');
+  const fullTextToggle = '.search-options [role="menuitemcheckbox"]:has-text("Search in full text")';
+  const caseToggle = '.search-options [role="menuitemcheckbox"]:has-text("Case sensitive")';
+  check(
+    'Full-text search is enabled by default',
+    (await page.getAttribute(fullTextToggle, 'aria-checked')) === 'true'
+  );
+  await page.click(fullTextToggle);
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 0);
+  check('Turning full text off ignores body-only matches', true);
+  await page.click(fullTextToggle);
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
+
+  await page.click(caseToggle);
+  await page.fill('.search__input', 'FIXTURE');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 0);
+  check('Case-sensitive search rejects a different case', true);
+  await page.click(caseToggle);
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 0);
+  check('Case-insensitive search still matches', true);
+  await page.click('.search__options');
+  await page.fill('.search__input', '');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 1);
+
+  await page.click('.mark-read__caret');
+  await page.waitForSelector('.mark-read__menu');
+  const markMenu = (await page.textContent('.mark-read__menu'))?.replace(/\s+/g, ' ') || '';
+  check(
+    'Mark as read menu offers all and 1/3/7 day cutoffs',
+    ['All articles', 'Older than 1 day', 'Older than 3 days', 'Older than 7 days'].every((label) =>
+      markMenu.includes(label)
+    ),
+    markMenu.slice(0, 80)
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.mark-read__menu', { state: 'detached' });
 
   /* ------------------------- theme + settings -------------------------- */
   const before = await page.getAttribute('html', 'data-theme');

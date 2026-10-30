@@ -124,11 +124,19 @@ describe('full JSON backup', () => {
   const articles = { f1: [article()] };
 
   it('exports articles/preferences but never the API key or schema version', () => {
-    const raw = exportFullBackup(feeds, { 'f1-a1': true }, ['Empty'], prefs, articles);
+    const raw = exportFullBackup(
+      feeds,
+      { 'f1-a1': true },
+      ['Empty'],
+      prefs,
+      articles,
+      { 'f1-a1': true }
+    );
     const data = JSON.parse(raw);
 
     expect(data.version).toBe(2);
     expect(data.articles.f1).toHaveLength(1);
+    expect(data.starredIds).toEqual(['f1-a1']);
     expect(data.preferences.youtubeApiKey).toBeUndefined();
     expect(data.preferences.prefsVersion).toBeUndefined();
     expect(data.preferences.theme).toBe('dark');
@@ -136,13 +144,21 @@ describe('full JSON backup', () => {
   });
 
   it('parses a v2 backup and keeps feed/article ids aligned', () => {
-    const raw = exportFullBackup(feeds, { 'f1-a1': true }, ['Empty'], prefs, articles);
+    const raw = exportFullBackup(
+      feeds,
+      { 'f1-a1': true },
+      ['Empty'],
+      prefs,
+      articles,
+      { 'f1-a1': true }
+    );
     const parsed = parseJsonBackup(raw);
 
     expect(parsed.full).toBe(true);
     expect(parsed.feeds.find((entry) => entry.title === 'Alpha')?.id).toBe('f1');
     expect(parsed.articles?.f1[0].title).toBe('Story');
     expect(parsed.readIds).toEqual({ 'f1-a1': true });
+    expect(parsed.starredIds).toEqual({ 'f1-a1': true });
     expect(parsed.preferences?.theme).toBe('dark');
   });
 

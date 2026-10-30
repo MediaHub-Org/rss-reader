@@ -61,6 +61,7 @@ export function ArticleDetail() {
   }
 
   const read = Boolean(state.readIds[article.id]);
+  const starred = Boolean(state.starredIds[article.id]);
   const showEmbed = state.prefs.embedMedia;
   const embed = inlineMedia ?? detectedMedia;
 
@@ -163,6 +164,11 @@ export function ArticleDetail() {
       label: read ? 'Mark as unread' : 'Mark as read',
       onSelect: () => store.toggleRead(article.id),
     });
+    items.push({
+      icon: starred ? 'starFilled' : 'star',
+      label: starred ? 'Unstar article' : 'Star article',
+      onSelect: () => store.toggleStar(article.id),
+    });
     if (feed) {
       items.push({ type: 'divider' });
       items.push({
@@ -188,6 +194,16 @@ export function ArticleDetail() {
         </button>
 
         <div className="detail__actions">
+          <button
+            type="button"
+            className={`ghost-button ${starred ? 'is-starred' : ''}`}
+            onClick={() => store.toggleStar(article.id)}
+            aria-pressed={starred}
+            aria-label={starred ? 'Unstar article' : 'Star article'}
+          >
+            <Icon name={starred ? 'starFilled' : 'star'} size={16} />
+            <span>{starred ? 'Starred' : 'Star'}</span>
+          </button>
           <button
             type="button"
             className="ghost-button"

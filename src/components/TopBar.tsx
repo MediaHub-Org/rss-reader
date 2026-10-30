@@ -5,6 +5,8 @@ import { store, selectArticles, isDarkTheme } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Icon } from './Icon';
 import { Dropdown } from './Dropdown';
+import { ViewMenu } from './ViewMenu';
+import { MarkReadMenu } from './MarkReadMenu';
 
 interface TopBarProps {
   onMenu: () => void;
@@ -30,7 +32,9 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         feedId: state.ui.activeFeedId,
         sort: state.ui.sort,
         query: state.ui.query,
-        hideRead: state.prefs.hideRead,
+        filter: state.prefs.articleFilter,
+        caseSensitive: state.prefs.searchCaseSensitive,
+        fullText: state.prefs.searchFullText,
         searchAll: state.ui.searchAllFeeds,
       }),
     [state]
@@ -68,6 +72,8 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
       </div>
 
       <div className="topbar__tools">
+        <ViewMenu />
+
         <Dropdown<SortMode>
           value={state.ui.sort}
           options={SORT_OPTIONS}
@@ -78,16 +84,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
           className="topbar__sort"
         />
 
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => store.markAllRead(visible.map((a) => a.id))}
-          disabled={!unreadInView}
-          aria-label="Mark all visible articles as read"
-          title="Mark all as read (all visible)"
-        >
-          <Icon name="check" />
-        </button>
+        <MarkReadMenu />
 
         <button
           type="button"

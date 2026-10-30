@@ -17,6 +17,7 @@ import { Icon } from './Icon';
 import { Dropdown, type DropdownOption } from './Dropdown';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { FolderPickerDialog } from './FolderPickerDialog';
+import { SearchOptions } from './SearchOptions';
 
 type ContextTarget =
   | { type: 'feed'; feed: Feed; x: number; y: number }
@@ -668,6 +669,7 @@ export function Sidebar({
         >
           {state.ui.searchAllFeeds ? 'All' : 'View'}
         </button>
+        <SearchOptions />
       </div>
 
       <div className="sidebar__toolbar">

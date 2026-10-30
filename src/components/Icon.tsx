@@ -25,6 +25,15 @@ const PATHS: Record<string, string> = {
   eyeOff: 'M4 4l16 16M9.9 5.7A9.9 9.9 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3.4 4.1M6.5 8A16.6 16.6 0 0 0 2 12s3.6 6.5 10 6.5c1.2 0 2.3-.2 3.3-.6M10.5 10.6a2.5 2.5 0 0 0 3.4 3.4',
   bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
   bellOff: 'M8.7 3A6 6 0 0 1 18 8c0 2.5.6 4.4 1.3 5.8M6.3 6.3C6.1 6.8 6 7.4 6 8c0 7-3 9-3 9h12M10.3 21a1.94 1.94 0 0 0 3.4 0M2 2l20 20',
+  grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  list: 'M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01',
+  magazine: 'M4 5h16v14H4zM8 5v14M12 9h4M12 13h4M12 16h4',
+  compact: 'M4 6h16M4 10h16M4 14h16M4 18h16',
+  star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z',
+  starFilled: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z',
+  sliders: 'M4 6h10M18 6h2M4 12h2M10 12h10M4 18h10M18 18h2M14 4v4M8 10v4M14 16v4',
+  clock: 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  chevronRight: 'M9 6l6 6-6 6',
   menu: 'M4 7h16M4 12h16M4 17h16',
   chevronDown: 'M6 9l6 6 6-6',
   folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z',
@@ -49,7 +58,7 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'name'> {
 }
 
 export function Icon({ name, size = 18, ...rest }: IconProps) {
-  const filled = name === 'play' || name === 'more';
+  const filled = name === 'play' || name === 'more' || name === 'starFilled';
   return (
     <svg
       width={size}

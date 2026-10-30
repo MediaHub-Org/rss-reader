@@ -4,6 +4,8 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export type Density = 'compact' | 'comfortable';
 export type FontSize = 'small' | 'medium' | 'large';
 export type SortMode = 'date-desc' | 'date-asc' | 'feed';
+export type ArticleView = 'card' | 'list' | 'magazine' | 'compact';
+export type ArticleFilter = 'all' | 'unread' | 'starred';
 export type SidebarSort =
   | 'name-asc'
   | 'name-desc'
@@ -28,8 +30,13 @@ export interface Preferences {
    * loadPreferences (the old YouTube-only option defaulted to off).
    */
   embedMedia: boolean;
-  /** Hide articles already marked as read. */
-  hideRead: boolean;
+  /** Card / list / magazine / compact article layout. */
+  viewMode: ArticleView;
+  /** All articles, unread only, or starred only. */
+  articleFilter: ArticleFilter;
+  /** Search options, edited from the search field. */
+  searchCaseSensitive: boolean;
+  searchFullText: boolean;
   /** Sidebar collapsed to a hidden state on desktop (persists across sessions). */
   sidebarCollapsed: boolean;
   /** Desktop: closing the window hides it to the tray instead of quitting. */
@@ -64,7 +71,10 @@ export const DEFAULT_PREFERENCES: Preferences = {
   density: 'comfortable',
   fontSize: 'medium',
   embedMedia: true,
-  hideRead: false,
+  viewMode: 'card',
+  articleFilter: 'all',
+  searchCaseSensitive: false,
+  searchFullText: true,
   sidebarCollapsed: false,
   closeToTray: false,
   notifyNewArticles: true,
@@ -158,6 +168,7 @@ export interface AppState {
   articles: Record<string, Article[]>;
   feedState: Record<string, FeedState>;
   readIds: Record<string, true>;
+  starredIds: Record<string, true>;
   prefs: Preferences;
   ui: UiState;
   toasts: Toast[];

@@ -34,7 +34,8 @@ export function exportFullBackup(
   readIds: Record<string, true>,
   folders: string[],
   prefs: Preferences,
-  articles: Record<string, Article[]>
+  articles: Record<string, Article[]>,
+  starredIds: Record<string, true> = {}
 ): string {
   const { youtubeApiKey: _omitted, prefsVersion: _version, ...portablePrefs } = prefs;
 
@@ -54,6 +55,7 @@ export function exportFullBackup(
     })),
     folders: collectFolderNames(feeds, folders),
     readIds: Object.keys(readIds),
+    starredIds: Object.keys(starredIds),
     preferences: portablePrefs,
     articles,
   });
@@ -68,7 +70,18 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
   if (isOneOf(raw.density, ['compact', 'comfortable'] as const)) out.density = raw.density;
   if (isOneOf(raw.fontSize, ['small', 'medium', 'large'] as const)) out.fontSize = raw.fontSize;
   if (typeof raw.embedMedia === 'boolean') out.embedMedia = raw.embedMedia;
-  if (typeof raw.hideRead === 'boolean') out.hideRead = raw.hideRead;
+  if (isOneOf(raw.viewMode, ['card', 'list', 'magazine', 'compact'] as const)) {
+    out.viewMode = raw.viewMode;
+  }
+  if (isOneOf(raw.articleFilter, ['all', 'unread', 'starred'] as const)) {
+    out.articleFilter = raw.articleFilter;
+  } else if (raw.hideRead === true) {
+    out.articleFilter = 'unread';
+  }
+  if (typeof raw.searchCaseSensitive === 'boolean') {
+    out.searchCaseSensitive = raw.searchCaseSensitive;
+  }
+  if (typeof raw.searchFullText === 'boolean') out.searchFullText = raw.searchFullText;
   if (typeof raw.sidebarCollapsed === 'boolean') out.sidebarCollapsed = raw.sidebarCollapsed;
   if (typeof raw.closeToTray === 'boolean') out.closeToTray = raw.closeToTray;
   if (typeof raw.notifyNewArticles === 'boolean') out.notifyNewArticles = raw.notifyNewArticles;
@@ -255,6 +268,23 @@ export function parseJsonBackup(text: string): ImportResult {
     }
   }
 
+  const starredIds: Record<string, true> = {};
+  if (Array.isArray(parsed.starredIds)) {
+    for (const id of parsed.starredIds) {
+      if (typeof id !== 'string') continue;
+      let mapped = articleIdMap.get(id);
+      if (!mapped) {
+        for (const [oldId, newId] of idMap) {
+          if (oldId !== newId && id.startsWith(`${oldId}-`)) {
+            mapped = `${newId}${id.slice(oldId.length)}`;
+            break;
+          }
+        }
+      }
+      starredIds[mapped ?? id] = true;
+    }
+  }
+
   if (!feeds.length && !folderNames.size) {
     throw new ImportError('No valid feed URLs or folders were found in that backup.');
   }
@@ -263,6 +293,7 @@ export function parseJsonBackup(text: string): ImportResult {
   return {
     feeds: sortImportedFeeds(feeds),
     readIds,
+    starredIds,
     format: 'json',
     warnings,
     folders: [...folderNames].sort(byName),

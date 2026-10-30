@@ -451,7 +451,7 @@
 .search__input {
   width: 100%;
   height: var(--control-height);
-  padding: 0 3.25rem 0 1.875rem;
+  padding: 0 5.5rem 0 1.875rem;
   border: 0.0625rem solid var(--border);
   border-radius: var(--radius);
   background: var(--panel-2);
@@ -2567,7 +2567,7 @@ kbd {
 
 .search__scope {
   position: absolute;
-  right: 0.375rem;
+  right: 2.75rem;
   top: 50%;
   transform: translateY(-50%);
   padding: 0.125rem 0.375rem;
@@ -2643,4 +2643,359 @@ kbd {
 
 .content-area--split .article-grid {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Search options (Aa): case sensitivity + full-text toggle, attached to the
+   search field rather than hidden in a global menu. */
+.search-options-root {
+  position: absolute;
+  right: 0.375rem;
+  top: 50%;
+  /* `transform` makes this a stacking context, so it needs its own z-index;
+     otherwise the popover paints behind the later .sidebar__scroll sibling
+     and clicks land on the feed list instead. */
+  z-index: 70;
+  transform: translateY(-50%);
+}
+
+.search__options {
+  padding: 0.125rem 0.3125rem;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.search__options:hover,
+.search__options.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.search-options {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 60;
+  width: 13.5rem;
+  padding: 0.375rem;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+/* ---------------------------- view menu / filters ----------------------- */
+.view-menu-root {
+  position: relative;
+}
+
+.view-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 60;
+  width: 15rem;
+  padding: 0.375rem;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.view-menu__section {
+  margin: 0.375rem 0 0.25rem 1.75rem;
+  color: var(--accent);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.view-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0.4375rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.view-menu__item:hover,
+.view-menu__item:focus-visible {
+  outline: none;
+  background: var(--panel-3);
+}
+
+.view-menu__check {
+  display: inline-flex;
+  justify-content: center;
+  width: 1.125rem;
+  flex: 0 0 1.125rem;
+  color: var(--accent);
+}
+
+.view-menu__icon {
+  color: var(--muted);
+}
+
+.view-menu__divider {
+  height: 0.0625rem;
+  margin: 0.375rem 0;
+  background: var(--border);
+}
+
+.view-menu__item--plain {
+  padding-left: 0.85rem;
+}
+
+/* Split mark-as-read: check marks all visible, caret opens date cutoffs. */
+.mark-read {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mark-read__caret {
+  width: 1.25rem;
+  height: var(--icon-btn);
+  min-width: 0;
+  padding: 0;
+  margin-left: -0.125rem;
+}
+
+.mark-read__caret .icon {
+  pointer-events: none;
+}
+
+.mark-read__menu {
+  width: 13rem;
+}
+
+.ghost-button.is-starred {
+  color: var(--accent);
+}
+
+.article-card__star {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-left: var(--space-1);
+  color: var(--accent);
+}
+
+/* ------------------------------- view modes ----------------------------- */
+.article-grid--list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.article-grid--list .article-card {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  column-gap: var(--space-3);
+  align-items: start;
+  height: auto;
+  min-height: 7.5rem;
+}
+
+.article-grid--list .article-card__media {
+  grid-row: 1 / span 3;
+  width: 10rem;
+  height: 100%;
+  min-height: 7.5rem;
+  flex: none;
+}
+
+.article-grid--list .article-card__info,
+.article-grid--list .article-card__title,
+.article-grid--list .article-card__snippet {
+  grid-column: 2;
+  margin-left: 0;
+  margin-right: var(--space-3);
+}
+
+.article-grid--list .article-card__info {
+  margin-top: var(--space-2);
+}
+
+.article-grid--list .article-card__title {
+  -webkit-line-clamp: 2;
+}
+
+.article-grid--list .article-card__snippet {
+  margin-bottom: var(--space-2);
+}
+
+.article-grid--list .article-card.no-media {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.article-grid--list .article-card.no-media > * {
+  grid-column: 1;
+}
+
+.article-grid--compact {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.article-grid--compact .article-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: auto;
+  padding: var(--space-2) var(--card-pad-x);
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  box-shadow: none;
+  background: var(--panel);
+}
+
+.article-grid--compact .article-grid__item + .article-grid__item .article-card {
+  border-top: 0;
+}
+
+.article-grid--compact .article-card__media,
+.article-grid--compact .article-card__snippet {
+  display: none;
+}
+
+.article-grid--compact .article-card__info {
+  margin: 0;
+}
+
+.article-grid--compact .article-card__title {
+  margin: 0.125rem 0 0;
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  -webkit-line-clamp: 1;
+}
+
+.article-grid--compact .article-card.no-media {
+  background: var(--panel);
+}
+
+@media (min-width: 760px) {
+  .article-grid--magazine .article-grid__item:first-child {
+    grid-column: span 2;
+  }
+
+  .article-grid--magazine .article-grid__item:first-child .article-card {
+    height: 26rem;
+  }
+
+  .article-grid--magazine .article-grid__item:first-child .article-card__media {
+    height: 62%;
+    flex-basis: 62%;
+  }
+}
+
+/* --------------------------- article overlay ---------------------------- */
+.article-overlay__backdrop {
+  background: color-mix(in srgb, #07090e 42%, transparent);
+  backdrop-filter: blur(14px) saturate(115%);
+  -webkit-backdrop-filter: blur(14px) saturate(115%);
+  padding: clamp(0.5rem, 3vh, 2rem);
+}
+
+.article-overlay__dialog {
+  position: relative;
+  width: min(64rem, 96vw);
+  max-width: min(64rem, 96vw);
+  max-height: 92dvh;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.dialog--bare {
+  padding: 0;
+}
+
+.article-overlay__dialog .detail {
+  max-width: 100%;
+  height: auto;
+  padding: 0 var(--space-5) var(--space-6);
+}
+
+.article-overlay__dialog .detail__bar {
+  padding-right: 2.5rem;
+}
+
+.article-overlay__close {
+  position: sticky;
+  top: var(--space-2);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin: var(--space-2) var(--space-2) 0 auto;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.article-overlay__close:hover {
+  background: var(--panel-3);
+}
+
+.article-overlay__nav {
+  position: fixed;
+  top: 50%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.article-overlay__nav:hover:not(:disabled) {
+  background: var(--panel-3);
+}
+
+.article-overlay__nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.article-overlay__nav--prev {
+  left: max(0.75rem, calc(50% - 34rem));
+}
+
+.article-overlay__nav--next {
+  right: max(0.75rem, calc(50% - 34rem));
+}
+
+@media (max-width: 720px) {
+  .article-overlay__nav {
+    display: none;
+  }
+
+  .article-overlay__dialog .detail {
+    padding: 0 var(--space-3) var(--space-5);
+  }
 }
