@@ -1,5 +1,7 @@
 # RSS Reader
 
+[![CI](https://github.com/MediaHub-Org/rss-reader/actions/workflows/ci.yml/badge.svg)](https://github.com/MediaHub-Org/rss-reader/actions/workflows/ci.yml)
+
 A lightweight, **local-first** RSS/Atom reader for the desktop browser. No account, no
 backend, no telemetry — subscriptions, read state and preferences live in your own
 browser storage.
@@ -89,10 +91,14 @@ Run the test suites (`npm run dev` for the first, `npm run build && npm run prev
 for the second):
 
 ```bash
+npm run test:unit     # Vitest: backoff, feed ids, OPML/backup parsing
 npm run test:e2e      # end-to-end smoke tests against bundled fixture feeds → test-artifacts/
 npm run test:pwa      # installability + offline checks
-npm run check         # TS typecheck + Rust fmt/clippy/tests
+npm run check         # typecheck + unit tests + Rust fmt/clippy/tests
 ```
+
+CI runs the web suite on Ubuntu and the Rust checks + Windows installer build on
+Windows (`.github/workflows/ci.yml`).
 
 ---
 
