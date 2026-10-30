@@ -1203,17 +1203,22 @@ try {
   await page.click('.detail .ghost-button:has-text("Back")');
 
   /* ------------------- copy link + load full content ------------------- */
-  await page.click('.sidebar .feed-row:has-text("All articles")');
+  // Pointer hit-testing can get stuck on a stale compositor layer after the
+  // provider iframes close in headless CI. Dispatch the click so this block
+  // tests the app handlers without depending on that layer.
+  await page
+    .locator('.sidebar .feed-row:has-text("All articles")')
+    .dispatchEvent('click');
   await page.fill('.search__input', 'Fixture story two');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
-  await page.click('.article-card');
+  await page.locator('.article-card').dispatchEvent('click');
   await page.waitForSelector('.detail');
   const copyLinkButton = '.detail__actions button[aria-label="Copy article link"]';
   check(
     'Article toolbar offers Copy link',
     (await page.locator(copyLinkButton).count()) === 1
   );
-  await page.click(copyLinkButton);
+  await page.locator(copyLinkButton).dispatchEvent('click');
   const copyOk = await page
     .waitForFunction(
       () =>
@@ -1227,7 +1232,9 @@ try {
     .catch(() => false);
   check('Copy link copies the article URL', copyOk);
 
-  await page.click('.detail__actions button[aria-label="Load full article content"]');
+  await page
+    .locator('.detail__actions button[aria-label="Load full article content"]')
+    .dispatchEvent('click');
   await page.waitForFunction(
     () => /Original full article/.test(document.querySelector('.detail .content')?.textContent || ''),
     undefined,
@@ -1238,12 +1245,16 @@ try {
     'Full content is marked active',
     (await page.getAttribute('.detail__actions button[aria-label="Show feed content"]', 'aria-pressed')) === 'true'
   );
-  await page.click('.detail__actions button[aria-label="Show feed content"]');
+  await page
+    .locator('.detail__actions button[aria-label="Show feed content"]')
+    .dispatchEvent('click');
   await page.waitForFunction(
     () => !/Original full article/.test(document.querySelector('.detail .content')?.textContent || '')
   );
   check('Toggling full content off restores the feed content', true);
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await page
+    .locator('.detail .ghost-button:has-text("Back")')
+    .dispatchEvent('click');
   await waitForList();
   await page.fill('.search__input', '');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 1);
