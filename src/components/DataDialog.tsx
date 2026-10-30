@@ -3,12 +3,13 @@ import type { Feed } from '../types';
 import type { ExportFeed, ImportResult } from '../lib/opml';
 import {
   byName,
-  exportJson,
+  exportFullBackup,
   exportOpml,
   importSubscriptions,
   downloadFile,
   ImportError,
 } from '../lib/opml';
+import { loadAllArticles } from '../lib/storage';
 import { feedIdForUrl } from '../lib/feedParser';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
@@ -223,8 +224,15 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     setError(null);
 
     if (file.size > 5 * 1024 * 1024) {
-      setError('That file is larger than 5 MB — it is probably not an OPML file.');
-      return;
+      const looksLikeBackup = /\.json$/i.test(file.name);
+      if (!looksLikeBackup || file.size > 250 * 1024 * 1024) {
+        setError(
+          looksLikeBackup
+            ? 'That backup is larger than 250 MB — it cannot be restored in one piece.'
+            : 'That file is larger than 5 MB — it is probably not an OPML file.'
+        );
+        return;
+      }
     }
 
     try {
@@ -235,18 +243,31 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     }
   };
 
-  const confirmImport = () => {
+  const confirmImport = async () => {
     if (!pending) return;
     const beforeFolders = folderNamesOf(state.feeds, state.folders);
     const addedFolders = pending.folders.filter((name) => !beforeFolders.has(name));
+    // A full restore writes its own cached articles right after this; let it
+    // win over the background refresh, which would replace them with the
+    // (possibly empty) live feed.
     const { added, updated, skipped } = store.importFeeds(pending.feeds, {
       folders: pending.folders,
+      skipRefresh: pending.full,
     });
-    let readNote = '';
+    let readCount = 0;
     if (pending.readIds && Object.keys(pending.readIds).length) {
       store.mergeReadIds(pending.readIds);
-      readNote = ` and restored ${Object.keys(pending.readIds).length} read articles`;
+      readCount = Object.keys(pending.readIds).length;
     }
+
+    let articleCount = 0;
+    if (pending.articles) {
+      articleCount = await store.restoreArticles(pending.articles);
+    }
+    if (pending.preferences) {
+      store.setPreferences(pending.preferences);
+    }
+
     const parts: string[] = [];
     if (added) parts.push(`Imported ${added} feed${added === 1 ? '' : 's'}`);
     if (updated) parts.push(`${added ? 'updated' : 'Updated'} ${updated}`);
@@ -255,31 +276,50 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     }
     if (skipped) parts.push(`skipped ${skipped}`);
 
-    store.notify(
-      added || updated || addedFolders.length ? 'success' : 'info',
-      added || updated || addedFolders.length
-        ? `${parts.join(', ')}${readNote}`
-        : `Nothing to import — ${skipped} duplicate${skipped === 1 ? '' : 's'} skipped`
-    );
+    const restored: string[] = [];
+    if (readCount) restored.push(`${readCount} read entr${readCount === 1 ? 'y' : 'ies'}`);
+    if (articleCount) restored.push(`${articleCount} cached article${articleCount === 1 ? '' : 's'}`);
+    if (pending.preferences) restored.push('preferences');
+
+    const changed = Boolean(added || updated || addedFolders.length || restored.length);
+    let message: string;
+    if (parts.length && restored.length) {
+      message = `${parts.join(', ')} · restored ${restored.join(', ')}`;
+    } else if (parts.length) {
+      message = parts.join(', ');
+    } else if (restored.length) {
+      message = `Restored ${restored.join(', ')}`;
+    } else {
+      message = `Nothing to import — ${skipped} duplicate${skipped === 1 ? '' : 's'} skipped`;
+    }
+
+    store.notify(changed ? 'success' : 'info', message);
     close();
   };
 
-  const doExport = (kind: 'opml' | 'json') => {
+  const doExport = async (kind: 'opml' | 'json') => {
     try {
+      let saved: boolean;
       if (kind === 'opml') {
-        downloadFile(
+        saved = await downloadFile(
           'rss-reader-subscriptions.opml',
           exportOpml(state.feeds, state.folders),
           'text/x-opml+xml'
         );
       } else {
-        downloadFile(
+        store.notify('info', 'Preparing full backup…');
+        const articles = await loadAllArticles();
+        saved = await downloadFile(
           'rss-reader-backup.json',
-          exportJson(state.feeds, state.readIds, state.folders),
+          exportFullBackup(state.feeds, state.readIds, state.folders, state.prefs, articles),
           'application/json'
         );
       }
-      store.notify('success', kind === 'opml' ? 'OPML exported' : 'Backup exported');
+      if (!saved) {
+        store.notify('info', 'Export cancelled');
+        return;
+      }
+      store.notify('success', kind === 'opml' ? 'OPML exported' : 'Full backup exported');
     } catch {
       store.notify('error', 'Export failed.');
     }
@@ -521,7 +561,11 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                 {pending.folders.length
                   ? ` across ${pending.folders.length} folder${pending.folders.length === 1 ? '' : 's'}`
                   : ''}
-                {pending.readIds ? ` · ${Object.keys(pending.readIds).length} read entries` : ''}.
+                {pending.readIds ? ` · ${Object.keys(pending.readIds).length} read entries` : ''}
+                {pending.articles && Object.values(pending.articles).some((list) => list.length)
+                  ? ` · ${Object.values(pending.articles).reduce((sum, list) => sum + list.length, 0)} cached articles`
+                  : ''}
+                {pending.preferences ? ' · preferences' : ''}.
               </p>
 
               <ul className="import-preview__list">
@@ -555,7 +599,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                 <button
                   type="button"
                   className="button button--primary"
-                  onClick={confirmImport}
+                  onClick={() => void confirmImport()}
                   disabled={!pending.feeds.length && !pending.folders.length}
                 >
                   Import{' '}
@@ -575,7 +619,8 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
             <strong>OPML</strong> is the standard format every reader understands — subscriptions and
             folders (sorted A–Z, including empty folders).
             <br />
-            <strong>JSON backup</strong> includes read status so you can restore this device exactly.
+            <strong>JSON backup</strong> also carries read status, preferences and every cached
+            article, so this device can be rebuilt elsewhere (the YouTube API key is not included).
           </p>
 
           <div className="export-actions">
@@ -585,12 +630,12 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
               onClick={() => doExport('opml')}
               disabled={!hasAnything}
             >
-              Export OPML ({state.feeds.length} feed{state.feeds.length === 1 ? '' : 's'})
+              Export OPML
             </button>
             <button
               type="button"
               className="button button--ghost"
-              onClick={() => doExport('json')}
+              onClick={() => void doExport('json')}
               disabled={!hasAnything}
             >
               Export full backup (JSON)

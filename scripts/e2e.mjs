@@ -279,6 +279,55 @@ try {
   const opml = await readFile(opmlPath, 'utf8');
   check('OPML export is valid XML with outlines', /<opml[\s>]/.test(opml) && (opml.match(/<outline/g) || []).length >= 2, download.suggestedFilename());
   check('OPML export escapes safely', !/<outline[^>]*&(?!amp;|lt;|gt;|quot;|apos;)/.test(opml));
+
+  /* ----------------------- full backup (JSON v2) ------------------------ */
+  const [backupDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('button:has-text("Export full backup")'),
+  ]);
+  const backupPath = path.join(SHOTS, 'full-backup.json');
+  await backupDownload.saveAs(backupPath);
+  const backup = JSON.parse(await readFile(backupPath, 'utf8'));
+  const backedUpArticles = Object.values(backup.articles ?? {}).reduce(
+    (sum, list) => sum + (Array.isArray(list) ? list.length : 0),
+    0
+  );
+  check(
+    'Full backup carries feeds, read state, preferences and cached articles',
+    backup.version === 2 &&
+      backup.feeds.length >= 2 &&
+      backedUpArticles > 0 &&
+      Array.isArray(backup.readIds) &&
+      Boolean(backup.preferences) &&
+      !('youtubeApiKey' in (backup.preferences ?? {})),
+    `${backup.feeds.length} feeds · ${backedUpArticles} articles · ${backup.readIds.length} read`
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+
+  /* Restoring the same full backup merges the cache back without refetching */
+  await openDataTab('Import');
+  await page.waitForSelector('[role="dialog"] [role="tabpanel"]');
+  await page.setInputFiles('.file-input', backupPath);
+  await page.waitForSelector('.import-preview__summary');
+  const backupSummary = (await page.textContent('.import-preview__summary'))?.replace(/\s+/g, ' ') ?? '';
+  check(
+    'Full backup preview mentions cached articles and preferences',
+    /cached articles/.test(backupSummary) && /preferences/.test(backupSummary),
+    backupSummary.trim()
+  );
+  await page.click('.import-preview__actions .button--primary');
+  await page.waitForFunction(
+    () => /cached article/i.test(document.querySelector('.toast')?.textContent || ''),
+    undefined,
+    { timeout: 10_000 }
+  );
+  const restoreToast = (await page.locator('.toast').last().textContent())?.trim() ?? '';
+  check(
+    'Full backup restore reports the cached articles',
+    /cached article/i.test(restoreToast),
+    restoreToast
+  );
   await page.keyboard.press('Escape');
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 

@@ -659,11 +659,23 @@ export class Store {
    *   are also removed.
    */
   importFeeds(
-    incoming: Array<{ url: string; title?: string; siteUrl?: string; folder?: string }>,
-    options: { replace?: boolean; folders?: string[] } = {}
+    incoming: Array<{
+      url: string;
+      /** Stable id from a full backup; keeps caches/read state aligned. */
+      id?: string;
+      title?: string;
+      siteUrl?: string;
+      folder?: string;
+      description?: string;
+      iconUrl?: string;
+      addedAt?: number;
+    }>,
+    options: { replace?: boolean; folders?: string[]; skipRefresh?: boolean } = {}
   ): { added: number; updated: number; removed: number; skipped: number } {
     const existingById = new Map(this.state.feeds.map((f) => [f.id, f]));
+    const existingByUrl = new Map(this.state.feeds.map((f) => [f.url, f]));
     const seen = new Set<string>();
+    const seenUrls = new Set<string>();
     const added: Feed[] = [];
     const updatedById = new Map<string, Feed>();
     let skipped = 0;
@@ -674,7 +686,27 @@ export class Store {
         skipped++;
         continue;
       }
-      const id = feedIdForUrl(validated.url);
+      if (seenUrls.has(validated.url)) {
+        skipped++;
+        continue;
+      }
+      seenUrls.add(validated.url);
+
+      /**
+       * A feed's id normally comes from its URL, but redirect/discovery can
+       * change the stored URL without changing the id (trackAlternate). Full
+       * backups carry that id so a restore does not add a duplicate; OPML has
+       * no id, so an existing feed with the same URL supplies it instead.
+       */
+      const urlMatch = existingByUrl.get(validated.url);
+      let id =
+        entry.id && /^f[a-z0-9]+$/i.test(entry.id) ? entry.id : feedIdForUrl(validated.url);
+      const collision = existingById.get(id);
+      if (collision && collision.url !== validated.url) {
+        id = urlMatch?.id ?? feedIdForUrl(validated.url);
+      } else if (!collision && urlMatch) {
+        id = urlMatch.id;
+      }
       if (seen.has(id)) {
         skipped++;
         continue;
@@ -696,6 +728,8 @@ export class Store {
             title: nextTitle,
             folder: nextFolder,
             siteUrl: nextSite,
+            description: entry.description ?? prev.description,
+            iconUrl: entry.iconUrl ?? prev.iconUrl,
           });
         } else {
           skipped++;
@@ -709,7 +743,9 @@ export class Store {
         title: entry.title?.trim() || validated.url.replace(/^https?:\/\//, ''),
         siteUrl: entry.siteUrl,
         folder: nextFolder,
-        addedAt: Date.now(),
+        addedAt: Number.isFinite(entry.addedAt) ? entry.addedAt! : Date.now(),
+        description: entry.description,
+        iconUrl: entry.iconUrl,
       });
     }
 
@@ -766,9 +802,11 @@ export class Store {
       }
 
       this.schedulePersist();
-      void added.forEach((feed, index) => {
-        setTimeout(() => void this.refreshFeed(feed.id, { silent: true }), index * REFRESH_STAGGER_MS);
-      });
+      if (!options.skipRefresh) {
+        void added.forEach((feed, index) => {
+          setTimeout(() => void this.refreshFeed(feed.id, { silent: true }), index * REFRESH_STAGGER_MS);
+        });
+      }
     }
 
     return { added: added.length, updated: updatedById.size, removed, skipped };
@@ -780,6 +818,45 @@ export class Store {
     this.update({ readIds: merged });
     saveReadIds(merged);
     return count;
+  }
+
+  /**
+   * Restore the article cache from a full backup. Every article is written to
+   * IndexedDB, while the in-memory view keeps the newest HYDRATED_ARTICLE_LIMIT
+   * per feed — the same shape hydration and refresh produce.
+   */
+  async restoreArticles(incoming: Record<string, Article[]>): Promise<number> {
+    const knownFeeds = new Set(this.state.feeds.map((feed) => feed.id));
+    const visible: Record<string, Article[]> = {};
+    let total = 0;
+
+    for (const [feedId, list] of Object.entries(incoming)) {
+      if (!knownFeeds.has(feedId) || !Array.isArray(list) || !list.length) continue;
+      const clean = list
+        .filter((article) => article && typeof article.id === 'string')
+        .map((article) => ({ ...article, feedId }))
+        .sort((a, b) => b.publishedAt - a.publishedAt);
+      if (!clean.length) continue;
+
+      total += clean.length;
+      visible[feedId] = clean.slice(0, HYDRATED_ARTICLE_LIMIT);
+      await saveArticles(feedId, clean);
+    }
+
+    if (!total) return 0;
+
+    const feedState: Record<string, FeedState> = { ...this.state.feedState };
+    for (const [feedId, list] of Object.entries(visible)) {
+      feedState[feedId] = {
+        ...(feedState[feedId] ?? { status: 'ok', articleCount: 0 }),
+        status: 'ok',
+        updatedAt: Date.now(),
+        articleCount: list.length,
+      };
+    }
+    this.update({ articles: { ...this.state.articles, ...visible }, feedState });
+    this.schedulePersist();
+    return total;
   }
 
   /* ------------------------------ read status ----------------------------- */
