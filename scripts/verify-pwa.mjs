@@ -62,14 +62,28 @@ try {
   );
 
   /* --------------------------- service worker -------------------------- */
-  const swState = await page.evaluate(async () => {
-    const reg = await navigator.serviceWorker.ready;
-    return {
-      scope: reg.scope,
-      script: reg.active?.scriptURL ?? null,
-      controlled: Boolean(navigator.serviceWorker.controller),
-    };
-  });
+  const readServiceWorker = () =>
+    page.evaluate(async () => {
+      const reg = await navigator.serviceWorker.ready;
+      return {
+        scope: reg.scope,
+        script: reg.active?.scriptURL ?? null,
+        controlled: Boolean(navigator.serviceWorker.controller),
+      };
+    });
+
+  let swState = await readServiceWorker();
+  if (!swState.controlled) {
+    // A first activation can become ready before Chromium updates
+    // `navigator.serviceWorker.controller` on the current document. Reload
+    // once; if it is still uncontrolled, the check below fails for real.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('.empty-state, .article-grid', { timeout: 15_000 });
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), undefined, {
+      timeout: 10_000,
+    });
+    swState = await readServiceWorker();
+  }
   check('Service worker registered and active', Boolean(swState.script), swState.script || '');
   check('Page controlled by the service worker', swState.controlled, swState.scope || '');
 
