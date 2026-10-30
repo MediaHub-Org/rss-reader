@@ -8,6 +8,7 @@ import { copyText } from '../lib/clipboard';
 import { leaveArticle } from '../lib/viewHistory';
 import { thumbnailUrl, watchUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml, type MediaEmbed } from '../lib/embeds';
+import { cachedFullContent, fetchFullContent } from '../lib/fullContent';
 import { Icon } from './Icon';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 
@@ -20,6 +21,10 @@ export function ArticleDetail() {
   const [menu, setMenu] = useState<DetailMenu | null>(null);
   /** A provider link clicked inside the article body, played above the text. */
   const [inlineMedia, setInlineMedia] = useState<MediaEmbed | null>(null);
+  /** Reader-extracted page content, per article, toggled over the feed body. */
+  const [fullContent, setFullContent] = useState<string | null>(null);
+  const [showFullContent, setShowFullContent] = useState(false);
+  const [loadingFullContent, setLoadingFullContent] = useState(false);
   const mediaRef = useRef<HTMLElement>(null);
 
   const article = useMemo(
@@ -32,9 +37,10 @@ export function ArticleDetail() {
 
   const html = useMemo(() => {
     if (!article) return '';
+    if (showFullContent && fullContent) return fullContent;
     const base = article.link || feed?.siteUrl || feed?.url;
     return sanitizeHtml(article.contentHtml, base);
-  }, [article, feed]);
+  }, [article, feed, fullContent, showFullContent]);
 
   // The item's own link wins; otherwise the first supported provider linked
   // from the body (Spotify in prose, a Vimeo clip in a paragraph…).
@@ -46,7 +52,10 @@ export function ArticleDetail() {
   // A player opened from one article must not follow you to the next one.
   useEffect(() => {
     setInlineMedia(null);
-  }, [article?.id]);
+    setFullContent(article?.link ? cachedFullContent(article.link) ?? null : null);
+    setShowFullContent(false);
+    setLoadingFullContent(false);
+  }, [article?.id, article?.link]);
 
   if (!article) {
     return (
@@ -117,6 +126,29 @@ export function ArticleDetail() {
       ok ? 'success' : 'error',
       ok ? `${label} copied to the clipboard` : `Could not copy ${label.toLowerCase()}`
     );
+  };
+
+  const toggleFullContent = async () => {
+    if (!article.link) return;
+    if (fullContent) {
+      setShowFullContent((value) => !value);
+      return;
+    }
+
+    setLoadingFullContent(true);
+    try {
+      const next = await fetchFullContent(article.link);
+      setFullContent(next);
+      setShowFullContent(true);
+      store.notify('success', 'Loaded the original article content');
+    } catch (err) {
+      store.notify(
+        'error',
+        err instanceof Error ? err.message : 'Could not load the original article content.'
+      );
+    } finally {
+      setLoadingFullContent(false);
+    }
   };
 
   const menuItems = (): ContextMenuItem[] => {
@@ -213,6 +245,43 @@ export function ArticleDetail() {
             <Icon name={read ? 'eyeOff' : 'eye'} size={16} />
             <span>{read ? 'Unread' : 'Read'}</span>
           </button>
+
+          {article.link && (
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => void copyValue(article.link as string, 'Article link')}
+              aria-label="Copy article link"
+            >
+              <Icon name="copy" size={16} />
+              <span>Copy link</span>
+            </button>
+          )}
+
+          {article.link && (
+            <button
+              type="button"
+              className={`ghost-button ${showFullContent ? 'is-active' : ''}`}
+              onClick={() => void toggleFullContent()}
+              disabled={loadingFullContent}
+              aria-pressed={showFullContent}
+              aria-label={showFullContent ? 'Show feed content' : 'Load full article content'}
+              title={
+                showFullContent
+                  ? 'Show the feed\'s own content'
+                  : 'Fetch and extract the original article text'
+              }
+            >
+              <Icon name="book" size={16} />
+              <span>
+                {loadingFullContent
+                  ? 'Loading…'
+                  : showFullContent
+                    ? 'Full content'
+                    : 'Load full content'}
+              </span>
+            </button>
+          )}
 
           {article.link && (
             <a

@@ -267,7 +267,11 @@ export default function App() {
     setSettingsSection(section);
     setSettingsOpen(true);
   };
-  const cardOverlay = Boolean(state.ui.activeArticleId) && state.prefs.viewMode === 'card';
+  /* Card and magazine views open the reader as an overlay; list and compact
+     keep the wide two-pane layout. */
+  const cardOverlay =
+    Boolean(state.ui.activeArticleId) &&
+    (state.prefs.viewMode === 'card' || state.prefs.viewMode === 'magazine');
 
   return (
     <div

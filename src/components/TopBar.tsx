@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { SortMode } from '../types';
 import { folderNameFromViewId } from '../types';
-import { store, selectArticles, isDarkTheme } from '../store/store';
+import { store, selectArticles } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Icon } from './Icon';
 import { Dropdown } from './Dropdown';
@@ -43,7 +43,6 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
 
   const unreadInView = visible.reduce((sum, a) => (state.readIds[a.id] ? sum : sum + 1), 0);
   const anyLoading = Object.values(state.feedState).some((f) => f.status === 'loading');
-  const dark = isDarkTheme(state.prefs);
 
   return (
     <header className="topbar">
@@ -73,6 +72,17 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
       </div>
 
       <div className="topbar__tools">
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => void store.refreshAll({ force: true })}
+          disabled={anyLoading || !state.feeds.length}
+          aria-label="Refresh all feeds"
+          title="Refresh all feeds (R)"
+        >
+          <Icon name="refresh" className={anyLoading ? 'spin' : undefined} />
+        </button>
+
         <ViewMenu />
         <FilterMenu />
 
@@ -87,27 +97,6 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         />
 
         <MarkReadMenu />
-
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => void store.refreshAll({ force: true })}
-          disabled={anyLoading || !state.feeds.length}
-          aria-label="Refresh all feeds"
-          title="Refresh all feeds (R)"
-        >
-          <Icon name="refresh" className={anyLoading ? 'spin' : undefined} />
-        </button>
-
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => store.setPreferences({ theme: dark ? 'light' : 'dark' })}
-          aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={dark ? 'Light theme' : 'Dark theme'}
-        >
-          <Icon name={dark ? 'sun' : 'moon'} />
-        </button>
 
         <button
           type="button"

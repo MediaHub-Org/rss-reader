@@ -143,6 +143,7 @@ export class Store {
     root.dataset.theme = dark ? 'dark' : 'light';
     root.dataset.density = prefs.density;
     root.dataset.fontSize = prefs.fontSize;
+    root.dataset.readerFont = prefs.readerFont;
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
 
     if (prefs.theme === 'system' && !this.mediaQuery && typeof window !== 'undefined') {

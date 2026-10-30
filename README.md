@@ -158,10 +158,11 @@ Collapsed folders persist across reloads. On mobile the feed list is an off-canv
 drawer that closes after you pick something.
 
 **Settings** — one dialog with six sections: **Preferences**, **Groups**, **Sources**,
-**Rules**, **Services & Integration** and **About**. Groups and Sources support
-checkbox multi-selection with bulk merge/move and delete (plus one combined
-confirmation), and the sidebar's feed/folder context menus jump straight to the matching
-section. Rules automatically mark new articles as read or star them using a contains or
+**Rules**, **Services & Integration** and **About**. Preferences hold theme, density,
+reading typeface and size, desktop integration and inline-media playback. Groups and
+Sources support checkbox multi-selection with bulk merge/move and delete (plus one
+combined confirmation), and the sidebar's feed/folder context menus jump straight to the
+matching section. “New folder” opens a themed dialog instead of an inline field. Rules automatically mark new articles as read or star them using a contains or
 regular-expression pattern, scoped to all sources, one group or one source. Rules can
 also be applied to the existing cache, and they travel in the full backup.
 
@@ -173,14 +174,19 @@ picker (type to filter, ↑/↓ then Enter) instead of a menu that grows one row
 folder; “New folder…” can create the destination on the spot.
 
 **Reading** — four layouts from the top-bar **View** menu: card grid (default), list,
-magazine (featured first story) and compact. Star articles to keep them, and filter the
-list to **All articles**, **Unread only** or **Starred only**. Links carry source labels;
-article detail renders sanitized HTML with relative-URL resolution against the article
-base URL. Read/unread works per article plus bulk **Mark as read** with all / older than
-1, 3 or 7 day cutoffs, and sort is by newest / oldest / feed name. In card view the
-reader opens in a blurred overlay with previous/next arrows over the list; in the other
-views wide screens keep list and article side by side, while narrow windows use the
-single-pane list ⇄ detail flow.
+magazine and compact. **List** is a dense row layout with horizontal separators, hover
+states and the article pane side by side on wide windows. **Magazine** uses taller,
+roomier full-width rows without the side pane; its reader opens as a popup. Card view
+also opens the reader in a blurred overlay with previous/next arrows over the list.
+Compact stays a one-line scan. Star articles to keep them, and filter the list to **All
+articles**, **Unread only** or **Starred only**; the View and Filter toolbar controls
+show their names on wide windows and collapse to icons on narrow ones. Links carry
+source labels; article detail renders sanitized HTML with relative-URL resolution
+against the article base URL, plus **Copy link** and a **Load full content** toggle that
+fetches and extracts the original page text (cached for the session). Read/unread works
+per article plus bulk **Mark as read** with all / older than 1, 3 or 7 day cutoffs, and
+sort is by newest / oldest / feed name. Cards without artwork use a text-led layout
+instead of an empty media slot.
 
 **Search** — full-text search over titles, summaries and article bodies with a
 **View / All feeds** scope. The `Aa` button attached to the search field toggles
@@ -214,10 +220,11 @@ no artwork. Turn *Play media inline* off in Settings to open these links in a ne
 instead. An optional YouTube Data API key raises channel/playlist feeds from ~15 to 50
 items. Podcast audio enclosures render a native inline player as well.
 
-**Customization** — light/dark/system theme, comfortable/compact list density, reader
-font size, view mode and article filter. The View and Filter toolbar controls show
-their names on wide windows and collapse to icons on narrow ones. All persisted in
-`localStorage` and applied before first paint (no theme flash).
+**Customization** — light/dark/system theme, comfortable/compact list density, reading
+typeface (sans/serif/mono), reader font size, view mode and article filter. Theme lives
+in Settings → Preferences (the top bar stays focused on reading), and the sidebar becomes
+a hideable drawer up to 1100 px. All preferences persist in `localStorage` and apply
+before first paint (no theme flash).
 
 **Accessibility** — labelled controls, focus-trapped modal dialogs, skip link, visible
 focus rings, keyboard navigation throughout.
@@ -261,7 +268,7 @@ src/
     portability/
       index.ts         format detection + public import/export API
       opml.ts          OPML 2.0 export/parse, folder nesting
-      backup.ts        JSON v2 full backup (cached articles + preferences)
+      backup.ts        JSON v2 full backup (cached articles + preferences + rules)
       download.ts      browser download / native Save adapter
       types.ts         shared feed/import types, URL and folder helpers
     clipboard.ts       clipboard write with a legacy fallback
@@ -277,6 +284,7 @@ src/
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts, feedId.ts
     search.ts          full-text matching (precomputed + legacy fallback)
+    fullContent.ts     original-page fetch + readable HTML extraction (unit-tested)
     rules.ts           article rules: validation, matching and action application
   store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors
   components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs (folder picker included), context menu, toasts

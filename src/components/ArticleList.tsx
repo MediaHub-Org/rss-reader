@@ -152,7 +152,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
   }
 
   return (
-    <div className="list" role="feed" aria-label="Articles">
+    <div className={`list list--${state.prefs.viewMode}`} role="feed" aria-label="Articles">
       <ul className={`article-grid article-grid--${state.prefs.viewMode}`}>
         {slice.map((article) => (
           <ArticleCard

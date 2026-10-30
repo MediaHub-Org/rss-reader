@@ -34,6 +34,7 @@ const check = (name, condition, detail = '') => {
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
 const page = await context.newPage();
 
 /** The split layout keeps the grid mounted; use the app flag to know the view. */
@@ -267,6 +268,19 @@ try {
     ),
     viewMenu.slice(0, 90)
   );
+  const firstToolLabel = await page.getAttribute(
+    '.topbar__tools > *:first-child',
+    'aria-label'
+  );
+  check(
+    'Refresh all is the first toolbar control',
+    /Refresh all/i.test(firstToolLabel || ''),
+    firstToolLabel || ''
+  );
+  check(
+    'Theme control lives in Settings, not the toolbar',
+    (await page.locator('.topbar__tools .icon-button[aria-label*="theme" i]').count()) === 0
+  );
   const viewLabels = await page.$$eval('.topbar-tool__label', (nodes) =>
     nodes.map((node) => node.textContent?.trim())
   );
@@ -286,6 +300,11 @@ try {
     (await page.locator('.content-area--split .article-grid').count()) === 1 &&
       (await page.locator('.content-area--split .detail').count()) === 1
   );
+  const listSeparator = await page.$eval(
+    '.article-grid--list .article-grid__item',
+    (node) => getComputedStyle(node).borderBottomWidth
+  );
+  check('List rows use horizontal separators', listSeparator !== '0px', listSeparator);
   await page.click('.detail__bar .ghost-button[aria-label="Star article"]');
   check(
     'Starring an article flips its action',
@@ -303,6 +322,13 @@ try {
     await page.waitForSelector('.view-menu');
     await page.click(`.view-menu__item:has-text("${label}")`);
     await page.waitForSelector(`.${className}`);
+    if (label === 'Magazine view') {
+      await page.click('.article-card >> nth=0');
+      await page.waitForSelector('.article-overlay__dialog');
+      check('Magazine view opens the reader as an overlay', true);
+      await page.click('.article-overlay__close');
+      await waitForList();
+    }
   }
   check('Compact, magazine and card layouts switch cleanly', true);
 
@@ -428,9 +454,14 @@ try {
 
   /* ------------------------- theme + settings -------------------------- */
   const before = await page.getAttribute('html', 'data-theme');
-  await page.click('.topbar__tools .icon-button[aria-label*="theme" i]');
+  await openSettings('Preferences');
+  await page.click(
+    `[role="dialog"] .segmented__option:has-text("${before === 'dark' ? 'Light' : 'Dark'}")`
+  );
   const after = await page.getAttribute('html', 'data-theme');
-  check('Theme toggle flips data-theme', before !== after, `${before} → ${after}`);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+  check('Theme setting flips data-theme', before !== after, `${before} → ${after}`);
 
   // The menu must follow the new theme, not keep the old one.
   await page.click('.topbar__sort .dropdown__trigger');
@@ -463,8 +494,11 @@ try {
   await page.click('[role="dialog"] .segmented__option:has-text("Large")');
   const density = await page.getAttribute('html', 'data-density');
   const fontSize = await page.getAttribute('html', 'data-font-size');
+  await page.click('[role="dialog"] .segmented__option:has-text("Serif")');
+  const readerFont = await page.getAttribute('html', 'data-reader-font');
   check('Density preference applied', density === 'compact', density || '');
   check('Font size preference applied', fontSize === 'large', fontSize || '');
+  check('Reading typeface preference applied', readerFont === 'serif', readerFont || '');
 
   /* Inline-media switch defaults to true; toggle off and back on */
   await page.click('[role="dialog"] .settings-nav__item:has-text("Preferences")');
@@ -482,8 +516,10 @@ try {
   await page.waitForSelector('.article-grid, .empty-state');
   const persistedTheme = await page.getAttribute('html', 'data-theme');
   const persistedDensity = await page.getAttribute('html', 'data-density');
+  const persistedFont = await page.getAttribute('html', 'data-reader-font');
   check('Theme persisted across reload', persistedTheme === after, persistedTheme || '');
   check('Density persisted across reload', persistedDensity === 'compact', persistedDensity || '');
+  check('Reading font persisted across reload', persistedFont === 'serif', persistedFont || '');
   await page.screenshot({ path: path.join(SHOTS, '02-dark-compact.png') });
 
   /* --------------------------- backups panel --------------------------- */
@@ -1016,6 +1052,18 @@ try {
   );
   check('Toolbar expand-all reopens every folder', allExpanded);
 
+  await page.click('.sidebar__toolbar button[aria-label="New folder"]');
+  await page.waitForSelector('[role="dialog"]');
+  check('New folder opens as a dialog', (await page.locator('[role="dialog"]:has-text("New folder")').count()) === 1);
+  await page.fill('[role="dialog"] input.input', 'Popup Group');
+  await page.click('[role="dialog"] .dialog__footer .button--primary');
+  await page.waitForFunction(
+    () => [...document.querySelectorAll('.folder-row .feed-row__title')].some((node) => node.textContent === 'Popup Group'),
+    undefined,
+    { timeout: 5000 }
+  );
+  check('New folder dialog creates the group', true);
+
   const toastCount = await page.locator('.toast').count();
   const errorBannerCount = await page.locator('.banner--error').count();
   check('Never stacks error banners or multiple toasts', toastCount <= 1 && errorBannerCount === 0, `toasts=${toastCount} banners=${errorBannerCount}`);
@@ -1144,11 +1192,61 @@ try {
   check('Close player restores the article’s own media', true);
   await page.click('.detail .ghost-button:has-text("Back")');
 
-  /* Plain text item: nothing to play */
-  await page.click('.article-card:has-text("Plain article with no media")');
+  /* Plain text item: nothing to play. Focus + Enter avoids a pointer click
+     being intercepted by a transient overlay in CI. */
+  const plainCard = page.locator('.article-card:has-text("Plain article with no media")');
+  await plainCard.scrollIntoViewIfNeeded();
+  await plainCard.focus();
+  await page.keyboard.press('Enter');
   await page.waitForSelector('.detail');
   check('Articles without media get no player', (await page.$('.detail .media-card')) === null);
   await page.click('.detail .ghost-button:has-text("Back")');
+
+  /* ------------------- copy link + load full content ------------------- */
+  await page.click('.sidebar .feed-row:has-text("All articles")');
+  await page.fill('.search__input', 'Fixture story two');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
+  await page.click('.article-card');
+  await page.waitForSelector('.detail');
+  const copyLinkButton = '.detail__actions button[aria-label="Copy article link"]';
+  check(
+    'Article toolbar offers Copy link',
+    (await page.locator(copyLinkButton).count()) === 1
+  );
+  await page.click(copyLinkButton);
+  const copyOk = await page
+    .waitForFunction(
+      () =>
+        [...document.querySelectorAll('.toast')].some((node) =>
+          /Article link copied/i.test(node.textContent || '')
+        ),
+      undefined,
+      { timeout: 5000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  check('Copy link copies the article URL', copyOk);
+
+  await page.click('.detail__actions button[aria-label="Load full article content"]');
+  await page.waitForFunction(
+    () => /Original full article/.test(document.querySelector('.detail .content')?.textContent || ''),
+    undefined,
+    { timeout: 15_000 }
+  );
+  check('Load full content replaces the feed excerpt', true);
+  check(
+    'Full content is marked active',
+    (await page.getAttribute('.detail__actions button[aria-label="Show feed content"]', 'aria-pressed')) === 'true'
+  );
+  await page.click('.detail__actions button[aria-label="Show feed content"]');
+  await page.waitForFunction(
+    () => !/Original full article/.test(document.querySelector('.detail .content')?.textContent || '')
+  );
+  check('Toggling full content off restores the feed content', true);
+  await page.click('.detail .ghost-button:has-text("Back")');
+  await waitForList();
+  await page.fill('.search__input', '');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 1);
 
   /* ------------------- preferences schema migration -------------------- */
   // Profiles created before inline players existed stored `embedMedia:false`

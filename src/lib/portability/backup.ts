@@ -72,6 +72,9 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
   if (isOneOf(raw.theme, ['light', 'dark', 'system'] as const)) out.theme = raw.theme;
   if (isOneOf(raw.density, ['compact', 'comfortable'] as const)) out.density = raw.density;
   if (isOneOf(raw.fontSize, ['small', 'medium', 'large'] as const)) out.fontSize = raw.fontSize;
+  if (isOneOf(raw.readerFont, ['sans', 'serif', 'mono'] as const)) {
+    out.readerFont = raw.readerFont;
+  }
   if (typeof raw.embedMedia === 'boolean') out.embedMedia = raw.embedMedia;
   if (isOneOf(raw.viewMode, ['card', 'list', 'magazine', 'compact'] as const)) {
     out.viewMode = raw.viewMode;

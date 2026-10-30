@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Density, FontSize, ThemeMode } from '../types';
+import type { Density, FontSize, ReaderFont, ThemeMode } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { clearArticleCache, estimateUsage } from '../lib/storage';
@@ -182,6 +182,16 @@ export function SettingsDialog({
                     { value: 'compact', label: 'Compact' },
                   ]}
                   onChange={(density) => store.setPreferences({ density })}
+                />
+                <Segmented<ReaderFont>
+                  label="Reading font"
+                  value={state.prefs.readerFont}
+                  options={[
+                    { value: 'sans', label: 'Sans' },
+                    { value: 'serif', label: 'Serif' },
+                    { value: 'mono', label: 'Mono' },
+                  ]}
+                  onChange={(readerFont) => store.setPreferences({ readerFont })}
                 />
                 <Segmented<FontSize>
                   label="Reader font size"

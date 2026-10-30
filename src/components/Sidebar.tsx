@@ -17,6 +17,7 @@ import { Icon } from './Icon';
 import { Dropdown, type DropdownOption } from './Dropdown';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { FolderPickerDialog } from './FolderPickerDialog';
+import { CreateFolderDialog } from './CreateFolderDialog';
 import { SearchOptions } from './SearchOptions';
 
 type ContextTarget =
@@ -87,7 +88,6 @@ export function Sidebar({
 }: SidebarProps) {
   const state = useStore();
   const [creatingFolder, setCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
   /** Feed to move once the “New folder…” flow (started from its menu) finishes. */
   const [moveAfterCreate, setMoveAfterCreate] = useState<string | null>(null);
   /** Feed whose “Move to folder…” picker is open. */
@@ -100,14 +100,9 @@ export function Sidebar({
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
   const [renameFolderValue, setRenameFolderValue] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
-  const newFolderRef = useRef<HTMLInputElement>(null);
   const renameFeedRef = useRef<HTMLInputElement>(null);
   const renameFolderRef = useRef<HTMLInputElement>(null);
   const navRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (creatingFolder) newFolderRef.current?.focus();
-  }, [creatingFolder]);
 
   useEffect(() => {
     if (renamingFeedId) {
@@ -235,35 +230,24 @@ export function Sidebar({
   };
 
   const beginCreateFolder = (moveFeedId?: string) => {
-    setNewFolderName('');
     setMoveAfterCreate(moveFeedId ?? null);
     setCreatingFolder(true);
   };
 
   const cancelCreateFolder = () => {
     setCreatingFolder(false);
-    setNewFolderName('');
     setMoveAfterCreate(null);
   };
 
-  const submitNewFolder = () => {
-    const name = newFolderName.trim();
+  /** Return an error message for the dialog, or null on success. */
+  const createFolder = (name: string): string | null => {
     const moveFeedId = moveAfterCreate;
-    cancelCreateFolder();
-    if (!name) return;
-
     const result = store.createFolder(name);
-    if (!result.ok) {
-      if (result.message) store.notify('error', result.message);
-      return;
-    }
+    if (!result.ok) return result.message ?? 'Could not create that folder.';
+
     if (moveFeedId) store.moveFeedToFolder(moveFeedId, name);
     store.notify('success', moveFeedId ? `Moved feed to “${name}”` : `Created folder “${name}”`);
-  };
-
-  const onNewFolderKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') submitNewFolder();
-    else if (event.key === 'Escape') cancelCreateFolder();
+    return null;
   };
 
   const startRenameFeed = (feed: Feed) => {
@@ -649,9 +633,8 @@ export function Sidebar({
       style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <div className="sidebar__header">
-        <span className="brand">
+        <span className="brand" title="RSS Reader" aria-label="RSS Reader">
           <Icon name="rss" size={18} />
-          <span>RSS Reader</span>
         </span>
         <button type="button" className="icon-button sidebar__close" onClick={onClose} aria-label="Close feed list">
           <Icon name="close" />
@@ -693,69 +676,54 @@ export function Sidebar({
       </div>
 
       <div className="sidebar__toolbar">
-        {creatingFolder ? (
-          <input
-            ref={newFolderRef}
-            type="text"
-            className="input sidebar__new-folder-input"
-            placeholder={moveAfterCreate ? 'Move to new folder…' : 'Folder name'}
-            value={newFolderName}
-            onChange={(event) => setNewFolderName(event.target.value)}
-            onKeyDown={onNewFolderKey}
-            onBlur={submitNewFolder}
-          />
-        ) : (
-          <>
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => beginCreateFolder()}
-              aria-label="New folder"
-              title="New folder"
-            >
-              <Icon name="folderPlus" size={16} />
-            </button>
-            <button
-              type="button"
-              className="icon-button"
-              onClick={onAddFeed}
-              aria-label="New feed"
-              title="New feed"
-            >
-              <Icon name="plus" size={16} />
-            </button>
-            <span className="sidebar__toolbar-spacer" />
-            <Dropdown<SidebarSort>
-              value={state.prefs.sidebarSort}
-              options={SORT_OPTIONS}
-              onChange={(sidebarSort) => store.setPreferences({ sidebarSort })}
-              label="Sort feeds"
-              triggerTitle="Sort feeds"
-              icon={<Icon name="sort" size={15} />}
-              className="dropdown--icon"
-            />
-            {folders.length > 0 && (
-              <button
-                type="button"
-                className="icon-button"
-                onClick={toggleAllFolders}
-                aria-label={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
-                title={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
-              >
-                <Icon name={anyFolderOpen ? 'collapse' : 'expand'} size={15} />
-              </button>
-            )}
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => revealActiveTarget(true)}
-              aria-label="Reveal active feed"
-              title="Reveal active feed"
-            >
-              <Icon name="locate" size={15} />
-            </button>
-          </>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => beginCreateFolder()}
+          aria-label="New folder"
+          title="New folder"
+        >
+          <Icon name="folderPlus" size={16} />
+        </button>
+        <button
+          type="button"
+          className="icon-button"
+          onClick={onAddFeed}
+          aria-label="New feed"
+          title="New feed"
+        >
+          <Icon name="plus" size={16} />
+        </button>
+        <span className="sidebar__toolbar-spacer" />
+        <Dropdown<SidebarSort>
+          value={state.prefs.sidebarSort}
+          options={SORT_OPTIONS}
+          onChange={(sidebarSort) => store.setPreferences({ sidebarSort })}
+          label="Sort feeds"
+          triggerTitle="Sort feeds"
+          icon={<Icon name="sort" size={15} />}
+          className="dropdown--icon"
+        />
+        {folders.length > 0 && (
+          <button
+            type="button"
+            className="icon-button"
+            onClick={toggleAllFolders}
+            aria-label={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
+            title={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
+          >
+            <Icon name={anyFolderOpen ? 'collapse' : 'expand'} size={15} />
+          </button>
         )}
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => revealActiveTarget(true)}
+          aria-label="Reveal active feed"
+          title="Reveal active feed"
+        >
+          <Icon name="locate" size={15} />
+        </button>
       </div>
 
       <div className="sidebar__scroll">
@@ -901,6 +869,13 @@ export function Sidebar({
         aria-orientation="vertical"
         aria-label="Resize sidebar"
         title="Drag to resize"
+      />
+
+      <CreateFolderDialog
+        open={creatingFolder}
+        feedTitle={state.feeds.find((feed) => feed.id === moveAfterCreate)?.title}
+        onClose={cancelCreateFolder}
+        onCreate={createFolder}
       />
 
       <FolderPickerDialog

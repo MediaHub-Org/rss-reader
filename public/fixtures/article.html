@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Full content fixture</title>
+    <style>.hidden { display: none; }</style>
+  </head>
+  <body>
+    <nav><a href="/">Home</a> · <a href="/fixtures/news.xml">Feed</a></nav>
+    <main>
+      <article>
+        <h1>Original full article</h1>
+        <p>
+          This paragraph comes from the original web page rather than the RSS
+          excerpt, and it is deliberately long enough for the readability
+          extractor to choose this article as the densest content container.
+        </p>
+        <p>Second paragraph with <a href="/fixtures/news.xml">a relative link</a>.</p>
+        <script>window.__injected = true;</script>
+      </article>
+    </main>
+    <aside class="related">Related stories should be removed.</aside>
+    <footer>Footer chrome</footer>
+  </body>
+</html>

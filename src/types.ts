@@ -3,6 +3,7 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type Density = 'compact' | 'comfortable';
 export type FontSize = 'small' | 'medium' | 'large';
+export type ReaderFont = 'sans' | 'serif' | 'mono';
 export type SortMode = 'date-desc' | 'date-asc' | 'feed';
 export type ArticleView = 'card' | 'list' | 'magazine' | 'compact';
 export type ArticleFilter = 'all' | 'unread' | 'starred';
@@ -23,6 +24,8 @@ export interface Preferences {
   theme: ThemeMode;
   density: Density;
   fontSize: FontSize;
+  /** Reading typeface for article bodies. */
+  readerFont: ReaderFont;
   /**
    * Play media inline in the reader — YouTube, Vimeo, Spotify, SoundCloud,
    * Deezer, Apple Podcasts/Music. When off, links open in a new tab instead.
@@ -70,6 +73,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   theme: 'system',
   density: 'comfortable',
   fontSize: 'medium',
+  readerFont: 'sans',
   embedMedia: true,
   viewMode: 'card',
   articleFilter: 'all',

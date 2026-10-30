@@ -58,7 +58,11 @@ export class FeedFetchError extends Error {
 }
 
 /** Fetch raw text, trying each strategy in turn. */
-async function getText(url: string, validators?: FeedValidators): Promise<FetchTextResult> {
+async function getText(
+  url: string,
+  validators?: FeedValidators,
+  accept = 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*'
+): Promise<FetchTextResult> {
   // Desktop: one native request, no CORS and no third-party proxy.
   if (isDesktopApp()) {
     try {
@@ -104,7 +108,7 @@ async function getText(url: string, validators?: FeedValidators): Promise<FetchT
       const response = await fetch(attempt.target, {
         method: 'GET',
         redirect: 'follow',
-        headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*' },
+        headers: { Accept: accept },
         signal: AbortSignal.timeout(20_000),
       });
 
@@ -149,6 +153,12 @@ async function safeMessage(response: Response): Promise<string> {
   } catch {
     return '';
   }
+}
+
+/** Fetch any remote text with the same native/direct/proxy fallback chain. */
+export async function fetchRemoteText(url: string, accept?: string): Promise<string> {
+  const result = await getText(url, undefined, accept);
+  return result.text;
 }
 
 /** Pull an alternate feed link out of an HTML homepage. */

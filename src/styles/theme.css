@@ -203,6 +203,16 @@
   --reader-line: 1.75;
 }
 
+/* ---------------------- Reader Typeface Overrides ------------------------- */
+
+[data-reader-font='serif'] {
+  --reader-font: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+}
+
+[data-reader-font='mono'] {
+  --reader-font: var(--font-mono);
+}
+
 /* ---------------------------------- Base ---------------------------------- */
 
 *,
