@@ -29,6 +29,8 @@ pub struct FeedResponse {
     pub final_url: String,
     pub status: u16,
     pub content_type: String,
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
 }
 
 fn build_client() -> Result<reqwest::Client, String> {
@@ -58,24 +60,50 @@ fn http_client() -> Result<&'static reqwest::Client, String> {
         .map_err(|err| err.clone())
 }
 
-async fn fetch_once(client: &reqwest::Client, target: Url) -> Result<FeedResponse, String> {
-    let response = client
+async fn fetch_once(
+    client: &reqwest::Client,
+    target: Url,
+    etag: Option<&str>,
+    last_modified: Option<&str>,
+) -> Result<FeedResponse, String> {
+    let mut request = client
         .get(target)
         .header(reqwest::header::ACCEPT, ACCEPT)
-        .header(reqwest::header::ACCEPT_LANGUAGE, "en-US,en;q=0.8")
-        .send()
-        .await
-        .map_err(|err| {
-            if err.is_timeout() {
-                "The request timed out.".to_string()
-            } else if err.is_connect() {
-                format!("Could not connect: {err}")
-            } else {
-                err.to_string()
-            }
-        })?;
+        .header(reqwest::header::ACCEPT_LANGUAGE, "en-US,en;q=0.8");
+    if let Some(value) = etag {
+        request = request.header(reqwest::header::IF_NONE_MATCH, value);
+    }
+    if let Some(value) = last_modified {
+        request = request.header(reqwest::header::IF_MODIFIED_SINCE, value);
+    }
+
+    let response = request.send().await.map_err(|err| {
+        if err.is_timeout() {
+            "The request timed out.".to_string()
+        } else if err.is_connect() {
+            format!("Could not connect: {err}")
+        } else {
+            err.to_string()
+        }
+    })?;
 
     let status = response.status();
+    let final_url = response.url().to_string();
+    let response_etag = header(&response, reqwest::header::ETAG);
+    let response_last_modified = header(&response, reqwest::header::LAST_MODIFIED);
+
+    // 304 is the whole point of conditional fetching: keep the cached articles.
+    if status == reqwest::StatusCode::NOT_MODIFIED {
+        return Ok(FeedResponse {
+            body: String::new(),
+            final_url,
+            status: status.as_u16(),
+            content_type: "text/plain; charset=utf-8".into(),
+            etag: response_etag,
+            last_modified: response_last_modified,
+        });
+    }
+
     if !status.is_success() {
         return Err(format!("Upstream returned {status}"));
     }
@@ -85,7 +113,6 @@ async fn fetch_once(client: &reqwest::Client, target: Url) -> Result<FeedRespons
         }
     }
 
-    let final_url = response.url().to_string();
     let content_type = response
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
@@ -110,7 +137,17 @@ async fn fetch_once(client: &reqwest::Client, target: Url) -> Result<FeedRespons
         final_url,
         status: status.as_u16(),
         content_type,
+        etag: response_etag,
+        last_modified: response_last_modified,
     })
+}
+
+fn header(response: &reqwest::Response, name: reqwest::header::HeaderName) -> Option<String> {
+    response
+        .headers()
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned)
 }
 
 fn attempts_for(url: &Url) -> Vec<Url> {
@@ -125,18 +162,92 @@ fn attempts_for(url: &Url) -> Vec<Url> {
 }
 
 /// Fetch a feed from the desktop app. `http://` is upgraded to HTTPS and only
-/// falls back to plain HTTP when the secure attempt fails.
+/// falls back to plain HTTP when the secure attempt fails. `etag` and
+/// `last_modified` enable a conditional request; a 304 keeps the cached articles.
 #[tauri::command]
-pub async fn fetch_feed(url: String) -> Result<FeedResponse, String> {
+pub async fn fetch_feed(
+    url: String,
+    etag: Option<String>,
+    last_modified: Option<String>,
+) -> Result<FeedResponse, String> {
     let validated = validate(&url)?;
     let client = http_client()?;
 
     let mut last_error = "Unable to fetch that feed.".to_string();
     for attempt in attempts_for(&validated) {
-        match fetch_once(client, attempt).await {
+        match fetch_once(client, attempt, etag.as_deref(), last_modified.as_deref()).await {
             Ok(response) => return Ok(response),
             Err(error) => last_error = error,
         }
     }
     Err(last_error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::thread;
+
+    fn one_shot_server(response: &'static str) -> (Url, thread::JoinHandle<String>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let handle = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buffer = [0u8; 8192];
+            let length = stream.read(&mut buffer).unwrap();
+            let request = String::from_utf8_lossy(&buffer[..length]).into_owned();
+            stream.write_all(response.as_bytes()).unwrap();
+            let _ = stream.flush();
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            request
+        });
+        (
+            Url::parse(&format!("http://{address}/feed")).unwrap(),
+            handle,
+        )
+    }
+
+    #[tokio::test]
+    async fn sends_validators_and_accepts_304() {
+        let (url, server) = one_shot_server(
+            "HTTP/1.1 304 Not Modified\r\nETag: \"v2\"\r\nConnection: close\r\n\r\n",
+        );
+        let response = fetch_once(
+            &reqwest::Client::new(),
+            url,
+            Some("\"v1\""),
+            Some("Wed, 21 Oct 2015 07:28:00 GMT"),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.status, 304);
+        assert_eq!(response.body, "");
+        assert_eq!(response.etag.as_deref(), Some("\"v2\""));
+
+        let request = server.join().unwrap().to_ascii_lowercase();
+        assert!(request.contains("if-none-match: \"v1\""));
+        assert!(request.contains("if-modified-since: wed, 21 oct 2015 07:28:00 gmt"));
+    }
+
+    #[tokio::test]
+    async fn returns_validators_from_a_200() {
+        let (url, server) = one_shot_server(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/rss+xml\r\nETag: \"v1\"\r\nLast-Modified: Wed, 21 Oct 2015 07:28:00 GMT\r\nContent-Length: 5\r\nConnection: close\r\n\r\nhello",
+        );
+        let response = fetch_once(&reqwest::Client::new(), url, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(response.status, 200);
+        assert_eq!(response.body, "hello");
+        assert_eq!(response.etag.as_deref(), Some("\"v1\""));
+        assert_eq!(
+            response.last_modified.as_deref(),
+            Some("Wed, 21 Oct 2015 07:28:00 GMT")
+        );
+        server.join().unwrap();
+    }
 }

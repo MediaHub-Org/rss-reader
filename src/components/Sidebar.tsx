@@ -331,7 +331,7 @@ export function Sidebar({
         icon: 'refresh',
         label: 'Refresh feed',
         onSelect: () => {
-          void store.refreshFeed(feed.id);
+          void store.refreshFeed(feed.id, { force: true });
           store.notify('info', `Refreshing “${feed.title}”…`);
         },
       },
@@ -439,7 +439,7 @@ export function Sidebar({
       .flat()
       .map((article) => article.id);
     return [
-      { icon: 'refresh', label: 'Refresh all feeds', onSelect: () => void store.refreshAll() },
+      { icon: 'refresh', label: 'Refresh all feeds', onSelect: () => void store.refreshAll({ force: true }) },
       { type: 'divider' },
       {
         icon: 'eye',
@@ -520,6 +520,9 @@ export function Sidebar({
     const unread = unreadCount(state, feed.id);
     const feedState = state.feedState[feed.id];
     const hasError = feedState?.status === 'error';
+    const retryHint = feedState?.nextRetryAt
+      ? ` · next automatic retry ${new Date(feedState.nextRetryAt).toLocaleTimeString()}`
+      : '';
     const isActive = state.ui.activeFeedId === feed.id;
     const isRenaming = renamingFeedId === feed.id;
 
@@ -557,7 +560,11 @@ export function Sidebar({
             <FeedIcon feed={feed} />
             <span className="feed-row__title">{feed.title}</span>
             {hasError && (
-              <span className="status-dot" title={feedState?.message} aria-label="Feed has an error">
+              <span
+                className="status-dot"
+                title={`${feedState?.message ?? 'Feed error'}${retryHint}`}
+                aria-label="Feed has an error"
+              >
                 !
               </span>
             )}

@@ -76,6 +76,13 @@ export interface Feed {
   /** Folder/group from OPML import (or assigned when subscribing). */
   folder?: string;
   addedAt: number;
+  /** HTTP validators from the last successful fetch (desktop conditional GETs). */
+  etag?: string;
+  lastModified?: string;
+  /** Consecutive failures; drives the retry backoff. */
+  failures?: number;
+  /** Automatic refresh is skipped until this timestamp (ms). */
+  nextRetryAt?: number;
 }
 
 export interface Article {
@@ -103,6 +110,9 @@ export interface FeedState {
   message?: string;
   updatedAt?: number;
   articleCount: number;
+  /** Consecutive failures and the next automatic retry (mirrors Feed). */
+  failures?: number;
+  nextRetryAt?: number;
 }
 
 export interface UiState {

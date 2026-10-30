@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { feedIdForUrl, FeedParseError } from '../lib/feedParser';
 import { resolveImportedFeedId } from '../lib/feedId';
+import { isRetryDue, retryDelayMs } from '../lib/backoff';
 import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { normalizeFeedUrl } from '../lib/url';
 import {
@@ -74,6 +75,8 @@ export class Store {
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private mediaQuery: MediaQueryList | null = null;
   private hydrationStarted = false;
+  /** Feed ids with a request in flight, to avoid duplicate refreshes. */
+  private refreshing = new Set<string>();
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
@@ -209,7 +212,15 @@ export class Store {
     });
 
     try {
-      const { parsed, finalUrl } = await fetchFeedArticles(url, feedId, this.state.prefs.youtubeApiKey);
+      const result = await fetchFeedArticles(
+        url,
+        feedId,
+        this.state.prefs.youtubeApiKey
+      );
+      if (result.notModified) {
+        throw new FeedFetchError('The feed was not modified.');
+      }
+      const { parsed, finalUrl } = result;
       const feed: Feed = {
         ...placeholder,
         url,
@@ -217,6 +228,10 @@ export class Store {
         siteUrl: parsed.feed.siteUrl,
         description: parsed.feed.description,
         iconUrl: parsed.feed.iconUrl,
+        etag: result.etag,
+        lastModified: result.lastModified,
+        failures: undefined,
+        nextRetryAt: undefined,
       };
 
       this.update({
@@ -263,13 +278,53 @@ export class Store {
     this.schedulePersist();
   }
 
-  async refreshFeed(feedId: string, options: { silent?: boolean } = {}): Promise<void> {
+  async refreshFeed(
+    feedId: string,
+    options: { silent?: boolean; force?: boolean } = {}
+  ): Promise<void> {
     const feed = this.state.feeds.find((f) => f.id === feedId);
     if (!feed) return;
+    if (!options.force && !isRetryDue(feed)) return;
+    if (this.refreshing.has(feedId)) return;
 
+    this.refreshing.add(feedId);
     this.setFeedState(feedId, { status: 'loading' });
     try {
-      const { parsed } = await fetchFeedArticles(feed.url, feedId, this.state.prefs.youtubeApiKey);
+      const result = await fetchFeedArticles(
+        feed.url,
+        feedId,
+        this.state.prefs.youtubeApiKey,
+        { etag: feed.etag, lastModified: feed.lastModified }
+      );
+      const now = Date.now();
+
+      if (result.notModified) {
+        this.update({
+          feeds: this.state.feeds.map((f) =>
+            f.id === feedId
+              ? {
+                  ...f,
+                  etag: result.etag ?? f.etag,
+                  lastModified: result.lastModified ?? f.lastModified,
+                  failures: 0,
+                  nextRetryAt: undefined,
+                }
+              : f
+          ),
+          feedState: {
+            ...this.state.feedState,
+            [feedId]: {
+              status: 'ok',
+              updatedAt: now,
+              articleCount: (this.state.articles[feedId] ?? []).length,
+            },
+          },
+        });
+        this.schedulePersist();
+        return;
+      }
+
+      const parsed = result.parsed;
       const existing = this.state.articles[feedId] ?? [];
       const seen = new Set(existing.map((a) => a.id));
       const merged = [...existing];
@@ -286,7 +341,7 @@ export class Store {
         articles: { ...this.state.articles, [feedId]: truncated },
         feedState: {
           ...this.state.feedState,
-          [feedId]: { status: 'ok', updatedAt: Date.now(), articleCount: truncated.length },
+          [feedId]: { status: 'ok', updatedAt: now, articleCount: truncated.length },
         },
         feeds: this.state.feeds.map((f) =>
           f.id === feedId
@@ -296,6 +351,10 @@ export class Store {
                 siteUrl: f.siteUrl ?? parsed.feed.siteUrl,
                 iconUrl: f.iconUrl ?? parsed.feed.iconUrl,
                 description: f.description ?? parsed.feed.description,
+                etag: result.etag,
+                lastModified: result.lastModified,
+                failures: 0,
+                nextRetryAt: undefined,
               }
             : f
         ),
@@ -307,13 +366,35 @@ export class Store {
         err instanceof FeedFetchError || err instanceof FeedParseError
           ? err.message
           : 'Refresh failed.';
-      this.setFeedState(feedId, { status: 'error', message });
+      const current = this.state.feeds.find((f) => f.id === feedId);
+      const failures = (current?.failures ?? 0) + 1;
+      const nextRetryAt = Date.now() + retryDelayMs(failures);
+      this.update({
+        feeds: this.state.feeds.map((f) =>
+          f.id === feedId ? { ...f, failures, nextRetryAt } : f
+        ),
+        feedState: {
+          ...this.state.feedState,
+          [feedId]: {
+            status: 'error',
+            message,
+            updatedAt: Date.now(),
+            articleCount: (this.state.articles[feedId] ?? []).length,
+            failures,
+            nextRetryAt,
+          },
+        },
+      });
+      this.schedulePersist();
       if (!options.silent) this.notify('error', message);
+    } finally {
+      this.refreshing.delete(feedId);
     }
   }
 
-  async refreshAll(options: { silent?: boolean } = {}): Promise<void> {
-    const feeds = this.state.feeds;
+  async refreshAll(options: { silent?: boolean; force?: boolean } = {}): Promise<void> {
+    const now = Date.now();
+    const feeds = this.state.feeds.filter((feed) => options.force || isRetryDue(feed, now));
     if (!feeds.length) return;
     await Promise.all(
       feeds.map(
@@ -322,7 +403,9 @@ export class Store {
             setTimeout(() => {
               // Individual feed refreshes during a bulk refresh stay silent so
               // unreachable feeds never spam error banners/toasts.
-              void this.refreshFeed(feed.id, { silent: true }).finally(resolve);
+              void this.refreshFeed(feed.id, { silent: true, force: options.force }).finally(
+                resolve
+              );
             }, index * REFRESH_STAGGER_MS);
           })
       )

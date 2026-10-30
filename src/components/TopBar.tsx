@@ -90,7 +90,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         <button
           type="button"
           className="icon-button"
-          onClick={() => void store.refreshAll()}
+          onClick={() => void store.refreshAll({ force: true })}
           disabled={anyLoading || !state.feeds.length}
           aria-label="Refresh all feeds"
           title="Refresh all feeds (R)"

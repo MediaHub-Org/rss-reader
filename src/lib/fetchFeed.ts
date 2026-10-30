@@ -24,12 +24,9 @@ const PUBLIC_PROXIES = [
 
 export type Via = 'native' | 'direct' | 'local-proxy' | 'public-proxy';
 
-export interface FetchFeedResult {
-  body: string;
-  via: Via;
-  finalUrl: string;
-  /** Homepage link discovered when the user pasted a site URL instead of a feed. */
-  discoveredFeedUrl?: string;
+export interface FeedValidators {
+  etag?: string;
+  lastModified?: string;
 }
 
 interface NativeFeedResponse {
@@ -37,6 +34,17 @@ interface NativeFeedResponse {
   finalUrl: string;
   status: number;
   contentType: string;
+  etag?: string | null;
+  lastModified?: string | null;
+}
+
+interface FetchTextResult {
+  text: string;
+  via: Via;
+  finalUrl: string;
+  notModified?: boolean;
+  etag?: string;
+  lastModified?: string;
 }
 
 export class FeedFetchError extends Error {
@@ -50,15 +58,32 @@ export class FeedFetchError extends Error {
 }
 
 /** Fetch raw text, trying each strategy in turn. */
-async function getText(url: string): Promise<{ text: string; via: Via; finalUrl: string }> {
+async function getText(url: string, validators?: FeedValidators): Promise<FetchTextResult> {
   // Desktop: one native request, no CORS and no third-party proxy.
   if (isDesktopApp()) {
     try {
-      const result = await invokeDesktop<NativeFeedResponse>('fetch_feed', { url });
+      const result = await invokeDesktop<NativeFeedResponse>('fetch_feed', {
+        url,
+        etag: validators?.etag ?? null,
+        lastModified: validators?.lastModified ?? null,
+      });
+      const etag = result.etag ?? undefined;
+      const lastModified = result.lastModified ?? undefined;
+
+      if (result.status === 304) {
+        return {
+          text: '',
+          via: 'native',
+          finalUrl: result.finalUrl || url,
+          notModified: true,
+          etag: etag ?? validators?.etag,
+          lastModified: lastModified ?? validators?.lastModified,
+        };
+      }
       if (!result.body.trim()) {
         throw new FeedFetchError('The feed returned an empty response.', result.status);
       }
-      return { text: result.body, via: 'native', finalUrl: result.finalUrl || url };
+      return { text: result.body, via: 'native', finalUrl: result.finalUrl || url, etag, lastModified };
     } catch (err) {
       if (err instanceof FeedFetchError) throw err;
       const message = typeof err === 'string' ? err : String((err as Error)?.message ?? err);
@@ -146,24 +171,57 @@ export interface ResolvedFeed {
   xml: string;
   finalUrl: string;
   via: Via;
+  notModified?: boolean;
+  etag?: string;
+  lastModified?: string;
 }
 
 /**
  * Fetch a user-supplied URL and work out what it is.
  * Accepts a feed URL directly, or a homepage from which a feed is discovered.
  */
-export async function fetchFeedDocument(input: string): Promise<ResolvedFeed> {
-  const { text, via, finalUrl } = await getText(input);
-  const looksLike = looksLikeFeed(text);
+export async function fetchFeedDocument(
+  input: string,
+  validators?: FeedValidators
+): Promise<ResolvedFeed> {
+  const first = await getText(input, validators);
+  if (first.notModified) {
+    return {
+      xml: '',
+      finalUrl: first.finalUrl,
+      via: first.via,
+      notModified: true,
+      etag: first.etag,
+      lastModified: first.lastModified,
+    };
+  }
 
-  if (looksLike) return { xml: text, finalUrl, via };
+  const looksLike = looksLikeFeed(first.text);
+  if (looksLike) {
+    return {
+      xml: first.text,
+      finalUrl: first.finalUrl,
+      via: first.via,
+      etag: first.etag,
+      lastModified: first.lastModified,
+    };
+  }
 
-  if (/<html[\s>]/i.test(text.slice(0, 2048)) || /<!doctype html/i.test(text.slice(0, 200))) {
-    const discovered = discoverFeedLink(text, finalUrl);
-    if (discovered && discovered !== finalUrl) {
+  if (
+    /<html[\s>]/i.test(first.text.slice(0, 2048)) ||
+    /<!doctype html/i.test(first.text.slice(0, 200))
+  ) {
+    const discovered = discoverFeedLink(first.text, first.finalUrl);
+    if (discovered && discovered !== first.finalUrl) {
       const nested = await getText(discovered);
       if (looksLikeFeed(nested.text)) {
-        return { xml: nested.text, finalUrl: nested.finalUrl, via: nested.via };
+        return {
+          xml: nested.text,
+          finalUrl: nested.finalUrl,
+          via: nested.via,
+          etag: nested.etag,
+          lastModified: nested.lastModified,
+        };
       }
     }
     throw new FeedFetchError(
@@ -174,17 +232,32 @@ export async function fetchFeedDocument(input: string): Promise<ResolvedFeed> {
   throw new FeedFetchError('The response is not valid RSS or Atom content.');
 }
 
-export interface FeedArticlesResult {
-  parsed: ParseResult;
-  finalUrl: string;
-}
+export type FeedArticlesResult =
+  | {
+      parsed: ParseResult;
+      finalUrl: string;
+      notModified?: false;
+      etag?: string;
+      lastModified?: string;
+    }
+  | {
+      notModified: true;
+      finalUrl: string;
+      etag?: string;
+      lastModified?: string;
+    };
 
 /**
  * Resolve a subscribed URL into parsed articles. Routes a YouTube channel
  * feed through the Data API when a key is configured (see youtubeApi.ts for
  * why); any other feed, or a Data API failure, uses the plain RSS/Atom path.
  */
-export async function fetchFeedArticles(url: string, feedId: string, youtubeApiKey?: string): Promise<FeedArticlesResult> {
+export async function fetchFeedArticles(
+  url: string,
+  feedId: string,
+  youtubeApiKey?: string,
+  validators?: FeedValidators
+): Promise<FeedArticlesResult> {
   const target = youtubeApiKey ? extractYouTubeFeedTarget(url) : null;
   if (target) {
     try {
@@ -195,7 +268,21 @@ export async function fetchFeedArticles(url: string, feedId: string, youtubeApiK
     }
   }
 
-  const { xml, finalUrl } = await fetchFeedDocument(url);
-  const parsed = await parseFeedXml(xml, feedId);
-  return { parsed, finalUrl };
+  const document = await fetchFeedDocument(url, validators);
+  if (document.notModified) {
+    return {
+      notModified: true,
+      finalUrl: document.finalUrl,
+      etag: document.etag,
+      lastModified: document.lastModified,
+    };
+  }
+
+  const parsed = await parseFeedXml(document.xml, feedId);
+  return {
+    parsed,
+    finalUrl: document.finalUrl,
+    etag: document.etag,
+    lastModified: document.lastModified,
+  };
 }

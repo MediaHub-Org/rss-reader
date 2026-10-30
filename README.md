@@ -127,7 +127,10 @@ demand, restore a snapshot (replace) or delete old ones.
 
 **Feeds** — subscribe by URL or by website (the alternate feed link is discovered
 automatically), validate before fetching, per-feed error state, unsubscribe with
-confirmation, unread badges, favicons with a letter-avatar fallback.
+confirmation, unread badges, favicons with a letter-avatar fallback. Desktop refresh
+uses HTTP validators (ETag / Last-Modified) so unchanged feeds return 304 and keep
+their cache; a failing feed backs off from 5 minutes to 6 hours, and the manual
+refresh buttons force an immediate retry.
 
 **Folders & sidebar** — A–Z folders with feeds A–Z inside, filter a view by folder,
 create empty folders, add/rename/move/delete feeds and folders, drag-resize the
@@ -210,7 +213,7 @@ server/
   proxy-lib.mjs        shared fetch proxy: validation, SSRF guard, HTTPS upgrade, size cap
   proxy.mjs            standalone proxy server (`npm run proxy`)
 src-tauri/
-  src/fetch.rs         desktop feed fetch: pooled client, redirect/time/size caps
+  src/fetch.rs         desktop feed fetch: pooled client, ETag/304, redirect/time/size caps
   src/url_policy.rs    URL/SSRF policy + unit tests (private ranges, HTTPS upgrade)
   src/backups.rs       rotating on-disk snapshots + validation/rotation tests
   src/main.rs          native window, save dialog and external-link opener
@@ -232,6 +235,7 @@ src/
     clipboard.ts       clipboard write with a legacy fallback
     desktop.ts         Tauri bridge: native save, external links, environment check
     backups.ts         desktop snapshots: list/create/read/delete + daily policy
+    backoff.ts         retry delay (5 min → 6 h) shared by automatic refresh
     applyImport.ts     shared restore pipeline for Import and Backups
     viewHistory.ts     browser-history bridge: back/forward across views (no router)
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)

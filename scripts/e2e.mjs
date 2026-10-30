@@ -957,6 +957,37 @@ try {
   await page.click(mediaToggle);
   await page.keyboard.press('Escape');
 
+  /* -------------------------- retry backoff ---------------------------- */
+  // Failed feeds are retried automatically with exponential backoff; a manual
+  // refresh bypasses it. Uses the dev store directly so no UI is involved.
+  const backoff = await page.evaluate(async (badUrl) => {
+    const store = window.__store;
+    const snapshot = () => store.getSnapshot();
+    store.importFeeds([{ url: badUrl, title: 'Backoff fixture' }], { skipRefresh: true });
+    const feed = snapshot().feeds.find((f) => f.title === 'Backoff fixture');
+    await store.refreshFeed(feed.id, { force: true });
+    const first = snapshot().feeds.find((f) => f.id === feed.id);
+    await store.refreshFeed(feed.id); // inside the backoff window: no request
+    const skipped = snapshot().feeds.find((f) => f.id === feed.id);
+    await store.refreshFeed(feed.id, { force: true }); // manual: retries
+    const forced = snapshot().feeds.find((f) => f.id === feed.id);
+    store.removeFeeds([feed.id], { silent: true });
+    return {
+      failures: first.failures,
+      retryInMs: first.nextRetryAt - Date.now(),
+      failuresAfterSkip: skipped.failures,
+      failuresAfterForce: forced.failures,
+    };
+  }, fixture('missing.xml'));
+  check(
+    'Failed feeds back off and only a forced refresh retries',
+    backoff.failures === 1 &&
+      backoff.retryInMs > 0 &&
+      backoff.failuresAfterSkip === 1 &&
+      backoff.failuresAfterForce === 2,
+    `${backoff.failures} → ${backoff.failuresAfterSkip} → ${backoff.failuresAfterForce}`
+  );
+
   /* ---------------------------- console noise -------------------------- */
   // Direct-first fetching always logs a CORS refusal before the proxy hop, and
   // favicon misses are cosmetic — neither is an application error. Third-party

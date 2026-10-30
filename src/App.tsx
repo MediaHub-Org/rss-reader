@@ -154,7 +154,7 @@ export default function App() {
         }
         case 'r': {
           event.preventDefault();
-          void store.refreshAll();
+          void store.refreshAll({ force: true });
           break;
         }
         case '/': {
