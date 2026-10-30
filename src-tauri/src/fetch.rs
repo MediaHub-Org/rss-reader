@@ -14,7 +14,11 @@ use url::Url;
 const MAX_BYTES: usize = 5 * 1024 * 1024;
 const MAX_REDIRECTS: usize = 5;
 const TIMEOUT: Duration = Duration::from_secs(15);
-const USER_AGENT: &str = "Mozilla/5.0 (compatible; RSSReader/0.1; +https://localhost/rss-reader)";
+const USER_AGENT: &str = concat!(
+    "Mozilla/5.0 (compatible; RSSReader/",
+    env!("CARGO_PKG_VERSION"),
+    "; +https://localhost/rss-reader)"
+);
 const ACCEPT: &str =
     "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html, */*";
 
