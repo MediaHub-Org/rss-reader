@@ -1,7 +1,7 @@
 {
   "name": "rss-reader",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Lightweight local-first RSS/Atom reader with media playback",
   "scripts": {
@@ -25,6 +25,8 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-autostart": "^2.7.0",
+    "@tauri-apps/plugin-notification": "^2.8.0",
     "dompurify": "^3.2.4",
     "events": "^3.3.0",
     "react": "^18.3.1",

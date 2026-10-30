@@ -10,6 +10,7 @@ import {
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/portability';
+import { isDesktopApp } from '../lib/desktop';
 import { copyText } from '../lib/clipboard';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
@@ -320,6 +321,7 @@ export function Sidebar({
   const feedContextItems = (feed: Feed): ContextMenuItem[] => {
     const ids = (state.articles[feed.id] ?? []).map((article) => article.id);
     const unread = unreadCount(state, feed.id);
+    const notificationsMuted = state.prefs.mutedFeedIds.includes(feed.id);
 
     return [
       {
@@ -348,6 +350,23 @@ export function Sidebar({
         disabled: ids.length === 0,
         onSelect: () => setArticlesRead(ids, false, feed.title),
       },
+      ...(isDesktopApp()
+        ? [
+            {
+              icon: notificationsMuted ? 'bellOff' : 'bell',
+              label: notificationsMuted ? 'Unmute notifications' : 'Mute notifications',
+              onSelect: () => {
+                const nowMuted = store.toggleMutedFeed(feed.id);
+                store.notify(
+                  'success',
+                  nowMuted
+                    ? `Notifications muted for “${feed.title}”`
+                    : `Notifications on for “${feed.title}”`
+                );
+              },
+            } satisfies ContextMenuItem,
+          ]
+        : []),
       { icon: 'copy', label: 'Copy feed URL', onSelect: () => void copyValue(feed.url, 'Feed URL') },
       { type: 'divider' },
       { icon: 'pencil', label: 'Rename feed', onSelect: () => startRenameFeed(feed) },

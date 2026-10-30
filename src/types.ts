@@ -32,6 +32,14 @@ export interface Preferences {
   hideRead: boolean;
   /** Sidebar collapsed to a hidden state on desktop (persists across sessions). */
   sidebarCollapsed: boolean;
+  /** Desktop: closing the window hides it to the tray instead of quitting. */
+  closeToTray: boolean;
+  /** Desktop: native notifications for new articles while in the background. */
+  notifyNewArticles: boolean;
+  /** Desktop: start the app when the user signs in. */
+  startAtLogin: boolean;
+  /** Feeds whose new articles should not trigger a notification. */
+  mutedFeedIds: string[];
   /**
    * YouTube Data API v3 key (optional). When set, channel/playlist feeds
    * (youtube.com/feeds/videos.xml) fetch up to 50 recent videos through the
@@ -58,6 +66,10 @@ export const DEFAULT_PREFERENCES: Preferences = {
   embedMedia: true,
   hideRead: false,
   sidebarCollapsed: false,
+  closeToTray: false,
+  notifyNewArticles: true,
+  startAtLogin: false,
+  mutedFeedIds: [],
   youtubeApiKey: '',
   sidebarSort: 'name-asc',
   sidebarWidth: 276, // matches the previous fixed --sidebar-width (17.25rem)

@@ -18,6 +18,7 @@ import { feedIdForUrl, FeedParseError } from '../lib/feedParser';
 import { resolveImportedFeedId } from '../lib/feedId';
 import { isRetryDue, retryDelayMs } from '../lib/backoff';
 import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
+import { queueNewArticles } from '../lib/notifications';
 import { normalizeFeedUrl } from '../lib/url';
 import {
   loadFeeds,
@@ -144,6 +145,16 @@ export class Store {
     this.update({ prefs });
     this.applyPreferences(prefs);
     savePreferences(prefs);
+  }
+
+  /** Toggle notifications for one feed; returns the new muted state. */
+  toggleMutedFeed(feedId: string): boolean {
+    const muted = new Set(this.state.prefs.mutedFeedIds);
+    const nowMuted = !muted.has(feedId);
+    if (nowMuted) muted.add(feedId);
+    else muted.delete(feedId);
+    this.setPreferences({ mutedFeedIds: [...muted] });
+    return nowMuted;
   }
 
   /* ------------------------------- hydration ------------------------------ */
@@ -280,7 +291,7 @@ export class Store {
 
   async refreshFeed(
     feedId: string,
-    options: { silent?: boolean; force?: boolean } = {}
+    options: { silent?: boolean; force?: boolean; notify?: boolean } = {}
   ): Promise<void> {
     const feed = this.state.feeds.find((f) => f.id === feedId);
     if (!feed) return;
@@ -328,10 +339,12 @@ export class Store {
       const existing = this.state.articles[feedId] ?? [];
       const seen = new Set(existing.map((a) => a.id));
       const merged = [...existing];
+      let added = 0;
       for (const article of parsed.articles) {
         if (!seen.has(article.id)) {
           seen.add(article.id);
           merged.push(article);
+          added++;
         }
       }
       merged.sort((a, b) => b.publishedAt - a.publishedAt);
@@ -361,6 +374,15 @@ export class Store {
       });
       void saveArticles(feedId, truncated);
       this.schedulePersist();
+      if (options.notify && added > 0) {
+        queueNewArticles({
+          feedId,
+          feedTitle: parsed.feed.title || feed.title,
+          count: added,
+          enabled: this.state.prefs.notifyNewArticles,
+          muted: this.state.prefs.mutedFeedIds.includes(feedId),
+        });
+      }
     } catch (err) {
       const message =
         err instanceof FeedFetchError || err instanceof FeedParseError
@@ -392,7 +414,11 @@ export class Store {
     }
   }
 
-  async refreshAll(options: { silent?: boolean; force?: boolean } = {}): Promise<void> {
+  async refreshAll(options: {
+    silent?: boolean;
+    force?: boolean;
+    notify?: boolean;
+  } = {}): Promise<void> {
     const now = Date.now();
     const feeds = this.state.feeds.filter((feed) => options.force || isRetryDue(feed, now));
     if (!feeds.length) return;
@@ -403,9 +429,11 @@ export class Store {
             setTimeout(() => {
               // Individual feed refreshes during a bulk refresh stay silent so
               // unreachable feeds never spam error banners/toasts.
-              void this.refreshFeed(feed.id, { silent: true, force: options.force }).finally(
-                resolve
-              );
+              void this.refreshFeed(feed.id, {
+                silent: true,
+                force: options.force,
+                notify: options.notify,
+              }).finally(resolve);
             }, index * REFRESH_STAGGER_MS);
           })
       )
@@ -455,6 +483,13 @@ export class Store {
         : this.state.ui,
     });
     this.schedulePersist();
+
+    const muted = this.state.prefs.mutedFeedIds;
+    const nextMuted = muted.filter((id) => !toRemove.has(id));
+    if (nextMuted.length !== muted.length) {
+      this.setPreferences({ mutedFeedIds: nextMuted });
+    }
+
     if (!options.silent) {
       this.notify(
         'success',

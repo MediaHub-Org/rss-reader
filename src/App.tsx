@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from './types';
-import { store, selectArticles } from './store/store';
+import { store, selectArticles, unreadCount } from './store/store';
 import { useStore } from './hooks/useStore';
 import { useViewHistory } from './hooks/useViewHistory';
 import { leaveArticle } from './lib/viewHistory';
+import { isDesktopApp } from './lib/desktop';
+import { syncDesktopSettings, updateTrayUnread } from './lib/desktopSettings';
+import { listenForTrayRefresh } from './lib/trayEvents';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { ArticleList } from './components/ArticleList';
@@ -55,13 +58,14 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [state.hydrated, state.feeds.length]);
 
-  /* periodic refresh, paused while the tab is hidden */
+  /* periodic refresh: paused while the tab is hidden in the browser, but the
+     desktop shell keeps running in the tray */
   useEffect(() => {
     const tick = () => {
-      if (document.visibilityState !== 'visible') return;
+      if (document.visibilityState !== 'visible' && !isDesktopApp()) return;
       if (Date.now() - lastRefreshed.current < STALE_AFTER_MS) return;
       lastRefreshed.current = Date.now();
-      void store.refreshAll({ silent: true });
+      void store.refreshAll({ silent: true, notify: true });
     };
     const timer = setInterval(tick, REFRESH_INTERVAL_MS);
     const onVisible = () => {
@@ -73,6 +77,44 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
+
+  const totalUnread = useMemo(
+    () => state.feeds.reduce((sum, feed) => sum + unreadCount(state, feed.id), 0),
+    [state]
+  );
+
+  /* desktop tray: close-to-tray preference, login item, unread tooltip and
+     the tray's "Refresh feeds" action */
+  useEffect(() => {
+    if (!state.hydrated) return;
+    void syncDesktopSettings(state.prefs);
+    // Preferences are synced once after hydration; individual toggles call
+    // the native helpers directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.hydrated]);
+
+  useEffect(() => {
+    if (!state.hydrated) return;
+    void updateTrayUnread(totalUnread);
+  }, [state.hydrated, totalUnread]);
+
+  useEffect(() => {
+    if (!state.hydrated) return;
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    void listenForTrayRefresh(() => {
+      void store.refreshAll({ force: true, notify: true });
+    }).then((stop) => {
+      if (disposed) stop();
+      else unlisten = stop;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [state.hydrated]);
 
   const visibleArticles = useMemo(
     () =>

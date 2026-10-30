@@ -175,6 +175,10 @@ describe('full JSON backup', () => {
           sidebarWidth: 9999,
           embedMedia: 'yes',
           collapsedFolders: [' A ', 'A', 3],
+          closeToTray: true,
+          notifyNewArticles: 'yes',
+          startAtLogin: true,
+          mutedFeedIds: ['f1', 'f1', 2],
           youtubeApiKey: 'secret',
         },
         articles: {},
@@ -185,6 +189,10 @@ describe('full JSON backup', () => {
     expect(parsed.preferences?.sidebarWidth).toBe(480);
     expect(parsed.preferences?.embedMedia).toBeUndefined();
     expect(parsed.preferences?.collapsedFolders).toEqual(['A']);
+    expect(parsed.preferences?.closeToTray).toBe(true);
+    expect(parsed.preferences?.notifyNewArticles).toBeUndefined();
+    expect(parsed.preferences?.startAtLogin).toBe(true);
+    expect(parsed.preferences?.mutedFeedIds).toEqual(['f1']);
     expect(parsed.preferences && 'youtubeApiKey' in parsed.preferences).toBe(false);
   });
 

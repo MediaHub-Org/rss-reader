@@ -70,6 +70,9 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
   if (typeof raw.embedMedia === 'boolean') out.embedMedia = raw.embedMedia;
   if (typeof raw.hideRead === 'boolean') out.hideRead = raw.hideRead;
   if (typeof raw.sidebarCollapsed === 'boolean') out.sidebarCollapsed = raw.sidebarCollapsed;
+  if (typeof raw.closeToTray === 'boolean') out.closeToTray = raw.closeToTray;
+  if (typeof raw.notifyNewArticles === 'boolean') out.notifyNewArticles = raw.notifyNewArticles;
+  if (typeof raw.startAtLogin === 'boolean') out.startAtLogin = raw.startAtLogin;
 
   if (
     isOneOf(raw.sidebarSort, [
@@ -94,6 +97,14 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
       .map((name) => name.trim())
       .filter(Boolean);
     out.collapsedFolders = [...new Set<string>(names)];
+  }
+
+  if (Array.isArray(raw.mutedFeedIds)) {
+    out.mutedFeedIds = [
+      ...new Set(
+        raw.mutedFeedIds.filter((id): id is string => typeof id === 'string')
+      ),
+    ];
   }
 
   // The API key is intentionally not round-tripped through backups.

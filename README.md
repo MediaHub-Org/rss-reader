@@ -127,6 +127,15 @@ The desktop app also keeps the newest **seven daily snapshots** under its data f
 (`…\com.mediahub.rssreader\backups`). **Settings → Data → Backups** can create one on
 demand, restore a snapshot (replace) or delete old ones.
 
+Desktop extras (Settings → General):
+
+- **Tray icon** with Open / Refresh feeds / Quit, an unread tooltip, and left-click to
+  show the window.
+- **Close to tray** (opt-in) and periodic refresh that keeps running while hidden.
+- **Native notifications** for new articles while the window is in the background,
+  batched across feeds; mute individual feeds from their context menu.
+- **Start at login** (opt-in).
+
 ---
 
 ## Features
@@ -222,7 +231,7 @@ src-tauri/
   src/fetch.rs         desktop feed fetch: pooled client, ETag/304, redirect/time/size caps
   src/url_policy.rs    URL/SSRF policy + unit tests (private ranges, HTTPS upgrade)
   src/backups.rs       rotating on-disk snapshots + validation/rotation tests
-  src/main.rs          native window, save dialog and external-link opener
+  src/main.rs          tray/window, save dialog, external links and native commands
   tauri.conf.json      window, CSP, installer metadata
 src/
   lib/
@@ -240,6 +249,10 @@ src/
       types.ts         shared feed/import types, URL and folder helpers
     clipboard.ts       clipboard write with a legacy fallback
     desktop.ts         Tauri bridge: native save, external links, environment check
+    desktopSettings.ts tray/login preference bridge + native unread tooltip
+    notifications.ts   batched new-article notifications + permission handling
+    notificationSummary.ts notification title/body builder (unit-tested)
+    trayEvents.ts      tray "Refresh feeds" bridge
     backups.ts         desktop snapshots: list/create/read/delete + daily policy
     backoff.ts         retry delay (5 min → 6 h) shared by automatic refresh
     applyImport.ts     shared restore pipeline for Import and Backups

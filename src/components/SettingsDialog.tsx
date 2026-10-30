@@ -4,6 +4,9 @@ import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { clearArticleCache, estimateUsage } from '../lib/storage';
 import { formatBytes } from '../lib/format';
+import { isDesktopApp } from '../lib/desktop';
+import { setCloseToTray, setStartAtLogin } from '../lib/desktopSettings';
+import { requestNotificationPermission } from '../lib/notifications';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 
@@ -100,6 +103,7 @@ export function SettingsDialog({
   hasFeeds,
 }: SettingsDialogProps) {
   const state = useStore();
+  const desktop = isDesktopApp();
   const [usage] = useState(() => estimateUsage());
   const [clearing, setClearing] = useState(false);
   const [section, setSection] = useState<Section>('general');
@@ -145,6 +149,58 @@ export function SettingsDialog({
                 checked={state.prefs.hideRead}
                 onChange={(hideRead) => store.setPreferences({ hideRead })}
               />
+
+              {desktop && (
+                <>
+                  <Toggle
+                    label="Close to tray"
+                    hint="Closing the window keeps the reader running in the tray. Use Quit in the tray menu to exit."
+                    checked={state.prefs.closeToTray}
+                    onChange={(closeToTray) => {
+                      store.setPreferences({ closeToTray });
+                      void setCloseToTray(closeToTray);
+                    }}
+                  />
+
+                  <Toggle
+                    label="Notify about new articles"
+                    hint="Native notification when new items arrive while the window is in the background. Use a feed's context menu to mute it."
+                    checked={state.prefs.notifyNewArticles}
+                    onChange={(enabled) => {
+                      if (!enabled) {
+                        store.setPreferences({ notifyNewArticles: false });
+                        return;
+                      }
+                      void requestNotificationPermission().then((granted) => {
+                        if (granted) store.setPreferences({ notifyNewArticles: true });
+                        else store.notify('error', 'Notifications are blocked by the system.');
+                      });
+                    }}
+                  />
+
+                  <Toggle
+                    label="Start at login"
+                    hint="Launch the reader when you sign in. You can still quit it from the tray."
+                    checked={state.prefs.startAtLogin}
+                    onChange={(enabled) => {
+                      void setStartAtLogin(enabled).then((ok) => {
+                        if (!ok) {
+                          store.notify('error', 'Could not change the login setting.');
+                          return;
+                        }
+                        store.setPreferences({ startAtLogin: enabled });
+                      });
+                    }}
+                  />
+                </>
+              )}
+
+              {!desktop && (
+                <p className="settings-note">
+                  Tray, notifications and start-at-login options are available in the desktop
+                  app.
+                </p>
+              )}
 
               <div className="setting-row">
                 <span className="setting-row__label">
