@@ -61,7 +61,7 @@ async function openSettings(section) {
 }
 
 async function openDataTab(action) {
-  await openSettings('Data');
+  await openSettings('Services');
   await page.click(`.settings-data-actions .button:has-text("${action}")`);
   await page.waitForSelector('[role="dialog"]:has-text("Subscriptions")');
 }
@@ -261,11 +261,19 @@ try {
   await page.waitForSelector('.view-menu');
   const viewMenu = (await page.textContent('.view-menu'))?.replace(/\s+/g, ' ') || '';
   check(
-    'View menu exposes four layouts and three filters',
-    ['Card view', 'List view', 'Magazine view', 'Compact view', 'All articles', 'Unread only', 'Starred only'].every(
-      (label) => viewMenu.includes(label)
+    'View menu exposes four layouts',
+    ['Card view', 'List view', 'Magazine view', 'Compact view'].every((label) =>
+      viewMenu.includes(label)
     ),
     viewMenu.slice(0, 90)
+  );
+  const viewLabels = await page.$$eval('.topbar-tool__label', (nodes) =>
+    nodes.map((node) => node.textContent?.trim())
+  );
+  check(
+    'View and Filter controls show their names',
+    viewLabels.includes('View') && viewLabels.includes('Filter'),
+    viewLabels.join(' · ')
   );
 
   await page.click('.view-menu__item:has-text("List view")');
@@ -298,8 +306,15 @@ try {
   }
   check('Compact, magazine and card layouts switch cleanly', true);
 
-  await page.click('.topbar__view');
-  await page.click('.view-menu__item:has-text("Starred only")');
+  await page.click('.topbar__filter');
+  await page.waitForSelector('.filter-menu');
+  const filterMenu = (await page.textContent('.filter-menu'))?.replace(/\s+/g, ' ') || '';
+  check(
+    'Filter menu exposes all three filters',
+    ['All articles', 'Unread only', 'Starred only'].every((label) => filterMenu.includes(label)),
+    filterMenu.slice(0, 70)
+  );
+  await page.click('.filter-menu .view-menu__item:has-text("Starred only")');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
   const starredTitle = (await page.textContent('.article-card__title'))?.trim();
   check(
@@ -308,15 +323,15 @@ try {
     starredTitle || ''
   );
 
-  await page.click('.topbar__view');
-  await page.click('.view-menu__item:has-text("Unread only")');
+  await page.click('.topbar__filter');
+  await page.click('.filter-menu .view-menu__item:has-text("Unread only")');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 0);
   check(
     'Unread only hides read articles',
     (await page.locator('.article-card.is-read').count()) === 0
   );
-  await page.click('.topbar__view');
-  await page.click('.view-menu__item:has-text("All articles")');
+  await page.click('.topbar__filter');
+  await page.click('.filter-menu .view-menu__item:has-text("All articles")');
   await page.waitForSelector('.article-card');
 
   /* ----------------------- card overlay arrows ------------------------- */
@@ -386,6 +401,31 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.mark-read__menu', { state: 'detached' });
 
+  /* ------------------------------ rules -------------------------------- */
+  await openSettings('Rules');
+  await page.click('.settings-panel button:has-text("New rule")');
+  await page.waitForSelector('.rule-editor');
+  await page.fill('.rule-editor__pattern', 'zzzz-no-match');
+  const rulePreview = (await page.textContent('.rule-editor__preview'))?.trim();
+  check('Rule editor previews matches in the cache', /Matches 0 cached articles/.test(rulePreview || ''), rulePreview || '');
+  await page.click('.rule-editor button:has-text("Save rule")');
+  await page.waitForSelector('.rule-card');
+  const ruleSummary = (await page.textContent('.rule-card__summary'))?.replace(/\s+/g, ' ').trim();
+  check(
+    'Rule is saved with scope and action',
+    /zzzz-no-match/.test(ruleSummary || '') && /mark as read/.test(ruleSummary || ''),
+    ruleSummary || ''
+  );
+  await page.click('.settings-panel button:has-text("Apply to existing articles")');
+  await page.waitForSelector('.toast');
+  const noMatchToast = (await page.textContent('.toast'))?.trim();
+  check('Apply to existing reports no matches', /No cached articles matched/.test(noMatchToast || ''), noMatchToast || '');
+  await page.click('.rule-card__delete');
+  await page.waitForFunction(() => !document.querySelector('.rule-card'));
+  check('Rule deletion removes it from the list', true);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+
   /* ------------------------- theme + settings -------------------------- */
   const before = await page.getAttribute('html', 'data-theme');
   await page.click('.topbar__tools .icon-button[aria-label*="theme" i]');
@@ -418,7 +458,7 @@ try {
     `${themedAfterToggle.theme}: ${themedAfterToggle.menuBg} vs ${themedAfterToggle.panelBg}`
   );
 
-  await openSettings('Appearance');
+  await openSettings('Preferences');
   await page.click('[role="dialog"] .segmented__option:has-text("Compact")');
   await page.click('[role="dialog"] .segmented__option:has-text("Large")');
   const density = await page.getAttribute('html', 'data-density');
@@ -427,7 +467,7 @@ try {
   check('Font size preference applied', fontSize === 'large', fontSize || '');
 
   /* Inline-media switch defaults to true; toggle off and back on */
-  await page.click('[role="dialog"] .settings-nav__item:has-text("General")');
+  await page.click('[role="dialog"] .settings-nav__item:has-text("Preferences")');
   const mediaSwitch = '[role="dialog"] .switch[aria-label*="Play media" i]';
   const defaultEmbed = await page.getAttribute(mediaSwitch, 'aria-checked');
   await page.click(mediaSwitch);
@@ -447,7 +487,7 @@ try {
   await page.screenshot({ path: path.join(SHOTS, '02-dark-compact.png') });
 
   /* --------------------------- backups panel --------------------------- */
-  await openSettings('Data');
+  await openSettings('Services');
   await page.click('.settings-data-actions .button:has-text("Backups")');
   await page.waitForSelector('[role="dialog"]:has-text("Backups")');
   const backupsNote = await page.textContent('[role="dialog"]:has-text("Backups")');
@@ -612,7 +652,7 @@ try {
 
   /* link mode (with thumbnail poster) after disabling the setting */
   await page.click('.detail .ghost-button:has-text("Back")');
-  await openSettings('General');
+  await openSettings('Preferences');
   const mediaToggle = '[role="dialog"] .switch[aria-label*="Play media" i]';
   const embedDefault = await page.getAttribute(mediaToggle, 'aria-checked');
   await page.click(mediaToggle);
@@ -629,7 +669,7 @@ try {
   );
   await page.screenshot({ path: path.join(SHOTS, '03-video-link.png') });
   await page.click('.detail .ghost-button:has-text("Back")');
-  await openSettings('General');
+  await openSettings('Preferences');
   await page.click(mediaToggle);
   await page.keyboard.press('Escape');
 
@@ -804,33 +844,33 @@ try {
     .count();
   check('Enter in the picker moves the feed', movedByPicker >= 1, `${movedByPicker} in Zebra Video`);
 
-  /* ------------------- Manage (select all/none/folder) ----------------- */
-  await openDataTab('Manage');
-  await page.waitForSelector('#panel-manage');
-  await page.click('#panel-manage button:has-text("Select all")');
-  const allCountText = await page.textContent('.manage-toolbar__count');
-  await page.click('#panel-manage button:has-text("Select none")');
-  const noneCountText = await page.textContent('.manage-toolbar__count');
+  /* ------------------- Sources (select all/none) ----------------------- */
+  await openSettings('Sources');
+  await page.waitForSelector('#settings-feeds');
+  await page.click('#settings-feeds button:has-text("Select all")');
+  const allCountText = await page.textContent('#settings-feeds .manage-toolbar__count');
+  await page.click('#settings-feeds button:has-text("Select none")');
+  const noneCountText = await page.textContent('#settings-feeds .manage-toolbar__count');
   check(
-    'Manage tab supports Select all and Select none',
+    'Sources section supports Select all and Select none',
     /^[1-9]\d* selected$/.test((allCountText || '').trim()) && (noneCountText || '').trim() === '0 selected',
     `${allCountText?.trim()} → ${noneCountText?.trim()}`
   );
 
-  /* ------------------- bulk move feeds from Manage ---------------------- */
-  const manageFeedChecks = page.locator('#manage-feeds .manage-item input[type="checkbox"]');
-  const feedsToMove = Math.min(2, await manageFeedChecks.count());
-  for (let i = 0; i < feedsToMove; i += 1) await manageFeedChecks.nth(i).check();
-  await page.click('#manage-feeds button:has-text("Move selected")');
+  /* ------------------- bulk move sources from Settings ------------------ */
+  const sourceChecks = page.locator('#settings-feeds .manage-item input[type="checkbox"]');
+  const feedsToMove = Math.min(2, await sourceChecks.count());
+  for (let i = 0; i < feedsToMove; i += 1) await sourceChecks.nth(i).check();
+  await page.click('#settings-feeds button:has-text("Move selected")');
   await page.waitForSelector('.folder-picker__list');
-  check('Manage offers bulk move through the same picker', true);
+  check('Sources section offers bulk move through the same picker', true);
   await page.keyboard.press('Escape');
   await page.waitForSelector('.folder-picker', { state: 'detached' });
   check(
-    'Escape closes only the stacked picker, not the dialog under it',
-    (await page.locator('#panel-manage').count()) === 1
+    'Escape closes only the stacked picker, not Settings under it',
+    (await page.locator('#settings-feeds').count()) === 1
   );
-  await page.click('#manage-feeds button:has-text("Move selected")');
+  await page.click('#settings-feeds button:has-text("Move selected")');
   await page.waitForSelector('.folder-picker__list');
   await page.fill('.folder-picker__search input', 'zebra');
   await page.keyboard.press('Enter');
@@ -838,37 +878,37 @@ try {
   const zebraFeeds = await page
     .locator('.sidebar .folder-group:has-text("Zebra Video") .feed-item')
     .count();
-  check('Bulk move puts every selected feed in the folder', zebraFeeds >= feedsToMove, `${zebraFeeds} feeds in Zebra Video`);
+  check('Bulk move puts every selected source in the group', zebraFeeds >= feedsToMove, `${zebraFeeds} sources in Zebra Video`);
 
-  /* ----------------------- folders tab (bulk) --------------------------- */
-  await page.click('#manage-tab-folders');
-  await page.waitForSelector('#manage-folders');
-  await page.click('#manage-folders button:has-text("Select all")');
-  const foldersSelected = (await page.textContent('#manage-folders .manage-toolbar__count'))?.trim();
-  check('Folders tab supports multiple selection', /^[1-9]\d* selected$/.test(foldersSelected || ''), foldersSelected || '');
-  await page.click('#manage-folders button:has-text("Select none")');
+  /* ----------------------- groups section (bulk) ----------------------- */
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+  await openSettings('Groups');
+  await page.waitForSelector('#settings-folders');
+  await page.click('#settings-folders button:has-text("Select all")');
+  const foldersSelected = (await page.textContent('#settings-folders .manage-toolbar__count'))?.trim();
+  check('Groups section supports multiple selection', /^[1-9]\d* selected$/.test(foldersSelected || ''), foldersSelected || '');
+  await page.click('#settings-folders button:has-text("Select none")');
 
-  /* multi-folder delete: combined confirmation, cancelled here so the rest of
-     the suite keeps its folders */
-  const folderRowChecks = page.locator('#manage-folders .manage-folder-row input[type="checkbox"]');
+  const folderRowChecks = page.locator('#settings-folders .manage-folder-row input[type="checkbox"]');
   await folderRowChecks.nth(0).check();
   await folderRowChecks.nth(1).check();
-  await page.click('#manage-folders button:has-text("Delete selected")');
+  await page.click('#settings-folders button:has-text("Delete selected")');
   await page.waitForSelector('.manage-confirm');
   const multiDeleteText = (await page.textContent('.manage-confirm__text'))?.trim();
   check(
-    'Deleting several folders shows one combined confirmation',
-    /2 folders/.test(multiDeleteText || ''),
+    'Deleting several groups shows one combined confirmation',
+    /2 groups/.test(multiDeleteText || ''),
     multiDeleteText
   );
   await page.click('.manage-confirm button:has-text("Cancel")');
   await page.waitForSelector('.manage-confirm', { state: 'detached' });
-  await page.click('#manage-folders button:has-text("Select none")');
+  await page.click('#settings-folders button:has-text("Select none")');
 
   const foldersBeforeDelete = await page.locator('.sidebar .folder-group').count();
-  await page.click('.manage-folder__delete >> nth=0');
+  await page.click('#settings-folders .manage-folder__delete >> nth=0');
   await page.waitForSelector('.manage-confirm');
-  check('Delete folder asks for confirmation inside Manage', true);
+  check('Delete group asks for confirmation inside Settings', true);
   await page.keyboard.press('Enter');
   await page.waitForFunction(
     (expected) => document.querySelectorAll('.sidebar .folder-group').length === expected,
@@ -876,21 +916,21 @@ try {
     { timeout: 5000 }
   );
   const foldersRemaining = await page.locator('.sidebar .folder-group').count();
-  check('Delete folder removes the folder and its feeds', foldersRemaining === foldersBeforeDelete - 1, `${foldersRemaining} folder(s) left`);
+  check('Delete group removes it and its sources', foldersRemaining === foldersBeforeDelete - 1, `${foldersRemaining} group(s) left`);
 
-  /* ------------------ merge a folder into another one ------------------- */
+  /* ------------------ merge a group into another one ------------------- */
   const sourceFolder = (
-    await page.locator('#manage-folders .manage-folder-row .manage-folder__name').first().textContent()
+    await page.locator('#settings-folders .manage-folder-row .manage-folder__name').first().textContent()
   )?.trim();
   const foldersBeforeMerge = await page.locator('.sidebar .folder-group').count();
-  await page.locator('#manage-folders .manage-folder-row').first().locator('input[type="checkbox"]').check();
-  await page.click('#manage-folders button:has-text("Move selected")');
+  await page.locator('#settings-folders .manage-folder-row').first().locator('input[type="checkbox"]').check();
+  await page.click('#settings-folders button:has-text("Merge selected")');
   await page.waitForSelector('.folder-picker__list');
   const mergeOptions = await page.$$eval('.folder-picker__option .folder-picker__label', (nodes) =>
     nodes.map((node) => node.textContent || '')
   );
   check(
-    'Folder merge excludes the folders being moved',
+    'Group merge excludes the groups being moved',
     Boolean(sourceFolder) && !mergeOptions.includes(sourceFolder),
     mergeOptions.join(', ')
   );
@@ -898,10 +938,13 @@ try {
   await page.waitForSelector('.folder-picker', { state: 'detached' });
   const foldersAfterMerge = await page.locator('.sidebar .folder-group').count();
   check(
-    'Merging a folder removes it and keeps its feeds',
+    'Merging a group removes it and keeps its sources',
     foldersAfterMerge === foldersBeforeMerge - 1,
     `${foldersBeforeMerge} → ${foldersAfterMerge}`
   );
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+  await openDataTab('Import');
 
   /* ----------------------- OPML XML live editor ------------------------ */
   await page.click('#tab-xml');
@@ -1120,7 +1163,7 @@ try {
   });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.article-grid');
-  await openSettings('General');
+  await openSettings('Preferences');
   const migratedToggle = await page.getAttribute(mediaToggle, 'aria-checked');
   check('Legacy “inline media off” profile migrates to on', migratedToggle === 'true');
 
@@ -1136,7 +1179,7 @@ try {
   await page.keyboard.press('Escape');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('.article-grid');
-  await openSettings('General');
+  await openSettings('Preferences');
   const respectedToggle = await page.getAttribute(mediaToggle, 'aria-checked');
   check('An opt-out made after the migration survives a reload', respectedToggle === 'false');
   await page.click(mediaToggle);

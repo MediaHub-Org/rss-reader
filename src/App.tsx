@@ -13,7 +13,7 @@ import { ArticleList } from './components/ArticleList';
 import { ArticleDetail } from './components/ArticleDetail';
 import { ArticleOverlay } from './components/ArticleOverlay';
 import { AddFeedDialog } from './components/AddFeedDialog';
-import { SettingsDialog } from './components/SettingsDialog';
+import { SettingsDialog, type SettingsSection } from './components/SettingsDialog';
 import { DataDialog, type DataTab } from './components/DataDialog';
 import { BackupsDialog } from './components/BackupsDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
@@ -28,6 +28,7 @@ export default function App() {
   const [addOpen, setAddOpen] = useState(false);
   const [addFolder, setAddFolder] = useState<string | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('preferences');
   const [dataOpen, setDataOpen] = useState(false);
   const [dataTab, setDataTab] = useState<DataTab>('import');
   const [backupsOpen, setBackupsOpen] = useState(false);
@@ -262,6 +263,10 @@ export default function App() {
   }, [state, visibleArticles]);
 
   const closeSidebar = () => store.setSidebarOpen(false);
+  const openSettings = (section: SettingsSection = 'preferences') => {
+    setSettingsSection(section);
+    setSettingsOpen(true);
+  };
   const cardOverlay = Boolean(state.ui.activeArticleId) && state.prefs.viewMode === 'card';
 
   return (
@@ -287,6 +292,8 @@ export default function App() {
           }}
           onUnsubscribe={setConfirmFeed}
           onRemoveFolder={setConfirmFolder}
+          onManageSources={() => openSettings('sources')}
+          onManageGroups={() => openSettings('groups')}
           onClose={closeSidebar}
         />
 
@@ -297,7 +304,7 @@ export default function App() {
         <div className="main">
           <TopBar
             onMenu={() => store.setSidebarOpen(true)}
-            onSettings={() => setSettingsOpen(true)}
+            onSettings={() => openSettings('preferences')}
           />
 
           <main
@@ -333,6 +340,7 @@ export default function App() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         hasFeeds={state.feeds.length > 0}
+        initialSection={settingsSection}
         onImport={() => {
           // Hand off to the Data dialog instead of stacking it on top of
           // Settings -- two simultaneously open Dialogs both listen for
@@ -344,11 +352,6 @@ export default function App() {
         onExport={() => {
           setSettingsOpen(false);
           setDataTab('export');
-          setDataOpen(true);
-        }}
-        onManage={() => {
-          setSettingsOpen(false);
-          setDataTab('manage');
           setDataOpen(true);
         }}
         onBackups={() => {

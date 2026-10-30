@@ -1,10 +1,12 @@
 import { defineConfig, type Plugin } from 'vite';
 import type { ServerResponse } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { proxyFeedRequest } from './server/proxy-lib.mjs';
 
 const localPath = (relative: string) => fileURLToPath(new URL(relative, import.meta.url));
+const pkg = JSON.parse(readFileSync(localPath('./package.json'), 'utf8')) as { version: string };
 
 /**
  * Dev-time CORS proxy mounted directly into the Vite dev/preview server, so
@@ -57,6 +59,9 @@ function feedProxy(): Plugin {
 
 export default defineConfig({
   plugins: [react(), feedProxy()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     // rss-parser is a Node library; xml2js/sax touch these at module load.
     // Aliasing keeps the spec-mandated parser working in a browser bundle

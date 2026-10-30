@@ -19,6 +19,7 @@ export interface AppliedImport {
   skipped: number;
   readCount: number;
   starredCount: number;
+  ruleCount: number;
   articleCount: number;
 }
 
@@ -53,6 +54,11 @@ export async function applyImport(
       : store.mergeStarredIds(pending.starredIds);
   }
 
+  let ruleCount = 0;
+  if (pending.rules) {
+    ruleCount = replace ? store.replaceRules(pending.rules) : store.mergeRules(pending.rules);
+  }
+
   const articleCount = pending.articles
     ? await store.restoreArticles(pending.articles, {
         replace: replace && Boolean(pending.full),
@@ -73,6 +79,7 @@ export async function applyImport(
   const restored: string[] = [];
   if (readCount) restored.push(countLabel(readCount, 'read entry', 'read entries'));
   if (starredCount) restored.push(countLabel(starredCount, 'starred article'));
+  if (ruleCount) restored.push(countLabel(ruleCount, 'rule'));
   if (articleCount) restored.push(countLabel(articleCount, 'cached article'));
   if (pending.preferences) restored.push('preferences');
 
@@ -83,6 +90,7 @@ export async function applyImport(
       addedFolders.length ||
       readCount ||
       starredCount ||
+      ruleCount ||
       articleCount ||
       pending.preferences
   );
@@ -107,6 +115,7 @@ export async function applyImport(
     skipped,
     readCount,
     starredCount,
+    ruleCount,
     articleCount,
   };
 }

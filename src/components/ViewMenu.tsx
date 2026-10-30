@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ArticleFilter, ArticleView } from '../types';
+import type { ArticleView } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Icon } from './Icon';
@@ -11,13 +11,7 @@ const VIEWS: Array<{ value: ArticleView; label: string; icon: 'grid' | 'list' | 
   { value: 'compact', label: 'Compact view', icon: 'compact' },
 ];
 
-const FILTERS: Array<{ value: ArticleFilter; label: string; icon: 'inbox' | 'eye' | 'star' }> = [
-  { value: 'all', label: 'All articles', icon: 'inbox' },
-  { value: 'unread', label: 'Unread only', icon: 'eye' },
-  { value: 'starred', label: 'Starred only', icon: 'star' },
-];
-
-/** Top-bar View / Filtering menu, modelled on Fluent Reader's View menu. */
+/** Top-bar layout selector. Filtering has its own sibling menu. */
 export function ViewMenu() {
   const state = useStore();
   const [open, setOpen] = useState(false);
@@ -44,34 +38,26 @@ export function ViewMenu() {
   }, [open]);
 
   const view = VIEWS.find((entry) => entry.value === state.prefs.viewMode) ?? VIEWS[0];
-  const filter = FILTERS.find((entry) => entry.value === state.prefs.articleFilter) ?? FILTERS[0];
-
-  const chooseView = (value: ArticleView) => {
-    store.setPreferences({ viewMode: value });
-    setOpen(false);
-  };
-  const chooseFilter = (value: ArticleFilter) => {
-    store.setPreferences({ articleFilter: value });
-    setOpen(false);
-  };
 
   return (
     <div className="view-menu-root" ref={rootRef}>
       <button
         type="button"
         ref={triggerRef}
-        className="icon-button topbar__view"
+        className="topbar-tool topbar__view"
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="View and filter articles"
-        title={`${view.label} · ${filter.label}`}
+        aria-label={`View: ${view.label}`}
+        title={`View: ${view.label}`}
       >
-        <Icon name={view.icon} size={17} />
+        <Icon name={view.icon} size={16} />
+        <span className="topbar-tool__label">View</span>
+        <Icon name="chevronDown" size={12} className="topbar-tool__caret" />
       </button>
 
       {open && (
-        <div className="view-menu" role="menu" aria-label="View and filtering">
+        <div className="view-menu" role="menu" aria-label="Article view">
           <p className="view-menu__section">View</p>
           {VIEWS.map((entry) => (
             <button
@@ -80,29 +66,13 @@ export function ViewMenu() {
               role="menuitemradio"
               aria-checked={state.prefs.viewMode === entry.value}
               className="view-menu__item"
-              onClick={() => chooseView(entry.value)}
+              onClick={() => {
+                store.setPreferences({ viewMode: entry.value });
+                setOpen(false);
+              }}
             >
               <span className="view-menu__check">
                 {state.prefs.viewMode === entry.value && <Icon name="check" size={15} />}
-              </span>
-              <Icon name={entry.icon} size={16} className="view-menu__icon" />
-              <span>{entry.label}</span>
-            </button>
-          ))}
-
-          <div className="view-menu__divider" role="separator" />
-          <p className="view-menu__section">Filtering</p>
-          {FILTERS.map((entry) => (
-            <button
-              key={entry.value}
-              type="button"
-              role="menuitemradio"
-              aria-checked={state.prefs.articleFilter === entry.value}
-              className="view-menu__item"
-              onClick={() => chooseFilter(entry.value)}
-            >
-              <span className="view-menu__check">
-                {state.prefs.articleFilter === entry.value && <Icon name="check" size={15} />}
               </span>
               <Icon name={entry.icon} size={16} className="view-menu__icon" />
               <span>{entry.label}</span>

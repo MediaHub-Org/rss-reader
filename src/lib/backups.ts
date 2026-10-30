@@ -70,7 +70,8 @@ export async function createAutoBackup(): Promise<AutoBackupInfo> {
     state.folders,
     state.prefs,
     articles,
-    state.starredIds
+    state.starredIds,
+    state.rules
   );
   return invokeDesktop<AutoBackupInfo>('create_auto_backup', { contents });
 }

@@ -4,7 +4,7 @@
  * OPML and the JSON backup use the same feed shape and the same validation
  * rules; keeping them here avoids the two parsers drifting apart.
  */
-import type { Article, Preferences } from '../../types';
+import type { Article, ArticleRule, Preferences } from '../../types';
 
 export interface ExportFeed {
   /** Stable id, only present in full backups (used to keep caches aligned). */
@@ -23,6 +23,8 @@ export interface ImportResult {
   feeds: ExportFeed[];
   readIds?: Record<string, true>;
   starredIds?: Record<string, true>;
+  /** Present for full backups (v2): automatic article rules. */
+  rules?: ArticleRule[];
   format: 'opml' | 'json';
   warnings: string[];
   /** Unique folder names found in the file, sorted A–Z. */

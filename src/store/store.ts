@@ -2,6 +2,7 @@ import type {
   AppState,
   Article,
   ArticleFilter,
+  ArticleRule,
   Feed,
   FeedState,
   Preferences,
@@ -21,17 +22,20 @@ import { isRetryDue, retryDelayMs } from '../lib/backoff';
 import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { queueNewArticles } from '../lib/notifications';
 import { articleMatches } from '../lib/search';
+import { applyRulesToArticles, idMap } from '../lib/rules';
 import { normalizeFeedUrl } from '../lib/url';
 import {
   loadFeeds,
   loadFolders,
   loadPreferences,
   loadReadIds,
+  loadRules,
   loadStarredIds,
   saveFeeds,
   saveFolders,
   savePreferences,
   saveReadIds,
+  saveRules,
   saveStarredIds,
   saveArticles,
   loadAllArticles,
@@ -52,6 +56,7 @@ function initialState(): AppState {
     feedState: {},
     readIds: {},
     starredIds: {},
+    rules: [],
     prefs: { ...DEFAULT_PREFERENCES },
     ui: {
       activeFeedId: ALL_FEEDS,
@@ -105,6 +110,7 @@ export class Store {
       saveFolders(this.state.folders);
       saveReadIds(this.state.readIds);
       saveStarredIds(this.state.starredIds);
+      saveRules(this.state.rules);
       savePreferences(this.state.prefs);
       void Promise.all(
         Object.entries(this.state.articles).map(([feedId, articles]) => saveArticles(feedId, articles))
@@ -176,8 +182,9 @@ export class Store {
     const folders = loadFolders();
     const readIds = loadReadIds();
     const starredIds = loadStarredIds();
+    const rules = loadRules();
 
-    this.update({ prefs, feeds, folders, readIds, starredIds });
+    this.update({ prefs, feeds, folders, readIds, starredIds, rules });
     this.applyPreferences(prefs);
 
     const cached = await loadAllArticles();
@@ -253,9 +260,20 @@ export class Store {
         nextRetryAt: undefined,
       };
 
+      const applied = applyRulesToArticles(parsed.articles, this.state.rules, [
+        ...this.state.feeds,
+        feed,
+      ]);
+
       this.update({
         feeds: this.state.feeds.map((f) => (f.id === feedId ? feed : f)),
         articles: { ...this.state.articles, [feedId]: parsed.articles },
+        readIds: applied.readIds.length
+          ? { ...this.state.readIds, ...idMap(applied.readIds) }
+          : this.state.readIds,
+        starredIds: applied.starredIds.length
+          ? { ...this.state.starredIds, ...idMap(applied.starredIds) }
+          : this.state.starredIds,
         feedState: {
           ...this.state.feedState,
           [feedId]: {
@@ -347,19 +365,28 @@ export class Store {
       const existing = this.state.articles[feedId] ?? [];
       const seen = new Set(existing.map((a) => a.id));
       const merged = [...existing];
+      const incoming: Article[] = [];
       let added = 0;
       for (const article of parsed.articles) {
         if (!seen.has(article.id)) {
           seen.add(article.id);
           merged.push(article);
+          incoming.push(article);
           added++;
         }
       }
       merged.sort((a, b) => b.publishedAt - a.publishedAt);
 
       const truncated = merged.slice(0, HYDRATED_ARTICLE_LIMIT);
+      const applied = applyRulesToArticles(incoming, this.state.rules, this.state.feeds);
       this.update({
         articles: { ...this.state.articles, [feedId]: truncated },
+        readIds: applied.readIds.length
+          ? { ...this.state.readIds, ...idMap(applied.readIds) }
+          : this.state.readIds,
+        starredIds: applied.starredIds.length
+          ? { ...this.state.starredIds, ...idMap(applied.starredIds) }
+          : this.state.starredIds,
         feedState: {
           ...this.state.feedState,
           [feedId]: { status: 'ok', updatedAt: now, articleCount: truncated.length },
@@ -477,6 +504,9 @@ export class Store {
     }
 
     const removedStarred = Object.keys(starred).length !== Object.keys(this.state.starredIds).length;
+    const rules = this.state.rules.filter(
+      (rule) => ![...toRemove].some((id) => rule.scope === `feed:${id}`)
+    );
 
     const activeFolder = folderNameFromViewId(this.state.ui.activeFeedId);
     const activeGone =
@@ -491,6 +521,7 @@ export class Store {
       articles,
       feedState,
       starredIds: removedStarred ? starred : this.state.starredIds,
+      rules: rules.length !== this.state.rules.length ? rules : this.state.rules,
       ui: activeGone
         ? { ...this.state.ui, activeFeedId: ALL_FEEDS, activeArticleId: null }
         : this.state.ui,
@@ -656,10 +687,18 @@ export class Store {
     if (moved || removedRecords.length) {
       const activeFolder = folderNameFromViewId(this.state.ui.activeFeedId);
       const activeMoved = activeFolder !== null && sourceSet.has(activeFolder);
+      const rules = this.state.rules
+        .map((rule) => {
+          if (!rule.scope.startsWith('group:')) return rule;
+          if (!sourceSet.has(rule.scope.slice('group:'.length))) return rule;
+          return next ? { ...rule, scope: `group:${next}` } : null;
+        })
+        .filter((rule): rule is ArticleRule => rule !== null);
 
       this.update({
         feeds,
         folders,
+        rules,
         ui: activeMoved
           ? {
               ...this.state.ui,
@@ -719,6 +758,10 @@ export class Store {
 
     this.update({
       folders: this.state.folders.filter((name) => !targets.has(name)),
+      rules: this.state.rules.filter(
+        (rule) =>
+          !targets.has(rule.scope.startsWith('group:') ? rule.scope.slice('group:'.length) : '')
+      ),
       ui: activeGone
         ? { ...this.state.ui, activeFeedId: ALL_FEEDS, activeArticleId: null }
         : this.state.ui,
@@ -768,6 +811,9 @@ export class Store {
       folders: this.state.folders.map((f) => (f === from ? to : f)),
       feeds: this.state.feeds.map((f) =>
         (f.folder?.trim() ?? '') === from ? { ...f, folder: to } : f
+      ),
+      rules: this.state.rules.map((rule) =>
+        rule.scope === `group:${from}` ? { ...rule, scope: `group:${to}` } : rule
       ),
       ui:
         activeFolder === from
@@ -982,6 +1028,69 @@ export class Store {
     this.update({ starredIds: next });
     saveStarredIds(next);
     return Object.keys(next).length;
+  }
+
+  /* -------------------------------- rules --------------------------------- */
+
+  setRules(rules: ArticleRule[]): void {
+    this.update({ rules });
+    saveRules(rules);
+  }
+
+  addRule(rule: ArticleRule): void {
+    this.setRules([...this.state.rules, rule]);
+  }
+
+  updateRule(id: string, patch: Partial<ArticleRule>): void {
+    this.setRules(this.state.rules.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
+  }
+
+  removeRule(id: string): void {
+    this.setRules(this.state.rules.filter((rule) => rule.id !== id));
+  }
+
+  mergeRules(rules: ArticleRule[]): number {
+    const byId = new Map(this.state.rules.map((rule) => [rule.id, rule]));
+    for (const rule of rules) byId.set(rule.id, rule);
+    this.setRules([...byId.values()]);
+    return rules.length;
+  }
+
+  replaceRules(rules: ArticleRule[]): number {
+    this.setRules(rules);
+    return rules.length;
+  }
+
+  /**
+   * Apply every rule to the articles already cached. New arrivals are handled
+   * during refresh; this is the explicit "apply now" path for rules added
+   * later. Returns how many article states actually changed.
+   */
+  applyRulesNow(): number {
+    const articles = Object.values(this.state.articles).flat();
+    const applied = applyRulesToArticles(articles, this.state.rules, this.state.feeds);
+    const readIds = { ...this.state.readIds };
+    const starredIds = { ...this.state.starredIds };
+    let changed = 0;
+
+    for (const id of applied.readIds) {
+      if (!readIds[id]) {
+        readIds[id] = true;
+        changed += 1;
+      }
+    }
+    for (const id of applied.starredIds) {
+      if (!starredIds[id]) {
+        starredIds[id] = true;
+        changed += 1;
+      }
+    }
+
+    if (changed) {
+      this.update({ readIds, starredIds });
+      this.schedulePersist();
+    }
+    return changed;
   }
 
   /**

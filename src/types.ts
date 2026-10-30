@@ -157,6 +157,27 @@ export interface Toast {
   text: string;
 }
 
+export type RuleField = 'title' | 'content';
+export type RuleMatchMode = 'contains' | 'regex';
+export type RuleAction = 'read' | 'star';
+
+/**
+ * Automatic rule applied to articles arriving from a feed refresh. Scope is a
+ * stable string so it survives backup round-trips: `all`, `feed:<id>` or
+ * `group:<folder name>`.
+ */
+export interface ArticleRule {
+  id: string;
+  enabled: boolean;
+  pattern: string;
+  field: RuleField;
+  mode: RuleMatchMode;
+  /** Invert the match ("doesn't match"). */
+  negate: boolean;
+  actions: RuleAction[];
+  scope: string;
+}
+
 export interface AppState {
   feeds: Feed[];
   /**
@@ -169,6 +190,7 @@ export interface AppState {
   feedState: Record<string, FeedState>;
   readIds: Record<string, true>;
   starredIds: Record<string, true>;
+  rules: ArticleRule[];
   prefs: Preferences;
   ui: UiState;
   toasts: Toast[];

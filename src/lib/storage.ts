@@ -7,8 +7,9 @@
  * Everything is namespaced under `rss-reader:` so the app never collides with
  * other origins sharing the same storage.
  */
-import type { Article, Feed, Preferences } from '../types';
+import type { Article, ArticleRule, Feed, Preferences } from '../types';
 import { DEFAULT_PREFERENCES } from '../types';
+import { parseRules } from './rules';
 
 const NS = 'rss-reader:';
 /** Schema revision for preferences; bump when a one-time migration is added. */
@@ -19,6 +20,7 @@ const KEYS = {
   folders: `${NS}folders`,
   read: `${NS}read`,
   starred: `${NS}starred`,
+  rules: `${NS}rules`,
   version: `${NS}version`,
 } as const;
 
@@ -131,6 +133,14 @@ export function loadStarredIds(): Record<string, true> {
 
 export function saveStarredIds(starred: Record<string, true>): void {
   writeJson(KEYS.starred, starred);
+}
+
+export function loadRules(): ArticleRule[] {
+  return parseRules(readJson<unknown>(KEYS.rules, []));
+}
+
+export function saveRules(rules: ArticleRule[]): void {
+  writeJson(KEYS.rules, rules);
 }
 
 /* ----------------------------- IndexedDB cache ---------------------------- */

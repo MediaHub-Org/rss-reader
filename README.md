@@ -124,10 +124,10 @@ Export a **full backup** from the web/PWA version and import it to keep feeds,
 folders, read state, preferences and cached articles.
 
 The desktop app also keeps the newest **seven daily snapshots** under its data folder
-(`…\com.mediahub.rssreader\backups`). **Settings → Data → Backups** can create one on
+(`…\com.mediahub.rssreader\backups`). **Settings → Services & Integration → Backups** can create one on
 demand, restore a snapshot (replace) or delete old ones.
 
-Desktop extras (Settings → General):
+Desktop extras (Settings → Preferences):
 
 - **Tray icon** with Open / Refresh feeds / Quit, an unread tooltip, and left-click to
   show the window.
@@ -156,6 +156,14 @@ filters the view by that folder without changing the collapse state, so clicking
 collapsed folder never pops its list open and reading never hides it by accident.
 Collapsed folders persist across reloads. On mobile the feed list is an off-canvas
 drawer that closes after you pick something.
+
+**Settings** — one dialog with six sections: **Preferences**, **Groups**, **Sources**,
+**Rules**, **Services & Integration** and **About**. Groups and Sources support
+checkbox multi-selection with bulk merge/move and delete (plus one combined
+confirmation), and the sidebar's feed/folder context menus jump straight to the matching
+section. Rules automatically mark new articles as read or star them using a contains or
+regular-expression pattern, scoped to all sources, one group or one source. Rules can
+also be applied to the existing cache, and they travel in the full backup.
 
 **Right-click actions** — feed, folder, article card and article-link context menus:
 open, refresh, mark read/unread, copy URL, rename, move, add a feed to a folder,
@@ -188,15 +196,12 @@ reuses one history entry, so Back always means “back to the list”, not “pr
 
 **Portability** — export/import **OPML** (standard, subscriptions and folders including
 empty ones) and a **full JSON backup** (subscriptions, folders, read status, starred
-articles, preferences *and* every cached article, so a new device/origin can be rebuilt
-without refetching; the YouTube API key is deliberately not included). Import
+articles, rules, preferences *and* every cached article, so a new device/origin can be
+rebuilt without refetching; the YouTube API key is deliberately not included). Import
 validates the file, previews what it found, skips duplicates, and rejects invalid
 `javascript:` URLs. The **OPML XML** editor shows a diff (added / updated / removed)
-before replacing your subscriptions. **Manage** splits into **Feeds** and **Folders**:
-each has its own select-all/none, **Move selected…** (same searchable picker) and
-**Delete selected**, with one combined inline confirmation. Moving folders merges them
-— their feeds go to the destination and the empty folder disappears. On desktop,
-**Backups** keeps rotating automatic snapshots and restores them with one click.
+before replacing your subscriptions. On desktop, **Backups** keeps rotating automatic
+snapshots and restores them with one click.
 
 **Media** — YouTube URLs are detected in titles, links and content (no API key; the id
 is parsed from the URL), and **Vimeo, Spotify, SoundCloud, Deezer and Apple
@@ -210,8 +215,9 @@ instead. An optional YouTube Data API key raises channel/playlist feeds from ~15
 items. Podcast audio enclosures render a native inline player as well.
 
 **Customization** — light/dark/system theme, comfortable/compact list density, reader
-font size, view mode and article filter. All persisted in `localStorage` and applied
-before first paint (no theme flash).
+font size, view mode and article filter. The View and Filter toolbar controls show
+their names on wide windows and collapse to icons on narrow ones. All persisted in
+`localStorage` and applied before first paint (no theme flash).
 
 **Accessibility** — labelled controls, focus-trapped modal dialogs, skip link, visible
 focus rings, keyboard navigation throughout.
@@ -271,8 +277,10 @@ src/
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
     hash.ts, url.ts, format.ts, feedId.ts
     search.ts          full-text matching (precomputed + legacy fallback)
+    rules.ts           article rules: validation, matching and action application
   store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors
   components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs (folder picker included), context menu, toasts
+    settings/          reusable Sources/Groups managers and the Rules editor
   styles/
     theme.css          design tokens: light/dark palettes, density, font size
     app.css            layout and components

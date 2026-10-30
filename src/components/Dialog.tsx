@@ -78,6 +78,11 @@ export function Dialog({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (suspendedRef.current) return;
+      // A stacked dialog (folder picker, confirmation) owns Escape and Tab.
+      // Both panels listen on document, so without this check one Escape
+      // would close the picker and the dialog underneath it.
+      const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
+      if (dialogs[dialogs.length - 1] !== panelRef.current) return;
       if (event.key === 'Escape') {
         // A context menu opened inside a dialog handles its own Escape; let
         // it bubble instead of closing the whole dialog too.

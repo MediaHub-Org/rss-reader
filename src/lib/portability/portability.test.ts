@@ -110,6 +110,17 @@ describe('OPML', () => {
   });
 });
 
+const rule = () => ({
+  id: 'rule-1',
+  enabled: true,
+  pattern: 'story',
+  field: 'title' as const,
+  mode: 'contains' as const,
+  negate: false,
+  actions: ['read', 'star'] as Array<'read' | 'star'>,
+  scope: 'feed:f1',
+});
+
 describe('full JSON backup', () => {
   const prefs: Preferences = {
     ...DEFAULT_PREFERENCES,
@@ -130,7 +141,8 @@ describe('full JSON backup', () => {
       ['Empty'],
       prefs,
       articles,
-      { 'f1-a1': true }
+      { 'f1-a1': true },
+      [rule()]
     );
     const data = JSON.parse(raw);
 
@@ -141,6 +153,7 @@ describe('full JSON backup', () => {
     expect(data.preferences.prefsVersion).toBeUndefined();
     expect(data.preferences.theme).toBe('dark');
     expect(data.folders).toEqual(['Empty', 'News']);
+    expect(data.rules).toEqual([rule()]);
   });
 
   it('parses a v2 backup and keeps feed/article ids aligned', () => {
@@ -150,7 +163,8 @@ describe('full JSON backup', () => {
       ['Empty'],
       prefs,
       articles,
-      { 'f1-a1': true }
+      { 'f1-a1': true },
+      [rule()]
     );
     const parsed = parseJsonBackup(raw);
 
@@ -159,6 +173,7 @@ describe('full JSON backup', () => {
     expect(parsed.articles?.f1[0].title).toBe('Story');
     expect(parsed.readIds).toEqual({ 'f1-a1': true });
     expect(parsed.starredIds).toEqual({ 'f1-a1': true });
+    expect(parsed.rules).toEqual([rule()]);
     expect(parsed.preferences?.theme).toBe('dark');
   });
 

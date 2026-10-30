@@ -19,7 +19,7 @@ function stripHtml(html: string): string {
 }
 
 /** Original-case text for case-sensitive body searches. */
-function rawSearchableText(article: Article): string {
+export function rawSearchableText(article: Article): string {
   const cached = rawCache.get(article);
   if (cached !== undefined) return cached;
 

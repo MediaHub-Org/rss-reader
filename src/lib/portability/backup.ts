@@ -3,8 +3,9 @@
  * preferences and the cached articles from IndexedDB. Parsing is deliberately
  * defensive because the file is user-supplied.
  */
-import type { Article, Feed, Preferences } from '../../types';
+import type { Article, ArticleRule, Feed, Preferences } from '../../types';
 import { feedIdForUrl } from '../feedParser';
+import { parseRules } from '../rules';
 import { isFeedId } from '../feedId';
 import {
   byName,
@@ -35,7 +36,8 @@ export function exportFullBackup(
   folders: string[],
   prefs: Preferences,
   articles: Record<string, Article[]>,
-  starredIds: Record<string, true> = {}
+  starredIds: Record<string, true> = {},
+  rules: ArticleRule[] = []
 ): string {
   const { youtubeApiKey: _omitted, prefsVersion: _version, ...portablePrefs } = prefs;
 
@@ -56,6 +58,7 @@ export function exportFullBackup(
     folders: collectFolderNames(feeds, folders),
     readIds: Object.keys(readIds),
     starredIds: Object.keys(starredIds),
+    rules,
     preferences: portablePrefs,
     articles,
   });
@@ -290,6 +293,15 @@ export function parseJsonBackup(text: string): ImportResult {
   }
 
   const full = parsed.version === 2;
+  const rules = full
+    ? parseRules(parsed.rules).map((rule) => {
+        if (!rule.scope.startsWith('feed:')) return rule;
+        const oldId = rule.scope.slice('feed:'.length);
+        const newId = idMap.get(oldId);
+        return newId && newId !== oldId ? { ...rule, scope: `feed:${newId}` } : rule;
+      })
+    : [];
+
   return {
     feeds: sortImportedFeeds(feeds),
     readIds,
@@ -301,6 +313,7 @@ export function parseJsonBackup(text: string): ImportResult {
       ? {
           articles,
           preferences: parseBackupPreferences(parsed.preferences),
+          rules,
           full: true,
         }
       : {}),

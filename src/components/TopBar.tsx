@@ -6,6 +6,7 @@ import { useStore } from '../hooks/useStore';
 import { Icon } from './Icon';
 import { Dropdown } from './Dropdown';
 import { ViewMenu } from './ViewMenu';
+import { FilterMenu } from './FilterMenu';
 import { MarkReadMenu } from './MarkReadMenu';
 
 interface TopBarProps {
@@ -73,6 +74,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
 
       <div className="topbar__tools">
         <ViewMenu />
+        <FilterMenu />
 
         <Dropdown<SortMode>
           value={state.ui.sort}

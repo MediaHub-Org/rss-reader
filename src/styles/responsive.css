@@ -125,4 +125,22 @@
   .tabs {
     overflow-x: auto;
   }
+
+  .settings-section__header {
+    flex-wrap: wrap;
+  }
+
+  .rule-editor__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-1);
+  }
+
+  .rule-editor__label {
+    flex-basis: auto;
+  }
+
+  .manage-new-group {
+    flex-wrap: wrap;
+  }
 }

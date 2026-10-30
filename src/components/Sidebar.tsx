@@ -29,6 +29,8 @@ interface SidebarProps {
   onAddFeedInFolder: (folder: string) => void;
   onUnsubscribe: (feed: Feed) => void;
   onRemoveFolder: (folderName: string) => void;
+  onManageSources: () => void;
+  onManageGroups: () => void;
   onClose: () => void;
 }
 
@@ -79,6 +81,8 @@ export function Sidebar({
   onAddFeedInFolder,
   onUnsubscribe,
   onRemoveFolder,
+  onManageSources,
+  onManageGroups,
   onClose,
 }: SidebarProps) {
   const state = useStore();
@@ -375,6 +379,14 @@ export function Sidebar({
       // stays short no matter how many folders exist.
       { icon: 'folder', label: 'Move to folder…', onSelect: () => setMoveFeed(feed) },
       { icon: 'folderPlus', label: 'New folder…', onSelect: () => beginCreateFolder(feed.id) },
+      {
+        icon: 'sliders',
+        label: 'Manage sources…',
+        onSelect: () => {
+          onClose();
+          onManageSources();
+        },
+      },
       { type: 'divider' },
       {
         icon: 'trash',
@@ -444,6 +456,14 @@ export function Sidebar({
         onSelect: () => setFolderCollapsed(name, open),
       },
       { icon: 'folderPlus', label: 'New folder…', onSelect: () => beginCreateFolder() },
+      {
+        icon: 'sliders',
+        label: 'Manage groups…',
+        onSelect: () => {
+          onClose();
+          onManageGroups();
+        },
+      },
       { type: 'divider' },
       {
         icon: 'trash',
