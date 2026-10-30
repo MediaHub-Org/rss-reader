@@ -95,11 +95,7 @@ fn set_close_to_tray(state: tauri::State<DesktopState>, enabled: bool) {
 #[tauri::command]
 fn is_main_window_active(app: tauri::AppHandle) -> bool {
     app.get_webview_window("main")
-        .and_then(|window| {
-            let visible = window.is_visible().unwrap_or(false);
-            let focused = window.is_focused().unwrap_or(false);
-            Some(visible && focused)
-        })
+        .map(|window| window.is_visible().unwrap_or(false) && window.is_focused().unwrap_or(false))
         .unwrap_or(false)
 }
 

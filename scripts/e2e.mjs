@@ -729,8 +729,11 @@ try {
   const currentXml = await page.inputValue('.opml-editor');
   const editedXml = currentXml.replace(/title="Fireship"/g, 'title="Fireship Channel"').replace(/text="Fireship"/g, 'text="Fireship Channel"');
   await page.fill('.opml-editor', editedXml);
+  // React still has to commit the textarea value; without this breathing room
+  // a fast click on CI can run previewXml against the previous text.
+  await page.waitForTimeout(150);
   await page.click('#panel-xml .button--primary:has-text("Preview changes")');
-  await page.waitForSelector('#panel-xml .import-preview');
+  await page.waitForSelector('#panel-xml .import-preview', { timeout: 10_000 });
   check('OPML XML shows a diff before applying', true);
   await page.click('#panel-xml .button--primary:has-text("Apply changes")');
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
