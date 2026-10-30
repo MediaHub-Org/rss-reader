@@ -9,7 +9,7 @@ import {
 } from '../types';
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
-import { byName } from '../lib/opml';
+import { byName } from '../lib/portability';
 import { copyText } from '../lib/clipboard';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';

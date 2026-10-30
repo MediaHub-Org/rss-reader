@@ -11,11 +11,22 @@ export function isDesktopApp(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
+export type SaveOutcome = 'saved' | 'cancelled' | 'error';
+
+type TauriCore = typeof import('@tauri-apps/api/core');
+let corePromise: Promise<TauriCore> | null = null;
+
+/** Load the Tauri API once, and only in the desktop shell. */
+function tauriCore(): Promise<TauriCore> {
+  corePromise ??= import('@tauri-apps/api/core');
+  return corePromise;
+}
+
 export async function invokeDesktop<T>(
   command: string,
   args?: Record<string, unknown>
 ): Promise<T> {
-  const { invoke } = await import('@tauri-apps/api/core');
+  const { invoke } = await tauriCore();
   return invoke<T>(command, args);
 }
 
@@ -27,13 +38,17 @@ export async function openExternalUrl(url: string): Promise<void> {
   }
 }
 
-/** Native Save dialog + write. Returns false when the user cancels. */
-export async function saveTextFile(filename: string, contents: string): Promise<boolean> {
+/** Native Save dialog + write. */
+export async function saveTextFile(filename: string, contents: string): Promise<SaveOutcome> {
   try {
-    return await invokeDesktop<boolean>('save_text_file', { name: filename, contents });
+    const saved = await invokeDesktop<boolean>('save_text_file', {
+      name: filename,
+      contents,
+    });
+    return saved ? 'saved' : 'cancelled';
   } catch (err) {
     console.error('Could not save the file', err);
-    return false;
+    return 'error';
   }
 }
 

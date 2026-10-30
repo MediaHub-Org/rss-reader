@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from '../types';
-import type { ExportFeed, ImportResult } from '../lib/opml';
 import {
   byName,
+  downloadFile,
   exportFullBackup,
   exportOpml,
   importSubscriptions,
-  downloadFile,
   ImportError,
-} from '../lib/opml';
+  type ExportFeed,
+  type ImportResult,
+  type SaveOutcome,
+} from '../lib/portability';
 import { loadAllArticles } from '../lib/storage';
+import { countLabel } from '../lib/format';
 import { feedIdForUrl } from '../lib/feedParser';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
@@ -269,16 +272,18 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     }
 
     const parts: string[] = [];
-    if (added) parts.push(`Imported ${added} feed${added === 1 ? '' : 's'}`);
+    if (added) parts.push(`Imported ${countLabel(added, 'feed')}`);
     if (updated) parts.push(`${added ? 'updated' : 'Updated'} ${updated}`);
     if (addedFolders.length) {
-      parts.push(`added ${addedFolders.length} folder${addedFolders.length === 1 ? '' : 's'}`);
+      parts.push(`added ${countLabel(addedFolders.length, 'folder')}`);
     }
     if (skipped) parts.push(`skipped ${skipped}`);
 
     const restored: string[] = [];
-    if (readCount) restored.push(`${readCount} read entr${readCount === 1 ? 'y' : 'ies'}`);
-    if (articleCount) restored.push(`${articleCount} cached article${articleCount === 1 ? '' : 's'}`);
+    if (readCount) {
+      restored.push(countLabel(readCount, 'read entry', 'read entries'));
+    }
+    if (articleCount) restored.push(countLabel(articleCount, 'cached article'));
     if (pending.preferences) restored.push('preferences');
 
     const changed = Boolean(added || updated || addedFolders.length || restored.length);
@@ -290,7 +295,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     } else if (restored.length) {
       message = `Restored ${restored.join(', ')}`;
     } else {
-      message = `Nothing to import — ${skipped} duplicate${skipped === 1 ? '' : 's'} skipped`;
+      message = `Nothing to import — ${countLabel(skipped, 'duplicate')} skipped`;
     }
 
     store.notify(changed ? 'success' : 'info', message);
@@ -299,9 +304,9 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
 
   const doExport = async (kind: 'opml' | 'json') => {
     try {
-      let saved: boolean;
+      let outcome: SaveOutcome;
       if (kind === 'opml') {
-        saved = await downloadFile(
+        outcome = await downloadFile(
           'rss-reader-subscriptions.opml',
           exportOpml(state.feeds, state.folders),
           'text/x-opml+xml'
@@ -309,14 +314,18 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
       } else {
         store.notify('info', 'Preparing full backup…');
         const articles = await loadAllArticles();
-        saved = await downloadFile(
+        outcome = await downloadFile(
           'rss-reader-backup.json',
           exportFullBackup(state.feeds, state.readIds, state.folders, state.prefs, articles),
           'application/json'
         );
       }
-      if (!saved) {
+      if (outcome === 'cancelled') {
         store.notify('info', 'Export cancelled');
+        return;
+      }
+      if (outcome === 'error') {
+        store.notify('error', 'Could not save the export file.');
         return;
       }
       store.notify('success', kind === 'opml' ? 'OPML exported' : 'Full backup exported');
@@ -471,6 +480,9 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
 
   const totalFolderCount = folders.length;
   const hasAnything = state.feeds.length > 0 || totalFolderCount > 0;
+  const pendingArticleCount = pending
+    ? Object.values(pending.articles ?? {}).reduce((sum, list) => sum + list.length, 0)
+    : 0;
 
   return (
     <Dialog
@@ -556,15 +568,15 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           {pending && (
             <div className="import-preview">
               <p className="import-preview__summary">
-                <strong>{pending.feeds.length}</strong> feed{pending.feeds.length === 1 ? '' : 's'} found in
+                <strong>{pending.feeds.length}</strong> {pending.feeds.length === 1 ? 'feed' : 'feeds'} found in
                 a {pending.format.toUpperCase()} file
                 {pending.folders.length
-                  ? ` across ${pending.folders.length} folder${pending.folders.length === 1 ? '' : 's'}`
+                  ? ` across ${countLabel(pending.folders.length, 'folder')}`
                   : ''}
-                {pending.readIds ? ` · ${Object.keys(pending.readIds).length} read entries` : ''}
-                {pending.articles && Object.values(pending.articles).some((list) => list.length)
-                  ? ` · ${Object.values(pending.articles).reduce((sum, list) => sum + list.length, 0)} cached articles`
+                {pending.readIds
+                  ? ` · ${countLabel(Object.keys(pending.readIds).length, 'read entry', 'read entries')}`
                   : ''}
+                {pendingArticleCount ? ` · ${countLabel(pendingArticleCount, 'cached article')}` : ''}
                 {pending.preferences ? ' · preferences' : ''}.
               </p>
 
@@ -604,8 +616,8 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                 >
                   Import{' '}
                   {pending.feeds.length
-                    ? `${pending.feeds.length} feed${pending.feeds.length === 1 ? '' : 's'}`
-                    : `${pending.folders.length} folder${pending.folders.length === 1 ? '' : 's'}`}
+                    ? countLabel(pending.feeds.length, 'feed')
+                    : countLabel(pending.folders.length, 'folder')}
                 </button>
               </div>
             </div>

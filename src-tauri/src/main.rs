@@ -1,8 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod fetch;
+mod url_policy;
 
-use tauri::{WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 /// Save text from the web UI through the OS save dialog. Returns false when
 /// the user cancels.
@@ -27,12 +28,21 @@ async fn save_text_file(name: String, contents: String) -> Result<bool, String> 
 /// app window. The URL is validated with the same rules as feed fetching.
 #[tauri::command]
 fn open_external(url: String) -> Result<(), String> {
-    let parsed = fetch::validate(&url)?;
+    let parsed = url_policy::validate_external(&url)?;
     open::that(parsed.as_str()).map_err(|err| err.to_string())
 }
 
 fn main() {
     tauri::Builder::default()
+        // A second launch focuses the existing window instead of starting a
+        // second WebView (two writers to the same local database).
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .invoke_handler(tauri::generate_handler![
             fetch::fetch_feed,
             save_text_file,

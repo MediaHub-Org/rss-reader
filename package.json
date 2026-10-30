@@ -10,6 +10,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
+    "check:desktop": "cargo fmt --manifest-path src-tauri/Cargo.toml -- --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+    "check": "npm run typecheck && npm run check:desktop",
     "test:e2e": "node scripts/e2e.mjs",
     "test:pwa": "node scripts/verify-pwa.mjs",
     "desktop:dev": "tauri dev",

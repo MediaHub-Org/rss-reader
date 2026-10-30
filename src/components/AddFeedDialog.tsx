@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
-import { byName } from '../lib/opml';
+import { byName } from '../lib/portability';
 import { Dialog } from './Dialog';
 
 interface AddFeedDialogProps {

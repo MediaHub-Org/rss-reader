@@ -15,6 +15,7 @@ import {
   folderViewId,
 } from '../types';
 import { feedIdForUrl, FeedParseError } from '../lib/feedParser';
+import { resolveImportedFeedId } from '../lib/feedId';
 import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { normalizeFeedUrl } from '../lib/url';
 import {
@@ -698,15 +699,7 @@ export class Store {
        * backups carry that id so a restore does not add a duplicate; OPML has
        * no id, so an existing feed with the same URL supplies it instead.
        */
-      const urlMatch = existingByUrl.get(validated.url);
-      let id =
-        entry.id && /^f[a-z0-9]+$/i.test(entry.id) ? entry.id : feedIdForUrl(validated.url);
-      const collision = existingById.get(id);
-      if (collision && collision.url !== validated.url) {
-        id = urlMatch?.id ?? feedIdForUrl(validated.url);
-      } else if (!collision && urlMatch) {
-        id = urlMatch.id;
-      }
+      const id = resolveImportedFeedId(entry.id, validated.url, existingById, existingByUrl);
       if (seen.has(id)) {
         skipped++;
         continue;

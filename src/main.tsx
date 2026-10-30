@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { store } from './store/store';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { installDesktopLinkHandling, isDesktopApp } from './lib/desktop';
 import './styles/theme.css';
 import './styles/app.css';
@@ -42,6 +43,8 @@ if (import.meta.env.PROD && !isDesktopApp() && 'serviceWorker' in navigator) {
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

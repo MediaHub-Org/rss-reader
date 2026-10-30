@@ -91,6 +91,7 @@ for the second):
 ```bash
 npm run test:e2e      # end-to-end smoke tests against bundled fixture feeds → test-artifacts/
 npm run test:pwa      # installability + offline checks
+npm run check         # TS typecheck + Rust fmt/clippy/tests
 ```
 
 ---
@@ -204,7 +205,8 @@ server/
   proxy-lib.mjs        shared fetch proxy: validation, SSRF guard, HTTPS upgrade, size cap
   proxy.mjs            standalone proxy server (`npm run proxy`)
 src-tauri/
-  src/fetch.rs         desktop feed fetch: HTTPS-first, SSRF guard, redirect/time/size caps
+  src/fetch.rs         desktop feed fetch: pooled client, redirect/time/size caps
+  src/url_policy.rs    URL/SSRF policy + unit tests (private ranges, HTTPS upgrade)
   src/main.rs          native window, save dialog and external-link opener
   tauri.conf.json      window, CSP, installer metadata
 src/
@@ -215,12 +217,17 @@ src/
     youtube.ts         video-id extraction (watch, youtu.be, shorts, live, embed)
     embeds.ts          provider detection + keyless embed URLs (Vimeo, Spotify, …, YouTube)
     youtubeApi.ts      optional YouTube Data API path for channel/playlist feeds
-    opml.ts            OPML + full JSON backup (incl. cached articles), validation
+    portability/
+      index.ts         format detection + public import/export API
+      opml.ts          OPML 2.0 export/parse, folder nesting
+      backup.ts        JSON v2 full backup (cached articles + preferences)
+      download.ts      browser download / native Save adapter
+      types.ts         shared feed/import types, URL and folder helpers
     clipboard.ts       clipboard write with a legacy fallback
     desktop.ts         Tauri bridge: native save, external links, environment check
     viewHistory.ts     browser-history bridge: back/forward across views (no router)
     storage.ts         localStorage (prefs/subscriptions/read) + IndexedDB (article cache)
-    hash.ts, url.ts, format.ts
+    hash.ts, url.ts, format.ts, feedId.ts
   store/store.ts       framework-agnostic store (useSyncExternalStore), actions, selectors
   components/          Sidebar, TopBar, ArticleList, ArticleDetail, dialogs (folder picker included), context menu, toasts
   styles/
@@ -286,7 +293,8 @@ otherwise make CORS-mode subresources miss the cache.
 
 ## Known limitations
 
-- Read status is per device (export the JSON backup to move it).
+- Read status, preferences and cached articles are per device; the **full JSON backup**
+  moves all of them.
 - Periodic refresh is 15 minutes while the tab is visible; feeds are also refreshed on
   launch.
 - Article view is single-pane (list ⇄ detail); a two-pane desktop layout is a natural

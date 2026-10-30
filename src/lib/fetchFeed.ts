@@ -32,6 +32,13 @@ export interface FetchFeedResult {
   discoveredFeedUrl?: string;
 }
 
+interface NativeFeedResponse {
+  body: string;
+  finalUrl: string;
+  status: number;
+  contentType: string;
+}
+
 export class FeedFetchError extends Error {
   constructor(
     message: string,
@@ -47,12 +54,7 @@ async function getText(url: string): Promise<{ text: string; via: Via; finalUrl:
   // Desktop: one native request, no CORS and no third-party proxy.
   if (isDesktopApp()) {
     try {
-      const result = await invokeDesktop<{
-        body: string;
-        finalUrl: string;
-        status: number;
-        contentType: string;
-      }>('fetch_feed', { url });
+      const result = await invokeDesktop<NativeFeedResponse>('fetch_feed', { url });
       if (!result.body.trim()) {
         throw new FeedFetchError('The feed returned an empty response.', result.status);
       }
