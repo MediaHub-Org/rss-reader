@@ -177,18 +177,16 @@ try {
   await page.waitForSelector('.context-menu', { state: 'detached' });
 
   /* --------------------------- sorting/search -------------------------- */
-  // The sort control is a themed listbox (a native <select> renders an
-  // OS-styled popup that ignores the CSS variables, so it can never match
-  // light/dark). Drive it the way a user would: open, then pick.
+  // The sort control uses the same themed popover as View and Filter.
   const pickSort = async (label) => {
-    await page.click('.topbar__sort .dropdown__trigger');
-    await page.waitForSelector('.dropdown__menu');
-    await page.click(`.dropdown__option:has-text("${label}")`);
-    await page.waitForSelector('.dropdown__menu', { state: 'detached' });
+    await page.click('.topbar__sort');
+    await page.waitForSelector('.sort-menu');
+    await page.click(`.sort-menu .view-menu__item:has-text("${label}")`);
+    await page.waitForSelector('.sort-menu', { state: 'detached' });
   };
 
-  await page.click('.topbar__sort .dropdown__trigger');
-  await page.waitForSelector('.dropdown__menu');
+  await page.click('.topbar__sort');
+  await page.waitForSelector('.sort-menu');
   await page.waitForTimeout(250); // let the open animation settle for the screenshot
   const menuTheme = await page.evaluate(() => {
     const probe = document.createElement('div');
@@ -196,7 +194,7 @@ try {
     document.body.appendChild(probe);
     const panelBg = getComputedStyle(probe).backgroundColor;
     probe.remove();
-    const menu = document.querySelector('.dropdown__menu');
+    const menu = document.querySelector('.sort-menu');
     return {
       menuBg: getComputedStyle(menu).backgroundColor,
       panelBg,
@@ -211,7 +209,7 @@ try {
     `${menuTheme.theme}: ${menuTheme.menuBg} vs ${menuTheme.panelBg}`
   );
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.dropdown__menu', { state: 'detached' });
+  await page.waitForSelector('.sort-menu', { state: 'detached' });
 
   await pickSort('Oldest first');
   const dates = await page.$$eval('.article-card time', (nodes) =>
@@ -285,9 +283,18 @@ try {
     nodes.map((node) => node.textContent?.trim())
   );
   check(
-    'View and Filter controls show their names',
-    viewLabels.includes('View') && viewLabels.includes('Filter'),
+    'View, Filter and Sort controls show their names',
+    viewLabels.includes('View') && viewLabels.includes('Filter') && viewLabels.includes('Sort'),
     viewLabels.join(' · ')
+  );
+  const toolbarSizes = await page.$$eval(
+    '.topbar__view, .topbar__filter, .topbar__sort',
+    (nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height))
+  );
+  check(
+    'View, Filter and Sort share the same control size',
+    toolbarSizes.length === 3 && new Set(toolbarSizes).size === 1,
+    toolbarSizes.join(' / ')
   );
 
   await page.click('.view-menu__item:has-text("List view")');
@@ -464,8 +471,8 @@ try {
   check('Theme setting flips data-theme', before !== after, `${before} → ${after}`);
 
   // The menu must follow the new theme, not keep the old one.
-  await page.click('.topbar__sort .dropdown__trigger');
-  await page.waitForSelector('.dropdown__menu');
+  await page.click('.topbar__sort');
+  await page.waitForSelector('.sort-menu');
   await page.waitForTimeout(250);
   const themedAfterToggle = await page.evaluate(() => {
     const probe = document.createElement('div');
@@ -473,7 +480,7 @@ try {
     document.body.appendChild(probe);
     const panelBg = getComputedStyle(probe).backgroundColor;
     probe.remove();
-    const menu = document.querySelector('.dropdown__menu');
+    const menu = document.querySelector('.sort-menu');
     return {
       menuBg: getComputedStyle(menu).backgroundColor,
       panelBg,
@@ -483,6 +490,7 @@ try {
   });
   await page.screenshot({ path: 'test-artifacts/05b-sort-menu-toggled.png' });
   await page.keyboard.press('Escape');
+  await page.waitForSelector('.sort-menu', { state: 'detached' });
   check(
     'Sort menu restyles with the toggled theme',
     themedAfterToggle.menuBg === themedAfterToggle.panelBg,
@@ -521,6 +529,34 @@ try {
   check('Density persisted across reload', persistedDensity === 'compact', persistedDensity || '');
   check('Reading font persisted across reload', persistedFont === 'serif', persistedFont || '');
   await page.screenshot({ path: path.join(SHOTS, '02-dark-compact.png') });
+
+  /* --------------------------- sync service ---------------------------- */
+  await openSettings('Services');
+  await page.click('.settings-sync-select .dropdown__trigger');
+  await page.waitForSelector('.dropdown__menu');
+  const syncOptions = (await page.textContent('.dropdown__menu'))?.replace(/\s+/g, ' ') || '';
+  check(
+    'Services offers Fever, Feedbin, Inoreader, Miniflux and Nextcloud',
+    ['Fever API', 'Feedbin', 'Inoreader', 'Miniflux', 'Nextcloud News API'].every((label) =>
+      syncOptions.includes(label)
+    ),
+    syncOptions.slice(0, 100)
+  );
+  await page.click('.dropdown__option:has-text("Miniflux")');
+  const syncFields = await page.locator('.settings-sync-fields input').count();
+  check('Choosing a service reveals its connection fields', syncFields === 3, `${syncFields} fields`);
+  await page.fill('.settings-sync-fields input[type="url"]', 'https://miniflux.example.com/v1/');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
+  await openSettings('Services');
+  const savedService = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('rss-reader:prefs') || '{}').syncService
+  );
+  check('Sync service choice is stored locally', savedService === 'miniflux', savedService || '');
+  await page.click('.settings-sync-select .dropdown__trigger');
+  await page.click('.dropdown__option:has-text("Local only")');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 
   /* --------------------------- backups panel --------------------------- */
   await openSettings('Services');
@@ -1075,10 +1111,22 @@ try {
   await page.waitForTimeout(400);
   const menuVisible = await page.isVisible('.topbar__menu');
   check('Mobile menu button appears', menuVisible);
+  const mainBefore = await page.locator('.main').boundingBox();
   await page.click('.topbar__menu');
   await page.waitForTimeout(400);
   const sidebarOpen = await page.getAttribute('.app', 'data-sidebar-open');
   check('Mobile drawer opens', sidebarOpen === 'true', sidebarOpen || '');
+  const mainAfter = await page.locator('.main').boundingBox();
+  const drawerBox = await page.locator('.sidebar').boundingBox();
+  check(
+    'Mobile drawer overlays from the right without moving the panel',
+    Boolean(mainBefore && mainAfter && drawerBox) &&
+      Math.abs(mainBefore.x - mainAfter.x) < 1 &&
+      Math.abs(mainBefore.width - mainAfter.width) < 1 &&
+      drawerBox.x > 0 &&
+      Math.abs(drawerBox.x + drawerBox.width - 390) < 2,
+    `drawer x=${drawerBox?.x}, main x=${mainBefore?.x}→${mainAfter?.x}`
+  );
   await page.screenshot({ path: path.join(SHOTS, '05-mobile.png') });
   await page.click('.sidebar .feed-row:has-text("All articles")');
   await page.waitForFunction(

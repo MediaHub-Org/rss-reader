@@ -39,7 +39,14 @@ export function exportFullBackup(
   starredIds: Record<string, true> = {},
   rules: ArticleRule[] = []
 ): string {
-  const { youtubeApiKey: _omitted, prefsVersion: _version, ...portablePrefs } = prefs;
+  const {
+    youtubeApiKey: _omitted,
+    prefsVersion: _version,
+    syncServer: _server,
+    syncUsername: _username,
+    syncPassword: _password,
+    ...portablePrefs
+  } = prefs;
 
   return JSON.stringify({
     app: 'rss-reader',
@@ -74,6 +81,18 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
   if (isOneOf(raw.fontSize, ['small', 'medium', 'large'] as const)) out.fontSize = raw.fontSize;
   if (isOneOf(raw.readerFont, ['sans', 'serif', 'mono'] as const)) {
     out.readerFont = raw.readerFont;
+  }
+  if (
+    isOneOf(raw.syncService, [
+      'local',
+      'fever',
+      'feedbin',
+      'inoreader',
+      'miniflux',
+      'nextcloud',
+    ] as const)
+  ) {
+    out.syncService = raw.syncService;
   }
   if (typeof raw.embedMedia === 'boolean') out.embedMedia = raw.embedMedia;
   if (isOneOf(raw.viewMode, ['card', 'list', 'magazine', 'compact'] as const)) {

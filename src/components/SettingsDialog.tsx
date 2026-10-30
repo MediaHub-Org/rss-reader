@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { Density, FontSize, ReaderFont, ThemeMode } from '../types';
+import type { Density, FontSize, ReaderFont, SyncService, ThemeMode } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { clearArticleCache, estimateUsage } from '../lib/storage';
@@ -8,6 +8,7 @@ import { isDesktopApp } from '../lib/desktop';
 import { setCloseToTray, setStartAtLogin } from '../lib/desktopSettings';
 import { requestNotificationPermission } from '../lib/notifications';
 import { Dialog } from './Dialog';
+import { Dropdown, type DropdownOption } from './Dropdown';
 import { Icon } from './Icon';
 import { GroupsManager, SourcesManager } from './settings/CollectionManagers';
 import { RulesPanel } from './settings/RulesPanel';
@@ -29,6 +30,56 @@ interface SettingsDialogProps {
   hasFeeds: boolean;
   initialSection?: SettingsSection;
 }
+
+const SYNC_SERVICES: Array<{
+  value: SyncService;
+  label: string;
+  hint: string;
+  endpoint: string;
+}> = [
+  {
+    value: 'local',
+    label: 'Local only (no sync)',
+    hint: 'Everything stays on this device.',
+    endpoint: '',
+  },
+  {
+    value: 'fever',
+    label: 'Fever API',
+    hint: 'FreshRSS, Tiny Tiny RSS (Fever plugin) and compatible servers.',
+    endpoint: 'https://reader.example.com/fever/',
+  },
+  {
+    value: 'feedbin',
+    label: 'Feedbin',
+    hint: 'Feedbin’s REST API.',
+    endpoint: 'https://api.feedbin.com/v2/',
+  },
+  {
+    value: 'inoreader',
+    label: 'Inoreader',
+    hint: 'Inoreader’s Reader API.',
+    endpoint: 'https://www.inoreader.com/reader/api/0/',
+  },
+  {
+    value: 'miniflux',
+    label: 'Miniflux',
+    hint: 'A self-hosted Miniflux instance.',
+    endpoint: 'https://miniflux.example.com/v1/',
+  },
+  {
+    value: 'nextcloud',
+    label: 'Nextcloud News API',
+    hint: 'The News app on your Nextcloud server.',
+    endpoint: 'https://cloud.example.com/index.php/apps/news/api/v1-2/',
+  },
+];
+
+const SYNC_OPTIONS: Array<DropdownOption<SyncService>> = SYNC_SERVICES.map((entry) => ({
+  value: entry.value,
+  label: entry.label,
+  hint: entry.hint,
+}));
 
 const SECTIONS: Array<{
   id: SettingsSection;
@@ -294,6 +345,79 @@ export function SettingsDialog({
 
           {section === 'services' && (
             <>
+              <section className="settings-section">
+                <h2 className="settings-section__title">Sync service</h2>
+                <p className="settings-note settings-note--tight">
+                  Choose an external reader service or stay local. Connection details are stored on
+                  this device only and are never included in backups.
+                </p>
+                <div className="setting-row">
+                  <span className="setting-row__label">
+                    Service
+                    <small>
+                      {SYNC_SERVICES.find((entry) => entry.value === state.prefs.syncService)?.hint}
+                    </small>
+                  </span>
+                  <Dropdown<SyncService>
+                    value={state.prefs.syncService}
+                    options={SYNC_OPTIONS}
+                    onChange={(syncService) => store.setPreferences({ syncService })}
+                    label="Sync service"
+                    className="settings-sync-select"
+                  />
+                </div>
+
+                {state.prefs.syncService !== 'local' && (
+                  <>
+                    <div className="settings-sync-fields">
+                      <label className="field">
+                        <span className="field__label">Server URL</span>
+                        <input
+                          className="input"
+                          type="url"
+                          placeholder={
+                            SYNC_SERVICES.find((entry) => entry.value === state.prefs.syncService)
+                              ?.endpoint
+                          }
+                          value={state.prefs.syncServer}
+                          onChange={(event) =>
+                            store.setPreferences({ syncServer: event.target.value.trim() })
+                          }
+                          spellCheck={false}
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">Username</span>
+                        <input
+                          className="input"
+                          autoComplete="username"
+                          value={state.prefs.syncUsername}
+                          onChange={(event) =>
+                            store.setPreferences({ syncUsername: event.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="field">
+                        <span className="field__label">Password / API token</span>
+                        <input
+                          className="input"
+                          type="password"
+                          autoComplete="current-password"
+                          value={state.prefs.syncPassword}
+                          onChange={(event) =>
+                            store.setPreferences({ syncPassword: event.target.value })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <p className="settings-note settings-note--tight">
+                      Connection settings are saved locally. Two-way sync is not enabled in this
+                      build yet; use OPML or a full backup to move subscriptions today.
+                    </p>
+                  </>
+                )}
+              </section>
+
               <section className="settings-section">
                 <h2 className="settings-section__title">YouTube Data API</h2>
                 <p className="settings-note settings-note--tight">

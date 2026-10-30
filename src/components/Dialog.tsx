@@ -114,10 +114,17 @@ export function Dialog({
     document.addEventListener('keydown', onKeyDown, true);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // The app scrolls inside .content-area and .sidebar__scroll, not on the
+    // body, so locking the body alone left the background scrolling under the
+    // dialog. The attribute is what the stylesheet hooks onto; `wasLocked`
+    // keeps a stacked dialog from unlocking while an outer one is still open.
+    const wasLocked = document.body.dataset.scrollLocked === 'true';
+    document.body.dataset.scrollLocked = 'true';
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.style.overflow = previousOverflow;
+      if (!wasLocked) delete document.body.dataset.scrollLocked;
       restoreTo.current?.focus?.();
     };
   }, [open]);

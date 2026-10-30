@@ -1,24 +1,17 @@
 import { useMemo } from 'react';
-import type { SortMode } from '../types';
 import { folderNameFromViewId } from '../types';
 import { store, selectArticles } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Icon } from './Icon';
-import { Dropdown } from './Dropdown';
 import { ViewMenu } from './ViewMenu';
 import { FilterMenu } from './FilterMenu';
+import { SortMenu } from './SortMenu';
 import { MarkReadMenu } from './MarkReadMenu';
 
 interface TopBarProps {
   onMenu: () => void;
   onSettings: () => void;
 }
-
-const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
-  { value: 'date-desc', label: 'Newest first' },
-  { value: 'date-asc', label: 'Oldest first' },
-  { value: 'feed', label: 'By feed name' },
-];
 
 export function TopBar({ onMenu, onSettings }: TopBarProps) {
   const state = useStore();
@@ -86,15 +79,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         <ViewMenu />
         <FilterMenu />
 
-        <Dropdown<SortMode>
-          value={state.ui.sort}
-          options={SORT_OPTIONS}
-          onChange={(next) => store.setSort(next)}
-          label="Sort articles"
-          triggerTitle="Sort articles"
-          icon={<Icon name="sort" size={15} />}
-          className="topbar__sort"
-        />
+        <SortMenu />
 
         <MarkReadMenu />
 

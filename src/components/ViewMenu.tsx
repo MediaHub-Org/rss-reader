@@ -6,9 +6,9 @@ import { Icon } from './Icon';
 
 const VIEWS: Array<{ value: ArticleView; label: string; icon: 'grid' | 'list' | 'magazine' | 'compact' }> = [
   { value: 'card', label: 'Card view', icon: 'grid' },
+  { value: 'compact', label: 'Compact view', icon: 'compact' },
   { value: 'list', label: 'List view', icon: 'list' },
   { value: 'magazine', label: 'Magazine view', icon: 'magazine' },
-  { value: 'compact', label: 'Compact view', icon: 'compact' },
 ];
 
 /** Top-bar layout selector. Filtering has its own sibling menu. */

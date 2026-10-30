@@ -15,7 +15,7 @@ interface ManagerProps {
 type FolderGroup = { name: string; feeds: Feed[] };
 
 function groupFeeds(feeds: Feed[], folders: string[]): { folders: FolderGroup[]; ungrouped: Feed[] } {
-  const byTitle = (a: Feed, b: Feed) => byName(a.title, b.title);
+  const byTitle = (a: Feed, b: Feed) => byName(a.title ?? '', b.title ?? '');
   const grouped = new Map<string, Feed[]>();
   const loose: Feed[] = [];
 
@@ -164,6 +164,12 @@ export function SourcesManager({ idPrefix = 'manage' }: ManagerProps) {
       </div>
 
       <div className="manage-list" role="region" aria-label="Source selection">
+        {!folders.length && !ungrouped.length && (
+          <p className="settings-empty">
+            No sources yet. Add a feed from the sidebar to manage it here.
+          </p>
+        )}
+
         {folders.map((folder) => {
           const allInFolder =
             folder.feeds.length > 0 && folder.feeds.every((feed) => selected.has(feed.id));
@@ -260,11 +266,11 @@ function SourceRow({
           type="checkbox"
           checked={checked}
           onChange={onToggle}
-          aria-label={`Select ${feed.title}`}
+          aria-label={`Select ${feed.title || feed.url}`}
         />
         <FeedIcon feed={feed} />
         <span className="manage-item__text">
-          <span className="manage-item__title">{feed.title}</span>
+          <span className="manage-item__title">{feed.title || feed.url}</span>
           <span className="manage-item__url">{feed.url}</span>
         </span>
       </label>
@@ -272,7 +278,7 @@ function SourceRow({
         type="button"
         className="icon-button"
         onClick={onDelete}
-        aria-label={`Remove ${feed.title}`}
+        aria-label={`Remove ${feed.title || feed.url}`}
         title="Remove source"
       >
         <Icon name="trash" size={14} />

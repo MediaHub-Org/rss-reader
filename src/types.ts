@@ -4,6 +4,13 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export type Density = 'compact' | 'comfortable';
 export type FontSize = 'small' | 'medium' | 'large';
 export type ReaderFont = 'sans' | 'serif' | 'mono';
+export type SyncService =
+  | 'local'
+  | 'fever'
+  | 'feedbin'
+  | 'inoreader'
+  | 'miniflux'
+  | 'nextcloud';
 export type SortMode = 'date-desc' | 'date-asc' | 'feed';
 export type ArticleView = 'card' | 'list' | 'magazine' | 'compact';
 export type ArticleFilter = 'all' | 'unread' | 'starred';
@@ -26,6 +33,11 @@ export interface Preferences {
   fontSize: FontSize;
   /** Reading typeface for article bodies. */
   readerFont: ReaderFont;
+  /** External sync provider. Local-only remains the default. */
+  syncService: SyncService;
+  syncServer: string;
+  syncUsername: string;
+  syncPassword: string;
   /**
    * Play media inline in the reader — YouTube, Vimeo, Spotify, SoundCloud,
    * Deezer, Apple Podcasts/Music. When off, links open in a new tab instead.
@@ -74,6 +86,10 @@ export const DEFAULT_PREFERENCES: Preferences = {
   density: 'comfortable',
   fontSize: 'medium',
   readerFont: 'sans',
+  syncService: 'local',
+  syncServer: '',
+  syncUsername: '',
+  syncPassword: '',
   embedMedia: true,
   viewMode: 'card',
   articleFilter: 'all',

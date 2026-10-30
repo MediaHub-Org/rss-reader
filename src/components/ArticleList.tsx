@@ -105,9 +105,9 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
 
   if (!state.hydrated) {
     return (
-      <div className="list list--loading" aria-busy="true" aria-live="polite">
+      <div className={`list list--loading list--${state.prefs.viewMode}`} aria-busy="true" aria-live="polite">
         <p className="sr-only">Loading feeds</p>
-        <div className="article-grid">
+        <div className={`article-grid article-grid--${state.prefs.viewMode}`}>
           {Array.from({ length: 6 }).map((_, index) => (
             <div className="skeleton-card" key={index} />
           ))}

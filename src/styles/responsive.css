@@ -34,13 +34,17 @@
     --grid-gap: 0.875rem;             /* 14px  */
   }
 
+  /* Small windows: the feed list is an overlay drawer on the right. It never
+     pushes or resizes the reading pane; the backdrop closes it. */
   .sidebar {
     position: fixed;
-    inset: 0 auto 0 0;
+    inset: 0 0 0 auto;
     z-index: var(--z-drawer);
-    transform: translateX(-100%);
+    transform: translateX(100%);
     transition: transform var(--transition);
     box-shadow: var(--shadow);
+    border-right: 0;
+    border-left: 0.0625rem solid var(--border);
     width: min(84vw, var(--sidebar-drawer-max));
     flex-basis: auto;
   }

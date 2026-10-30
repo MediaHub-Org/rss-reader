@@ -16,6 +16,13 @@ articles stay on your device. Built with React and Tauri, inspired by Fluent Rea
 - The installer is unsigned for now: SmartScreen → **More info** → **Run anyway**.
 - Installing over a previous version keeps feeds, read state, stars, rules and cache.
 
+**macOS (Apple Silicon):** download the `.dmg` from Releases. It is unsigned, so
+right-click the app → **Open** the first time (or allow it in System Settings → Privacy &
+Security).
+
+**Linux:** download the `.AppImage`, make it executable (`chmod +x RSS.Reader_*.AppImage`)
+and run it. It needs the distribution's WebKitGTK 4.1/GTK libraries (standard on Ubuntu 22.04+).
+
 **Web / PWA:** build the app and install it from Chrome or Edge:
 
 ```bash
@@ -61,6 +68,9 @@ Mark as read works per article, all visible, or older than 1/3/7 days.
 **Settings.** Six sections: **Preferences**, **Groups**, **Sources**, **Rules**,
 **Services & Integration** and **About**. Theme, density, reading typeface (sans, serif,
 mono) and font size live in Preferences. The top bar keeps only reading controls.
+Services includes a sync-provider selector (Fever, Feedbin, Inoreader, Miniflux,
+Nextcloud News); connection details are stored locally, while two-way sync remains
+future work — use OPML or a full backup today.
 
 **Privacy.** No sync service, account or telemetry. Everything is stored in
 `localStorage` and IndexedDB on this device. The web/PWA build only contacts feeds and
@@ -99,7 +109,12 @@ npm run test:pwa       # installability + offline check (needs npm run preview)
 npm run check          # typecheck + unit tests + Rust fmt/clippy/tests
 
 npm run desktop:dev    # Tauri dev window
-npm run desktop:build  # Windows installer → src-tauri/target/release/bundle/nsis/
+npm run desktop:build  # native bundle → src-tauri/target/release/bundle/
+
+# Per-platform bundles:
+npm run desktop:build -- --bundles nsis      # Windows installer
+npm run desktop:build -- --bundles appimage  # Linux AppImage
+npm run desktop:build -- --bundles dmg       # macOS disk image
 ```
 
 CI runs the web suite on Ubuntu and the Rust checks plus Windows installer build on
