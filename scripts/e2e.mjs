@@ -1252,10 +1252,11 @@ try {
     () => !/Original full article/.test(document.querySelector('.detail .content')?.textContent || '')
   );
   check('Toggling full content off restores the feed content', true);
-  await page
-    .locator('.detail .ghost-button:has-text("Back")')
-    .dispatchEvent('click');
-  await waitForList();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(
+    () => window.__store.getSnapshot().ui.activeArticleId === null
+  );
+  await page.waitForSelector('.article-overlay__dialog', { state: 'detached' });
   await page.fill('.search__input', '');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 1);
 
