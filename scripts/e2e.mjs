@@ -1252,13 +1252,13 @@ try {
     () => !/Original full article/.test(document.querySelector('.detail .content')?.textContent || '')
   );
   check('Toggling full content off restores the feed content', true);
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(
-    () => window.__store.getSnapshot().ui.activeArticleId === null
-  );
-  await page.waitForSelector('.article-overlay__dialog', { state: 'detached' });
-  await page.fill('.search__input', '');
-  await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 1);
+  // Reset through the store: the next section reloads the page, and closing
+  // through history is already covered by the dedicated history tests above.
+  await page.evaluate(() => {
+    window.__store.setActiveArticle(null);
+    window.__store.setQuery('');
+  });
+  await page.waitForTimeout(100);
 
   /* ------------------- preferences schema migration -------------------- */
   // Profiles created before inline players existed stored `embedMedia:false`
