@@ -115,6 +115,8 @@ try {
   /* ----------------------------- subscribe ------------------------------ */
   await page.click('.empty-state .button--primary');
   await page.waitForSelector('[role="dialog"]');
+  await page.waitForTimeout(200);
+  const formDialogWidth = (await page.locator('[role="dialog"]').boundingBox())?.width ?? 0;
   await page.fill('[role="dialog"] input.input', 'not a url');
   await page.click('[role="dialog"] .dialog__footer .button--primary');
   const invalidMsg = await page.textContent('[role="dialog"] .field__error');
@@ -168,6 +170,13 @@ try {
     'Reader has no close X or Back button',
     (await page.locator('.article-overlay__close').count()) === 0 &&
       (await page.locator('.detail .ghost-button:has-text("Back")').count()) === 0
+  );
+  await page.waitForTimeout(200);
+  const overlayWidth = (await page.locator('.article-overlay__dialog').boundingBox())?.width ?? 0;
+  check(
+    'Reader popup uses the same width as every other popup',
+    formDialogWidth > 0 && Math.abs(overlayWidth - formDialogWidth) < 1,
+    `${Math.round(overlayWidth)}px / ${Math.round(formDialogWidth)}px`
   );
   const html = await page.innerHTML('.detail .content');
   check('Article content rendered', html.trim().length > 100, `${html.length} chars`);
@@ -1173,6 +1182,13 @@ try {
   await page.click('.sidebar__toolbar button[aria-label="New folder"]');
   await page.waitForSelector('[role="dialog"]');
   check('New folder opens as a dialog', (await page.locator('[role="dialog"]:has-text("New folder")').count()) === 1);
+  await page.waitForTimeout(200);
+  const folderDialogWidth = (await page.locator('[role="dialog"]').boundingBox())?.width ?? 0;
+  check(
+    'Every dialog opens at the same width',
+    formDialogWidth > 0 && Math.abs(formDialogWidth - folderDialogWidth) < 1,
+    `${Math.round(formDialogWidth)}px / ${Math.round(folderDialogWidth)}px`
+  );
   await page.fill('[role="dialog"] input.input', 'Popup Group');
   await page.click('[role="dialog"] .dialog__footer .button--primary');
   await page.waitForFunction(
@@ -1229,6 +1245,15 @@ try {
     () => document.querySelector('.app')?.getAttribute('data-sidebar-open') === 'false'
   );
   check('Mobile drawer closes after choosing a view', true);
+
+  await page.locator('.article-card').first().click();
+  await page.waitForSelector('.article-overlay__dialog');
+  const actionLabelVisible = await page
+    .locator('.detail__actions .ghost-button span')
+    .first()
+    .isVisible();
+  check('Small screens show reader actions as icons only', !actionLabelVisible);
+  await closeArticle();
 
   /* ------------------------- inline media providers --------------------- */
   await page.setViewportSize({ width: 1440, height: 900 });

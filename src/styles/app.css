@@ -1347,7 +1347,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 .detail {
   max-width: var(--detail-max-width);
   margin: 0 auto;
-  padding: 0 var(--space-4) var(--space-7);
+  padding: 0 clamp(var(--space-4), 3.2vw, var(--space-7)) var(--space-7);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1581,7 +1581,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .content > * + * {
-  margin-top: 1.1em;
+  margin-top: 1.35em;
 }
 
 .content h1,
@@ -1594,7 +1594,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .content p {
-  margin-top: 1.1em;
+  margin-top: 1.2em;
 }
 
 .content a {
@@ -1604,14 +1604,16 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 .content img,
 .content video {
+  display: block;
   max-width: 100%;
   height: auto;
+  margin-inline: auto;
   border-radius: var(--radius);
   background: var(--panel-2);
 }
 
 .content figure {
-  margin: 1.4em 0;
+  margin: 1.8em 0;
 }
 
 .content figcaption {
@@ -1622,7 +1624,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .content blockquote {
-  margin: 1.3em 0;
+  margin: 1.6em 0;
   padding: var(--space-2) var(--space-4);
   border-left: 0.1875rem solid var(--accent);
   background: var(--panel-2);
@@ -1703,8 +1705,8 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .dialog {
-  width: 100%;
-  max-width: var(--dialog-sm);
+  width: min(48rem, 94vw);
+  max-width: 48rem;
   max-height: min(86dvh, var(--dialog-max-h));
   display: flex;
   flex-direction: column;
@@ -1722,20 +1724,12 @@ body[data-scroll-locked='true'] .sidebar__scroll {
   }
 }
 
-.dialog--md {
-  max-width: var(--dialog-md);
-}
-
-.dialog--lg {
-  max-width: var(--dialog-lg);
-}
-
 .dialog__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-3);
 }
 
 .dialog__title {
@@ -1745,15 +1739,17 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .dialog__body {
-  padding: 0 var(--space-4) var(--space-4);
+  padding: 0 var(--space-5) var(--space-5);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 
 .dialog__footer {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-5);
   border-top: 0.0625rem solid var(--border);
 }
 
@@ -2021,12 +2017,6 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 .settings-note--tight {
   margin: 0 0 var(--space-3);
-}
-
-/* Settings is wider than the standard long dialog: the group/source managers
-   need room for checkboxes, titles and inline bulk actions. */
-.settings-dialog {
-  max-width: 52rem;
 }
 
 .settings-section__header {
@@ -2315,9 +2305,17 @@ kbd {
   gap: var(--space-1);
   border-bottom: 0.0625rem solid var(--border);
   margin-bottom: var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: var(--space-2) var(--space-3);
   border: 0;
   background: none;
@@ -3430,8 +3428,10 @@ kbd {
 
 .article-overlay__dialog {
   position: relative;
-  width: min(64rem, 96vw);
-  max-width: min(64rem, 96vw);
+  /* Same modal width as every other popup, with room reserved so the side
+     arrows sit outside the panel instead of clipping the reader surface. */
+  width: min(48rem, calc(100vw - 10rem));
+  max-width: min(48rem, calc(100vw - 10rem));
   max-height: 92dvh;
   padding: 0;
   overflow-y: auto;
@@ -3448,7 +3448,7 @@ kbd {
 .article-overlay__dialog .detail {
   max-width: 100%;
   height: auto;
-  padding: 0 var(--space-5) var(--space-6);
+  padding: 0 clamp(var(--space-5), 4vw, var(--space-7)) var(--space-7);
 }
 
 .article-overlay__nav {
@@ -3458,8 +3458,8 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border: 0.0625rem solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--panel);
@@ -3467,10 +3467,17 @@ kbd {
   box-shadow: var(--shadow);
   transform: translateY(-50%);
   cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    opacity var(--transition);
 }
 
 .article-overlay__nav:hover:not(:disabled) {
   background: var(--panel-3);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .article-overlay__nav:disabled {
@@ -3479,11 +3486,11 @@ kbd {
 }
 
 .article-overlay__nav--prev {
-  left: max(0.75rem, calc(50% - 34rem));
+  left: max(1.25rem, calc(50% - 24rem - 3.75rem));
 }
 
 .article-overlay__nav--next {
-  right: max(0.75rem, calc(50% - 34rem));
+  right: max(1.25rem, calc(50% - 24rem - 3.75rem));
 }
 
 @media (max-width: 720px) {
@@ -3491,7 +3498,12 @@ kbd {
     display: none;
   }
 
+  .article-overlay__dialog {
+    width: 96vw;
+    max-width: 96vw;
+  }
+
   .article-overlay__dialog .detail {
-    padding: 0 var(--space-3) var(--space-5);
+    padding: 0 var(--space-4) var(--space-5);
   }
 }

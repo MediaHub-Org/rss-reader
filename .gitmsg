@@ -1,0 +1,8 @@
+feat: roomier reader layout and consistent dialogs (0.13.1)
+
+- Zoom out the reader popup to the same width as every dialog and detach
+  the previous/next arrows with a real gap.
+- Give articles, images and dialogs more lateral breathing room; unify
+  dialog width and inner padding.
+- On phones, keep the reader action bar icon-only with 40px touch targets.
+- Fix mobile tab labels wrapping and scroll clipping.

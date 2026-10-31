@@ -241,6 +241,7 @@ export function ArticleDetail() {
             onClick={() => store.toggleStar(article.id)}
             aria-pressed={starred}
             aria-label={t(starred ? 'Unstar article' : 'Star article')}
+            title={t(starred ? 'Unstar article' : 'Star article')}
           >
             <Icon name={starred ? 'starFilled' : 'star'} size={16} />
             <span>{t(starred ? 'Starred' : 'Star')}</span>
@@ -250,6 +251,7 @@ export function ArticleDetail() {
             className="ghost-button"
             onClick={() => store.toggleRead(article.id)}
             aria-label={t(read ? 'Mark as unread' : 'Mark as read')}
+            title={t(read ? 'Mark as unread' : 'Mark as read')}
           >
             <Icon name={read ? 'eyeOff' : 'eye'} size={16} />
             <span>{t(read ? 'Unread' : 'Read')}</span>
@@ -261,6 +263,7 @@ export function ArticleDetail() {
               className="ghost-button"
               onClick={() => void copyValue(article.link as string, 'Article link')}
               aria-label={t('Copy article link')}
+              title={t('Copy article link')}
             >
               <Icon name="copy" size={16} />
               <span>{t('Copy link')}</span>
