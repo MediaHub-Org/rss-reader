@@ -869,6 +869,12 @@ try {
   /* ---------------------- unsubscribe confirmation --------------------- */
   const feedsBeforeRemove = await page.locator('.sidebar .feed-item').count();
   const targetItem = page.locator('.sidebar .feed-item').nth(1);
+  const removedFeedId = await targetItem.getAttribute('data-feed-id');
+  const removedArticleIds = await page.evaluate(
+    (feedId) =>
+      (window.__store.getSnapshot().articles[feedId] ?? []).map((article) => article.id),
+    removedFeedId
+  );
   await targetItem.hover();
   await targetItem.locator('button[aria-label^="Unsubscribe"]').click();
   await page.waitForSelector('[role="dialog"]:has-text("Unsubscribe")');
@@ -880,6 +886,17 @@ try {
     { timeout: 5000 }
   );
   check('Feed removed after pressing Enter in confirmation', true, `${feedsBeforeRemove - 1} feeds left`);
+  await page.waitForTimeout(250);
+  const staleReadIds = await page.evaluate((ids) => {
+    const state = window.__store.getSnapshot();
+    const stored = JSON.parse(localStorage.getItem('rss-reader:read') || '{}');
+    return ids.filter((id) => state.readIds[id] || stored[id]).length;
+  }, removedArticleIds);
+  check(
+    'Removing a feed cleans its read state',
+    removedArticleIds.length > 0 && staleReadIds === 0,
+    `${removedArticleIds.length} articles checked`
+  );
 
   /* -------------------- context menu (portal + actions) ---------------- */
   const menuFeed = page.locator('.sidebar .feed-item').first();

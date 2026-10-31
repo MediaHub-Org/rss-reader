@@ -147,6 +147,9 @@ server/            shared local feed proxy
 
 - State is per device. Use the full JSON backup to move it.
 - Automatic refresh runs every 15 minutes while the window is visible, plus on launch.
-- Below 1100 px the article view becomes single-pane and the sidebar becomes a drawer.
-- The Windows installer is unsigned.
+- Below 1100 px the article view becomes single-pane and the sidebar becomes a right-side drawer.
+- The Windows installer and macOS disk image are unsigned; macOS needs a first-run
+  right-click → Open.
+- Services has a sync-provider selector, but two-way sync is not implemented yet; the
+  connection fields are stored locally and excluded from backups.
 - “Load full content” depends on the page structure and on the proxy being reachable.

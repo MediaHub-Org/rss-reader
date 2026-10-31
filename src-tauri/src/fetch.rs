@@ -200,7 +200,7 @@ mod tests {
             let request = String::from_utf8_lossy(&buffer[..length]).into_owned();
             stream.write_all(response.as_bytes()).unwrap();
             let _ = stream.flush();
-            std::thread::sleep(std::time::Duration::from_millis(20));
+            std::thread::sleep(std::time::Duration::from_millis(100));
             request
         });
         (

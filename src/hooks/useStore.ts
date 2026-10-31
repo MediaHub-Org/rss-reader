@@ -49,22 +49,3 @@ export function useInfiniteList(length: number, pageSize = 30): {
 
   return { visible: Math.min(visible, Math.max(length, 0)), sentinelRef, loadMore };
 }
-
-/** Focus an element once on mount — used for dialog initial focus. */
-export function useAutoFocus<T extends HTMLElement>(enabled = true): React.RefObject<T> {
-  const ref = useRef<T>(null);
-  useEffect(() => {
-    if (enabled) ref.current?.focus();
-  }, [enabled]);
-  return ref;
-}
-
-/** Debounce a rapidly-changing value (search box). */
-export function useDebounced<T>(value: T, delay = 200): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}

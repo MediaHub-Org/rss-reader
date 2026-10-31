@@ -1,33 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
+import { usePopover } from '../hooks/usePopover';
 import { Icon } from './Icon';
 
 /** Case/full-text options attached to the sidebar search field. */
 export function SearchOptions() {
   const state = useStore();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.stopPropagation();
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
+  const { open, toggle, rootRef, triggerRef } = usePopover();
 
   return (
     <div className="search-options-root" ref={rootRef}>
@@ -35,7 +14,7 @@ export function SearchOptions() {
         type="button"
         ref={triggerRef}
         className={`search__options ${open ? 'is-active' : ''}`}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Search options"

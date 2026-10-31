@@ -91,15 +91,35 @@ export function readableLength(html: string): number {
     .trim().length;
 }
 
+const MAX_CACHED_ARTICLES = 24;
 const cache = new Map<string, string>();
 
+function readCache(url: string): string | undefined {
+  const value = cache.get(url);
+  if (value === undefined) return undefined;
+  // Refresh LRU position.
+  cache.delete(url);
+  cache.set(url, value);
+  return value;
+}
+
+function writeCache(url: string, html: string): void {
+  cache.delete(url);
+  cache.set(url, html);
+  while (cache.size > MAX_CACHED_ARTICLES) {
+    const oldest = cache.keys().next().value;
+    if (oldest === undefined) break;
+    cache.delete(oldest);
+  }
+}
+
 export function cachedFullContent(url: string): string | undefined {
-  return cache.get(url);
+  return readCache(url);
 }
 
 /** Fetch and extract the original article body; cached for the session. */
 export async function fetchFullContent(url: string): Promise<string> {
-  const hit = cache.get(url);
+  const hit = readCache(url);
   if (hit) return hit;
 
   let page: string;
@@ -112,6 +132,6 @@ export async function fetchFullContent(url: string): Promise<string> {
   if (readableLength(html) < 120) {
     throw new Error('Could not find readable article content on that page.');
   }
-  cache.set(url, html);
+  writeCache(url, html);
   return html;
 }

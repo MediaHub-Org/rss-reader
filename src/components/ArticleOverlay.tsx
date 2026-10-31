@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { store, selectArticles } from '../store/store';
+import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
+import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { leaveArticle } from '../lib/viewHistory';
 import { ArticleDetail } from './ArticleDetail';
 import { Dialog } from './Dialog';
@@ -10,19 +10,7 @@ import { Icon } from './Icon';
 export function ArticleOverlay() {
   const state = useStore();
 
-  const articles = useMemo(
-    () =>
-      selectArticles(state, {
-        feedId: state.ui.activeFeedId,
-        sort: state.ui.sort,
-        query: state.ui.query,
-        filter: state.prefs.articleFilter,
-        caseSensitive: state.prefs.searchCaseSensitive,
-        fullText: state.prefs.searchFullText,
-        searchAll: state.ui.searchAllFeeds,
-      }),
-    [state]
-  );
+  const articles = useVisibleArticles(state);
 
   const article = Object.values(state.articles)
     .flat()

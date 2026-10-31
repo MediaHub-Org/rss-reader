@@ -334,6 +334,8 @@ export class Store {
         this.state.prefs.youtubeApiKey,
         { etag: feed.etag, lastModified: feed.lastModified }
       );
+      // The feed may have been removed while the request was in flight.
+      if (!this.state.feeds.some((f) => f.id === feedId)) return;
       const now = Date.now();
 
       if (result.notModified) {
@@ -420,6 +422,8 @@ export class Store {
         });
       }
     } catch (err) {
+      // Do not recreate error state for a feed removed during the request.
+      if (!this.state.feeds.some((f) => f.id === feedId)) return;
       const message =
         err instanceof FeedFetchError || err instanceof FeedParseError
           ? err.message
@@ -497,14 +501,25 @@ export class Store {
     const articles = { ...this.state.articles };
     const feedState = { ...this.state.feedState };
     const starred = { ...this.state.starredIds };
+    const read = { ...this.state.readIds };
+    const removedPrefixes = [...toRemove].map((id) => `${id}-`);
+
+    // Article ids are always `${feedId}-${hash}`; scanning by prefix also
+    // clears state for older cached articles that are no longer hydrated.
+    for (const key of Object.keys(starred)) {
+      if (removedPrefixes.some((prefix) => key.startsWith(prefix))) delete starred[key];
+    }
+    for (const key of Object.keys(read)) {
+      if (removedPrefixes.some((prefix) => key.startsWith(prefix))) delete read[key];
+    }
     for (const id of toRemove) {
-      for (const article of articles[id] ?? []) delete starred[article.id];
       delete articles[id];
       delete feedState[id];
       void removeArticles(id);
     }
 
     const removedStarred = Object.keys(starred).length !== Object.keys(this.state.starredIds).length;
+    const removedRead = Object.keys(read).length !== Object.keys(this.state.readIds).length;
     const rules = this.state.rules.filter(
       (rule) => ![...toRemove].some((id) => rule.scope === `feed:${id}`)
     );
@@ -521,6 +536,7 @@ export class Store {
       feeds: remaining,
       articles,
       feedState,
+      readIds: removedRead ? read : this.state.readIds,
       starredIds: removedStarred ? starred : this.state.starredIds,
       rules: rules.length !== this.state.rules.length ? rules : this.state.rules,
       ui: activeGone
@@ -1282,7 +1298,7 @@ export function selectArticles(
     );
   }
 
-  const feedTitle = (id: string) => state.feeds.find((f) => f.id === id)?.title ?? '';
+  const feedTitles = new Map(state.feeds.map((feed) => [feed.id, feed.title ?? '']));
 
   const sorted = [...list];
   switch (options.sort) {
@@ -1291,7 +1307,9 @@ export function selectArticles(
       break;
     case 'feed':
       sorted.sort((a, b) => {
-        const byFeed = feedTitle(a.feedId).localeCompare(feedTitle(b.feedId));
+        const byFeed = (feedTitles.get(a.feedId) ?? '').localeCompare(
+          feedTitles.get(b.feedId) ?? ''
+        );
         return byFeed !== 0 ? byFeed : b.publishedAt - a.publishedAt;
       });
       break;

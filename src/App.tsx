@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from './types';
-import { store, selectArticles, unreadCount } from './store/store';
+import { store, unreadCount } from './store/store';
 import { useStore } from './hooks/useStore';
+import { useVisibleArticles } from './hooks/useVisibleArticles';
 import { useViewHistory } from './hooks/useViewHistory';
 import { leaveArticle } from './lib/viewHistory';
 import { isDesktopApp } from './lib/desktop';
@@ -128,19 +129,7 @@ export default function App() {
     };
   }, [state.hydrated]);
 
-  const visibleArticles = useMemo(
-    () =>
-      selectArticles(state, {
-        feedId: state.ui.activeFeedId,
-        sort: state.ui.sort,
-        query: state.ui.query,
-        filter: state.prefs.articleFilter,
-        caseSensitive: state.prefs.searchCaseSensitive,
-        fullText: state.prefs.searchFullText,
-        searchAll: state.ui.searchAllFeeds,
-      }),
-    [state]
-  );
+  const visibleArticles = useVisibleArticles(state);
 
   /* keyboard navigation */
   useEffect(() => {

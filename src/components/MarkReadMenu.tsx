@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { store, selectArticles } from '../store/store';
+import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
+import { usePopover } from '../hooks/usePopover';
+import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { countLabel } from '../lib/format';
 import { articlesToMarkRead } from '../lib/markRead';
 import { Icon } from './Icon';
@@ -15,42 +16,8 @@ const OPTIONS: Array<{ days: number; label: string }> = [
 /** Split control: the check button marks the visible list; the caret offers date cutoffs. */
 export function MarkReadMenu() {
   const state = useStore();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const visible = useMemo(
-    () =>
-      selectArticles(state, {
-        feedId: state.ui.activeFeedId,
-        sort: state.ui.sort,
-        query: state.ui.query,
-        filter: state.prefs.articleFilter,
-        caseSensitive: state.prefs.searchCaseSensitive,
-        fullText: state.prefs.searchFullText,
-        searchAll: state.ui.searchAllFeeds,
-      }),
-    [state]
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.stopPropagation();
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
+  const { open, toggle, close, rootRef, triggerRef } = usePopover();
+  const visible = useVisibleArticles(state);
 
   const mark = (days: number) => {
     const ids = articlesToMarkRead(visible, state.readIds, days);
@@ -60,7 +27,7 @@ export function MarkReadMenu() {
       store.setRead(ids, true);
       store.notify('success', `Marked ${countLabel(ids.length, 'article')} as read`);
     }
-    setOpen(false);
+    close();
   };
 
   const unread = visible.filter((article) => !state.readIds[article.id]).length;
@@ -81,7 +48,7 @@ export function MarkReadMenu() {
         type="button"
         ref={triggerRef}
         className="icon-button mark-read__caret"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Mark as read options"

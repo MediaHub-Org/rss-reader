@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
 import { folderNameFromViewId } from '../types';
-import { store, selectArticles } from '../store/store';
+import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
+import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { Icon } from './Icon';
 import { ViewMenu } from './ViewMenu';
 import { FilterMenu } from './FilterMenu';
@@ -20,19 +20,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
   const activeFolder = folderNameFromViewId(state.ui.activeFeedId);
   const heading = activeFolder ?? activeFeed?.title ?? 'All articles';
 
-  const visible = useMemo(
-    () =>
-      selectArticles(state, {
-        feedId: state.ui.activeFeedId,
-        sort: state.ui.sort,
-        query: state.ui.query,
-        filter: state.prefs.articleFilter,
-        caseSensitive: state.prefs.searchCaseSensitive,
-        fullText: state.prefs.searchFullText,
-        searchAll: state.ui.searchAllFeeds,
-      }),
-    [state]
-  );
+  const visible = useVisibleArticles(state);
 
   const unreadInView = visible.reduce((sum, a) => (state.readIds[a.id] ? sum : sum + 1), 0);
   const anyLoading = Object.values(state.feedState).some((f) => f.status === 'loading');

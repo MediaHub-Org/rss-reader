@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { Article, Feed } from '../types';
-import { store, selectArticles } from '../store/store';
+import { store } from '../store/store';
 import { useStore, useInfiniteList } from '../hooks/useStore';
+import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { formatRelativeTime } from '../lib/format';
 import { thumbnailUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml } from '../lib/embeds';
@@ -21,19 +22,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
   const state = useStore();
   const [menu, setMenu] = useState<{ x: number; y: number; article: Article } | null>(null);
 
-  const articles = useMemo(
-    () =>
-      selectArticles(state, {
-        feedId: state.ui.activeFeedId,
-        sort: state.ui.sort,
-        query: state.ui.query,
-        filter: state.prefs.articleFilter,
-        caseSensitive: state.prefs.searchCaseSensitive,
-        fullText: state.prefs.searchFullText,
-        searchAll: state.ui.searchAllFeeds,
-      }),
-    [state]
-  );
+  const articles = useVisibleArticles(state);
 
   const feedsById = useMemo(
     () => new Map<string, Feed>(state.feeds.map((feed) => [feed.id, feed])),

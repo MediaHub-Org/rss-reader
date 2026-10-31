@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
 import type { ArticleFilter } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
+import { usePopover } from '../hooks/usePopover';
 import { Icon } from './Icon';
 
 const FILTERS: Array<{
@@ -17,29 +17,7 @@ const FILTERS: Array<{
 /** Top-bar article filter, kept separate from the layout selector. */
 export function FilterMenu() {
   const state = useStore();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.stopPropagation();
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
+  const { open, toggle, close, rootRef, triggerRef } = usePopover();
   const filter = FILTERS.find((entry) => entry.value === state.prefs.articleFilter) ?? FILTERS[0];
 
   return (
@@ -48,7 +26,7 @@ export function FilterMenu() {
         type="button"
         ref={triggerRef}
         className="topbar-tool topbar__filter"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Filter: ${filter.label}`}
@@ -71,7 +49,7 @@ export function FilterMenu() {
               className="view-menu__item"
               onClick={() => {
                 store.setPreferences({ articleFilter: entry.value });
-                setOpen(false);
+                close();
               }}
             >
               <span className="view-menu__check">

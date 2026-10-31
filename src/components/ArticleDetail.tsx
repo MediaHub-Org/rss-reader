@@ -25,6 +25,8 @@ export function ArticleDetail() {
   const [fullContent, setFullContent] = useState<string | null>(null);
   const [showFullContent, setShowFullContent] = useState(false);
   const [loadingFullContent, setLoadingFullContent] = useState(false);
+  /** Invalidates an in-flight extraction when the reader moves to another article. */
+  const fullContentRequest = useRef(0);
   const mediaRef = useRef<HTMLElement>(null);
 
   const article = useMemo(
@@ -51,6 +53,7 @@ export function ArticleDetail() {
 
   // A player opened from one article must not follow you to the next one.
   useEffect(() => {
+    fullContentRequest.current += 1;
     setInlineMedia(null);
     setFullContent(article?.link ? cachedFullContent(article.link) ?? null : null);
     setShowFullContent(false);
@@ -135,19 +138,32 @@ export function ArticleDetail() {
       return;
     }
 
+    const request = ++fullContentRequest.current;
     setLoadingFullContent(true);
     try {
       const next = await fetchFullContent(article.link);
+      if (
+        request !== fullContentRequest.current ||
+        store.getSnapshot().ui.activeArticleId !== article.id
+      ) {
+        return;
+      }
       setFullContent(next);
       setShowFullContent(true);
       store.notify('success', 'Loaded the original article content');
     } catch (err) {
+      if (
+        request !== fullContentRequest.current ||
+        store.getSnapshot().ui.activeArticleId !== article.id
+      ) {
+        return;
+      }
       store.notify(
         'error',
         err instanceof Error ? err.message : 'Could not load the original article content.'
       );
     } finally {
-      setLoadingFullContent(false);
+      if (request === fullContentRequest.current) setLoadingFullContent(false);
     }
   };
 
