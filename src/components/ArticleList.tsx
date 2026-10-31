@@ -126,16 +126,39 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
 
   if (!articles.length) {
     const searching = state.ui.query.trim().length > 0;
+    const filter = state.prefs.articleFilter;
+    const filterActive = filter === 'starred' || filter === 'unread';
+    const heading = searching
+      ? t('No matches')
+      : filter === 'starred'
+        ? t('No starred articles')
+        : filter === 'unread'
+          ? t('You are all caught up')
+          : t('Nothing here yet');
+    const description = searching
+      ? t('No articles match your search in this view.')
+      : filter === 'starred'
+        ? t('Star an article to keep it here.')
+        : filter === 'unread'
+          ? t('There are no unread articles in this view.')
+          : t('Refresh your feeds, or check back later for new articles.');
     return (
       <div className="list">
         <div className="empty-state">
-          <Icon name={searching ? 'search' : 'inbox'} size={38} />
-          <h2>{searching ? 'No matches' : 'Nothing here yet'}</h2>
-          <p>
-            {searching
-              ? t('No articles match your search in this view.')
-              : 'Refresh your feeds, or check back later for new articles.'}
-          </p>
+          <Icon name={searching ? 'search' : filterActive ? 'filter' : 'inbox'} size={38} />
+          <h2>{heading}</h2>
+          <p>{description}</p>
+          {filterActive && !searching && (
+            <div className="empty-state__actions">
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={() => store.setPreferences({ articleFilter: 'all' })}
+              >
+                {t('Show all articles')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
