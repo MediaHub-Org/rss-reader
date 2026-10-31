@@ -341,7 +341,11 @@ export function ArticleDetail() {
               <div
                 className={`media-card__frame media-card__frame--${embed.layout}`}
                 style={
-                  embed.layout === 'audio' ? { height: `${embed.height ?? 166}px` } : undefined
+                  embed.layout === 'audio'
+                    ? { height: `${embed.height ?? 166}px` }
+                    : embed.layout === 'social'
+                      ? { height: `${embed.height ?? 520}px` }
+                      : undefined
                 }
               >
                 <iframe
@@ -388,7 +392,7 @@ export function ArticleDetail() {
                 rel="noopener noreferrer"
               >
                 <span className="media-card__play" aria-hidden="true">
-                  <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={18} />
+                  <Icon name={embed.layout === 'audio' ? 'music' : 'play'} size={18} />
                 </span>
                 <span className="media-card__compact-text">
                   <strong>{t('Play on {label}', { label: embed.label })}</strong>

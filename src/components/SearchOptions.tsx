@@ -14,19 +14,39 @@ export function SearchOptions() {
       <button
         type="button"
         ref={triggerRef}
-        className={`search__options ${open ? 'is-active' : ''}`}
+        className={`search__options ${open ? 'is-active' : ''} ${
+          state.ui.searchAllFeeds ||
+          state.prefs.searchCaseSensitive ||
+          !state.prefs.searchFullText ||
+          state.prefs.searchRegex
+            ? 'has-active'
+            : ''
+        }`}
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t('Search options')}
         title={t('Search options')}
       >
-        Aa
+        <Icon name="sliders" size={15} />
       </button>
 
       {open && (
         <div className="search-options" role="menu" aria-label={t('Search options')}>
           <p className="view-menu__section">{t('Search')}</p>
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={state.ui.searchAllFeeds}
+            className="view-menu__item"
+            onClick={() => store.setSearchAllFeeds(!state.ui.searchAllFeeds)}
+          >
+            <span className="view-menu__check">
+              {state.ui.searchAllFeeds && <Icon name="check" size={15} />}
+            </span>
+            <span>{t('Search all feeds')}</span>
+          </button>
+          <div className="view-menu__divider" />
           <button
             type="button"
             role="menuitemcheckbox"

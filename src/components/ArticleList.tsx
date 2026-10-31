@@ -276,7 +276,7 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
             className={`article-card__media article-card__media--embed article-card__media--${embed.provider}`}
           >
             <span className="article-card__embed-icon" aria-hidden="true">
-              <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={20} />
+              <Icon name={embed.layout === 'audio' ? 'music' : 'play'} size={20} />
             </span>
             <span className="article-card__embed-label">{embed.label}</span>
           </div>
@@ -296,7 +296,7 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
               title={`${t('Plays inline')} · ${embed.label}`}
               aria-label={embed.label}
             >
-              <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={11} />
+              <Icon name={embed.layout === 'audio' ? 'music' : 'play'} size={11} />
             </span>
           )}
           {!read && <span className="article-card__unread" aria-hidden="true" />}

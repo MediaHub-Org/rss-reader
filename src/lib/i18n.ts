@@ -49,6 +49,7 @@ const es: Record<string, string> = {
   'Search articles': 'Buscar artículos',
   'Search articles (full text)': 'Buscar artículos (texto completo)',
   'Search options': 'Opciones de búsqueda',
+  'Search all feeds': 'Buscar en todas las fuentes',
   'Search in full text': 'Buscar en texto completo',
   'Case sensitive': 'Distinguir mayúsculas',
   'Regular expression': 'Expresión regular',
@@ -527,6 +528,15 @@ const es: Record<string, string> = {
   'Feed updated — reloading…': 'Fuente actualizada; recargando…',
   'Another source already uses that feed URL.': 'Otra fuente ya usa esa URL.',
   'Could not update that feed.': 'No se pudo actualizar esa fuente.',
+
+  'Updates': 'Actualizaciones',
+  'Check for updates': 'Buscar actualizaciones',
+  'Updates are published on GitHub. The installer replaces the current version, so no uninstall is needed.': 'Las actualizaciones se publican en GitHub. El instalador sustituye la versión actual, así que no hace falta desinstalar.',
+  'Download update': 'Descargar actualización',
+  'Could not check for updates.': 'No se pudieron buscar actualizaciones.',
+  'You are up to date on {version}.': 'Tienes la última versión ({version}).',
+  'Version {version} is available.': 'La versión {version} está disponible.',
+  'Release notes': 'Notas de la versión',
 
   // Common toasts / actions
   'Feed URL copied': 'URL de la fuente copiada',

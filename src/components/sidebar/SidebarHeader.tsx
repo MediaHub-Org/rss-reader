@@ -31,37 +31,21 @@ export function SidebarHeader({ searchRef, onSearchKey, onClose }: SidebarHeader
         </button>
       </div>
 
-      <div className="sidebar__search">
+      <div className="sidebar__search" role="search">
         <Icon name="search" size={16} className="search__icon" />
         <input
           ref={searchRef}
-          type="search"
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
           className="search__input"
-          placeholder={t('Search articles')}
+          placeholder={t(state.ui.searchAllFeeds ? 'Search all feeds' : 'Search articles')}
           aria-label={t('Search articles')}
           value={state.ui.query}
           onChange={(event) => store.setQuery(event.target.value)}
           onKeyDown={onSearchKey}
           spellCheck={false}
         />
-        <button
-          type="button"
-          className={`search__scope ${state.ui.searchAllFeeds ? 'is-active' : ''}`}
-          aria-pressed={state.ui.searchAllFeeds}
-          aria-label={t(
-            state.ui.searchAllFeeds
-              ? 'Search current view instead of all feeds'
-              : 'Search all feeds instead of the current view'
-          )}
-          title={t(
-            state.ui.searchAllFeeds
-              ? 'Searching all feeds — click for current view'
-              : 'Searching current view — click for all feeds'
-          )}
-          onClick={() => store.setSearchAllFeeds(!state.ui.searchAllFeeds)}
-        >
-          {t(state.ui.searchAllFeeds ? 'All' : 'View')}
-        </button>
         <SearchOptions />
       </div>
     </>

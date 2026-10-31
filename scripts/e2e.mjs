@@ -267,6 +267,10 @@ try {
   check('Sort by oldest works', ascending, `${dates.length} dates`);
 
   await pickSort('By feed name');
+  check(
+    'Search field has no native clear (x) button',
+    (await page.getAttribute('.search__input', 'type')) === 'text'
+  );
   await page.fill('.search__input', 'zzzzz-no-match-zzzzz');
   const noMatch = await page.textContent('.empty-state h2').catch(() => '');
   check('Search shows empty state for no matches', /No matches/i.test(noMatch || ''), noMatch?.trim());
@@ -285,11 +289,14 @@ try {
   await page.waitForSelector('.article-card');
   await page.fill('.search__input', 'xylophonemarker');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 0);
+  await page.click('.search__options');
+  await page.waitForSelector('.search-options');
+  const scopeToggle = '.search-options [role="menuitemcheckbox"]:has-text("Search all feeds")';
   check(
     'Search defaults to the current view',
-    (await page.getAttribute('.search__scope', 'aria-pressed')) === 'false'
+    (await page.getAttribute(scopeToggle, 'aria-checked')) === 'false'
   );
-  await page.click('.search__scope');
+  await page.click(scopeToggle);
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 1);
   const scopedMatch = (await page.textContent('.article-card__title'))?.trim();
   check(
@@ -297,7 +304,8 @@ try {
     /Fixture story two/i.test(scopedMatch || ''),
     scopedMatch || ''
   );
-  await page.click('.search__scope');
+  await page.click(scopeToggle);
+  await page.click('.search__options');
   await page.fill('.search__input', '');
   await page.click('.sidebar .feed-row:has-text("All articles")');
   await page.waitForSelector('.article-card');

@@ -38,6 +38,14 @@ npm run preview      # http://localhost:4173 → Install app
 The installed PWA opens offline but needs the local preview/proxy server for feed
 refreshes. The desktop app fetches natively and needs no Node process at runtime.
 
+## Updates
+
+**About → Check for updates** queries the latest GitHub release and offers the
+installer or APK for the current platform. Running it replaces the installed version;
+there is no need to uninstall first. Silent in-app installation is not enabled because
+it needs a Tauri updater signing key stored as a CI secret; the current build uses the
+simple download-and-install path.
+
 ## Highlights
 
 - **Four layouts** — cards, list, magazine and compact. List keeps the article pane

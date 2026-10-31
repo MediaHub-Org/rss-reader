@@ -18,7 +18,14 @@ export type EmbedProvider =
   | 'soundcloud'
   | 'deezer'
   | 'apple-podcasts'
-  | 'apple-music';
+  | 'apple-music'
+  | 'reddit'
+  | 'telegram'
+  | 'tiktok'
+  | 'instagram'
+  | 'threads'
+  | 'x'
+  | 'mastodon';
 
 export interface MediaEmbed {
   provider: EmbedProvider;
@@ -30,8 +37,8 @@ export interface MediaEmbed {
   src: string;
   /** Where to open the media natively. */
   href: string;
-  /** `video` gets a 16:9 box, `audio` uses the provider’s pixel height. */
-  layout: 'video' | 'audio';
+  /** `video` gets a 16:9 box, `audio`/`social` use a fixed pixel height. */
+  layout: 'video' | 'audio' | 'social';
   /** Height in px for `audio` players. */
   height?: number;
   /** iframe `allow` attribute. */
@@ -50,6 +57,13 @@ const AUDIO_HEIGHT: Record<EmbedProvider, number> = {
   deezer: 90,
   'apple-podcasts': 175,
   'apple-music': 175,
+  reddit: 0,
+  telegram: 0,
+  tiktok: 0,
+  instagram: 0,
+  threads: 0,
+  x: 0,
+  mastodon: 0,
 };
 
 /** Spotify is taller for containers (album/playlist/show) than for one track. */
@@ -61,6 +75,18 @@ function spotifyHeight(kind: string): number {
 function deezerHeight(kind: string): number {
   return kind === 'track' ? 90 : 300;
 }
+
+/** Mastodon instances that expose the standard /embed endpoint. */
+const MASTODON_HOSTS = new Set([
+  'mastodon.social',
+  'mastodon.online',
+  'mstdn.social',
+  'fosstodon.org',
+  'hachyderm.io',
+  'infosec.exchange',
+  'techhub.social',
+  'mas.to',
+]);
 
 /**
  * Turn a URL into an inline player, or null when the provider is unknown.
@@ -189,6 +215,131 @@ export function detectEmbed(raw: string | null | undefined): MediaEmbed | null {
       layout: 'audio',
       height: AUDIO_HEIGHT['apple-music'],
       allow: AUDIO_ALLOW,
+    };
+  }
+
+  if (host === 'reddit.com' || host === 'old.reddit.com' || host === 'redd.it') {
+    const match = /^\/r\/([^/]+)\/comments\/([A-Za-z0-9]+)(?:\/([^/?#]+))?/.exec(path);
+    if (!match) return null;
+    const [, sub, id, slug] = match;
+    const canonical = `https://www.reddit.com/r/${sub}/comments/${id}/${slug ? `${slug}/` : ''}`;
+    return {
+      provider: 'reddit',
+      label: 'Reddit',
+      id: `${sub}/${id}`,
+      src: `${canonical}?embed=true`,
+      href: canonical,
+      layout: 'social',
+      height: 520,
+      allow: VIDEO_ALLOW,
+    };
+  }
+
+  if (host === 't.me' || host === 'telegram.me') {
+    const post = /^\/([A-Za-z0-9_]{4,})\/(\d+)/.exec(path);
+    const channel = /^\/([A-Za-z0-9_]{4,})\/?$/.exec(path);
+    if (!post && !channel) return null;
+    if (post) {
+      const [, name, id] = post;
+      return {
+        provider: 'telegram',
+        label: 'Telegram',
+        id: `${name}/${id}`,
+        src: `https://t.me/${name}/${id}?embed=1&discussion=1`,
+        href: `https://t.me/${name}/${id}`,
+        layout: 'social',
+        height: 480,
+        allow: VIDEO_ALLOW,
+      };
+    }
+    const [, name] = channel!;
+    return {
+      provider: 'telegram',
+      label: 'Telegram',
+      id: name,
+      src: `https://t.me/${name}?embed=1`,
+      href: `https://t.me/${name}`,
+      layout: 'social',
+      height: 480,
+      allow: VIDEO_ALLOW,
+    };
+  }
+
+  if (host === 'tiktok.com' || host === 'www.tiktok.com') {
+    const id = /\/@[^/]+\/video\/(\d+)/.exec(path)?.[1];
+    if (!id) return null;
+    return {
+      provider: 'tiktok',
+      label: 'TikTok',
+      id,
+      src: `https://www.tiktok.com/embed/v2/${id}`,
+      href: url.toString(),
+      layout: 'social',
+      height: 640,
+      allow: VIDEO_ALLOW,
+    };
+  }
+
+  if (host === 'instagram.com') {
+    const match = /^\/(p|reel|tv)\/([A-Za-z0-9_-]+)/.exec(path);
+    if (!match) return null;
+    const [, kind, id] = match;
+    return {
+      provider: 'instagram',
+      label: 'Instagram',
+      id,
+      src: `https://www.instagram.com/${kind}/${id}/embed`,
+      href: `https://www.instagram.com/${kind}/${id}/`,
+      layout: 'social',
+      height: 600,
+      allow: VIDEO_ALLOW,
+    };
+  }
+
+  if (host === 'threads.net' || host === 'threads.com') {
+    const match = /^\/@([^/]+)\/post\/([A-Za-z0-9_-]+)/.exec(path);
+    if (!match) return null;
+    const [, user, id] = match;
+    return {
+      provider: 'threads',
+      label: 'Threads',
+      id,
+      src: `https://www.threads.net/@${user}/post/${id}/embed`,
+      href: url.toString(),
+      layout: 'social',
+      height: 600,
+      allow: VIDEO_ALLOW,
+    };
+  }
+
+  if (host === 'x.com' || host === 'twitter.com') {
+    const id = /\/[^/]+\/status\/(\d+)/.exec(path)?.[1];
+    if (!id) return null;
+    return {
+      provider: 'x',
+      label: 'X',
+      id,
+      src: `https://platform.twitter.com/embed/Tweet.html?id=${id}`,
+      href: url.toString(),
+      layout: 'social',
+      height: 520,
+      allow: VIDEO_ALLOW,
+    };
+  }
+
+  if (MASTODON_HOSTS.has(host)) {
+    const match = /^\/@([^/]+)\/(\d+)/.exec(path);
+    if (!match) return null;
+    const [, user, id] = match;
+    return {
+      provider: 'mastodon',
+      label: 'Mastodon',
+      id: `${host}/${user}/${id}`,
+      src: `https://${host}/@${user}/${id}/embed`,
+      href: `https://${host}/@${user}/${id}`,
+      layout: 'social',
+      height: 520,
+      allow: VIDEO_ALLOW,
     };
   }
 

@@ -65,12 +65,12 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
           <Icon name="refresh" className={anyLoading ? 'spin' : undefined} />
         </button>
 
+        <MarkReadMenu />
+
         <ViewMenu />
         <FilterMenu />
 
         <SortMenu />
-
-        <MarkReadMenu />
 
         <button
           type="button"
