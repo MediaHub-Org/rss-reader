@@ -17,6 +17,11 @@ const SUGGESTIONS = [
   { label: 'The Verge', url: 'https://www.theverge.com/rss/index.xml' },
   { label: 'BBC News', url: 'https://feeds.bbci.co.uk/news/rss.xml' },
   { label: 'NASA', url: 'https://www.nasa.gov/feed/' },
+  { label: 'El Mundo', url: 'https://estaticos.elmundo.es/elmundo/rss/portada.xml' },
+  { label: 'Euronews', url: 'https://www.euronews.com/rss' },
+  { label: 'The Next Web', url: 'https://feeds2.feedburner.com/thenextweb' },
+  { label: 'NASA APOD', url: 'https://apod.nasa.gov/apod.rss' },
+  { label: 'Veritasium', url: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCHnyfMqiRRG1u-2MsSQLbXA' },
 ];
 
 export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogProps) {

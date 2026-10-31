@@ -176,6 +176,9 @@ pub fn run() {
                     .min_inner_size(900.0, 600.0)
                     .center()
                     .resizable(true)
+                    // Match the app surface while the WebView is still blank,
+                    // so opening the window never flashes pure white.
+                    .background_color(tauri::window::Color(246, 247, 249, 255))
                     // Keep timers running while the window is hidden in the tray,
                     // so the refresh interval and notifications still work.
                     .background_throttling(

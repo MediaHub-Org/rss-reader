@@ -46,8 +46,8 @@ refreshes. The desktop app fetches natively and needs no Node process at runtime
   regular-expression options attached to the search field.
 - **Stars and rules** — keep articles, or automatically mark/star new arrivals with
   contains or regex rules scoped to a source or group.
-- **Reader tools** — copy link and load the original full article text, cached for the
-  session.
+- **Reader tools** — copy link, load the original full article text (cached for the
+  session) and play podcast audio at 0.75–2× speed.
 - **Local backups** — OPML plus a full JSON backup with subscriptions, folders, read
   state, stars, rules, preferences and every cached article. Desktop keeps seven daily
   snapshots.

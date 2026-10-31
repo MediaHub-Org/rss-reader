@@ -11,6 +11,24 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7f9" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1014" />
     <title>RSS Reader</title>
+    <style>
+      /* Paint the correct surface before the bundled stylesheet arrives.
+         Without this the empty document flashes white for a frame. */
+      html {
+        background: #f6f7f9;
+        color-scheme: light;
+      }
+      html[data-theme='dark'] {
+        background: #0e1014;
+        color-scheme: dark;
+      }
+      body,
+      #root {
+        margin: 0;
+        min-height: 100%;
+        background: inherit;
+      }
+    </style>
     <script>
       // Applied before first paint to avoid a light/dark flash.
       try {

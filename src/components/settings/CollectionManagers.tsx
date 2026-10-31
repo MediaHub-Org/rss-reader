@@ -125,7 +125,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
               {t('Cancel')}
             </button>
             <button type="button" className="button button--danger" autoFocus onClick={confirmDelete}>
-              t('Delete sources')
+              {t('Delete sources')}
             </button>
           </div>
         </div>
@@ -150,8 +150,10 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
             {t('Select none')}
           </button>
           <span className="manage-toolbar__count">
-            {state.feeds.length} source{state.feeds.length === 1 ? '' : 's'} · {selected.size}{' '}
-            selected
+            {t('{sources} · {selected} selected', {
+              sources: plural(state.feeds.length, '{count} source', '{count} sources'),
+              selected: selected.size,
+            })}
           </span>
         </div>
 
@@ -229,7 +231,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
                       if (el) el.indeterminate = someInFolder;
                     }}
                     onChange={() => toggleFolder(folder.feeds)}
-                    aria-label={`Select sources in ${folder.name}`}
+                    aria-label={t('Select sources in {name}', { name: folder.name })}
                   />
                   <Icon name="folder" size={15} className="folder-row__icon" />
                   <span className="manage-folder__name">{folder.name}</span>
@@ -260,7 +262,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
           <div className="manage-folder">
             {folders.length > 0 && (
               <div className="manage-folder__header">
-                <span className="manage-folder__name">Ungrouped</span>
+                <span className="manage-folder__name">{t('Ungrouped')}</span>
                 <span className="badge">{ungrouped.length}</span>
               </div>
             )}

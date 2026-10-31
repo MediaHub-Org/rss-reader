@@ -1005,6 +1005,27 @@ try {
   /* ------------------- Sources (select all/none) ----------------------- */
   await openSettings('Sources');
   await page.waitForSelector('#settings-feeds');
+  await page.setViewportSize({ width: 1440, height: 640 });
+  await page.click('.settings-nav__item:has-text("Preferences")');
+  await page.waitForTimeout(200);
+  const scrolledDown = await page.evaluate(() => {
+    const body = document.querySelector('.dialog__body');
+    if (!body) return 0;
+    body.scrollTop = body.scrollHeight;
+    return body.scrollTop;
+  });
+  await page.click('.settings-nav__item:has-text("Sources")');
+  await page.waitForTimeout(300);
+  const resetScroll = await page.evaluate(() => document.querySelector('.dialog__body')?.scrollTop ?? -1);
+  check(
+    'Switching to Sources resets the dialog scroll and shows the list',
+    scrolledDown > 0 &&
+      resetScroll === 0 &&
+      (await page.locator('#settings-feeds .manage-item').count()) > 0,
+    `scrolled ${scrolledDown}px → ${resetScroll}px`
+  );
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(200);
   await page.click('#settings-feeds button:has-text("Select all")');
   const allCountText = await page.textContent('#settings-feeds .manage-toolbar__count');
   await page.click('#settings-feeds button:has-text("Select none")');
@@ -1277,6 +1298,19 @@ try {
   /* Provider cards with no thumbnail still get a branded band, not blank space */
   const bands = await page.locator('.article-card__media--embed').count();
   check('Media cards without artwork get a branded band', bands >= 4, `${bands} bands`);
+
+  /* Native audio enclosure exposes a playback-speed selector */
+  await page.click('.article-card:has-text("Podcast episode fixture")');
+  await page.waitForSelector('.audio-card select');
+  const defaultRate = await page.inputValue('.audio-card select');
+  await page.selectOption('.audio-card select', '1.5');
+  const liveRate = await page.$eval('.audio-card audio', (el) => el.playbackRate);
+  check(
+    'Native audio player offers 0.75–2× speed control',
+    defaultRate === '1' && Math.abs(liveRate - 1.5) < 0.01,
+    `${defaultRate}× → ${liveRate}×`
+  );
+  await closeArticle();
 
   /* Spotify item opens a track player, not a redirect */
   await page.click('.article-card:has-text("Spotify track fixture")');

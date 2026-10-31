@@ -507,6 +507,11 @@ const es: Record<string, string> = {
   "Native notification when new items arrive while the window is in the background. Use a source's context menu to mute it.": 'Notificación nativa cuando llegan artículos nuevos con la ventana en segundo plano. Usa el menú contextual de una fuente para silenciarla.',
   'Launch the reader when you sign in. You can still quit it from the tray.': 'Inicia el lector al iniciar sesión. Aún puedes cerrarlo desde la bandeja.',
 
+  '{sources} · {selected} selected': '{sources} · {selected} seleccionadas',
+  'Select sources in {name}': 'Seleccionar fuentes en {name}',
+  'Speed': 'Velocidad',
+  'Playback speed': 'Velocidad de reproducción',
+
   // Common toasts / actions
   'Feed URL copied': 'URL de la fuente copiada',
   'Link copied': 'Enlace copiado',

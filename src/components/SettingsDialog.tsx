@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { estimateUsage } from '../lib/storage';
 import { useStore } from '../hooks/useStore';
 import { Dialog } from './Dialog';
@@ -53,10 +53,18 @@ export function SettingsDialog({
   useStore(); // language changes must re-render the nav labels
   const [usage] = useState(() => estimateUsage());
   const [section, setSection] = useState<SettingsSection>('preferences');
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open && initialSection) setSection(initialSection);
   }, [open, initialSection]);
+
+  // The dialog body is the scroll container. Without resetting it, switching
+  // from a long section (e.g. Preferences) to Sources leaves the new section
+  // scrolled past its heading and list, which looks like an empty page.
+  useEffect(() => {
+    panelRef.current?.closest('.dialog__body')?.scrollTo({ top: 0 });
+  }, [section, open]);
 
   return (
     <Dialog
@@ -82,7 +90,7 @@ export function SettingsDialog({
           ))}
         </nav>
 
-        <div className="settings-panel">
+        <div className="settings-panel" ref={panelRef}>
           {section === 'preferences' && <PreferencesPanel />}
 
           {section === 'groups' && (

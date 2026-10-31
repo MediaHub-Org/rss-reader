@@ -16,6 +16,8 @@ type DetailMenu =
   | { kind: 'article'; x: number; y: number }
   | { kind: 'link'; x: number; y: number; href: string; text: string };
 
+const AUDIO_SPEEDS = [0.75, 1, 1.25, 1.5, 2] as const;
+
 export function ArticleDetail() {
   const state = useStore();
   const [menu, setMenu] = useState<DetailMenu | null>(null);
@@ -28,6 +30,9 @@ export function ArticleDetail() {
   /** Invalidates an in-flight extraction when the reader moves to another article. */
   const fullContentRequest = useRef(0);
   const mediaRef = useRef<HTMLElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  /** Playback speed for the native podcast/audio player. */
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   const article = useMemo(
     () => Object.values(state.articles).flat().find((a) => a.id === state.ui.activeArticleId),
@@ -59,6 +64,10 @@ export function ArticleDetail() {
     setShowFullContent(false);
     setLoadingFullContent(false);
   }, [article?.id, article?.link]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+  }, [playbackRate, article?.audioUrl]);
 
   if (!article) {
     return (
@@ -409,11 +418,33 @@ export function ArticleDetail() {
 
         {article.audioUrl && (
           <section className="audio-card" aria-label={t('Episode audio')}>
-            <audio controls preload="none" src={article.audioUrl}>
+            <audio
+              ref={audioRef}
+              controls
+              preload="none"
+              src={article.audioUrl}
+              onLoadedMetadata={(event) => {
+                event.currentTarget.playbackRate = playbackRate;
+              }}
+            >
               <a href={article.audioUrl} target="_blank" rel="noopener noreferrer">
                 {t('Download the audio')}
               </a>
             </audio>
+            <label className="audio-card__speed">
+              <span>{t('Speed')}</span>
+              <select
+                value={playbackRate}
+                aria-label={t('Playback speed')}
+                onChange={(event) => setPlaybackRate(Number(event.target.value))}
+              >
+                {AUDIO_SPEEDS.map((rate) => (
+                  <option key={rate} value={rate}>
+                    {rate}×
+                  </option>
+                ))}
+              </select>
+            </label>
           </section>
         )}
 
