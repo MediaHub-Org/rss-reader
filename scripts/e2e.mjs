@@ -1398,7 +1398,7 @@ try {
   // provider's business, not ours.
   const relevantErrors = consoleErrors.filter(
     (e) =>
-      !/favicon|Failed to load resource|net::ERR|CORS policy|404|419|Refused to display|X-Frame-Options|open\.spotify\.com|player\.vimeo\.com|w\.soundcloud\.com/.test(
+      !/favicon|Failed to load resource|net::ERR|CORS policy|Permissions policy violation|compute-pressure|404|419|Refused to display|X-Frame-Options|open\.spotify\.com|player\.vimeo\.com|w\.soundcloud\.com/.test(
         e
       )
   );
