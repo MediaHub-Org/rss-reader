@@ -519,6 +519,10 @@ const es: Record<string, string> = {
   'Playback speed': 'Velocidad de reproducción',
 
   'Manage': 'Gestionar',
+  'All selected': 'Todos',
+  'None': 'Ninguno',
+  'Select all sources': 'Seleccionar todas las fuentes',
+  'Select all groups': 'Seleccionar todos los grupos',
   'Manage sources and groups': 'Gestionar fuentes y grupos',
   'Edit or remove sources, organize them into groups, and select several at once for bulk actions.': 'Edita o elimina fuentes, organízalas en grupos y selecciona varias a la vez para acciones masivas.',
   'Services': 'Servicios',

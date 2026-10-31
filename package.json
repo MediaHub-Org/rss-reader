@@ -1,7 +1,7 @@
 {
   "name": "rss-reader",
   "private": true,
-  "version": "0.13.7",
+  "version": "0.13.8",
   "type": "module",
   "description": "Lightweight local-first RSS/Atom reader with media playback",
   "scripts": {

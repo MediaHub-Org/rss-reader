@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from '../../types';
 import { store } from '../../store/store';
 import { useStore } from '../../hooks/useStore';
@@ -16,6 +16,42 @@ interface ManagerProps {
 }
 
 type FolderGroup = { name: string; feeds: Feed[] };
+
+function TriStateSelect({
+  checked,
+  indeterminate,
+  onChange,
+  label,
+  ariaLabel,
+  disabled,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: () => void;
+  label: string;
+  ariaLabel: string;
+  disabled?: boolean;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <label className="manage-select-all">
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        aria-label={ariaLabel}
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
 
 function groupFeeds(feeds: Feed[], folders: string[]): { folders: FolderGroup[]; ungrouped: Feed[] } {
   const byTitle = (a: Feed, b: Feed) => byName(a.title ?? '', b.title ?? '');
@@ -50,6 +86,17 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
+  const allSelected = state.feeds.length > 0 && selected.size === state.feeds.length;
+  const someSelected = selected.size > 0 && !allSelected;
+  const selectionLabel = allSelected
+    ? t('All')
+    : selected.size
+      ? t('{count} selected', { count: selected.size })
+      : t('None');
+
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(state.feeds.map((feed) => feed.id)));
+  };
 
   useEffect(() => {
     const valid = new Set(state.feeds.map((feed) => feed.id));
@@ -129,25 +176,35 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
       )}
 
       <div className="manage-toolbar">
-        <div className="manage-toolbar__actions">
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setPickerOpen(true)}
-            disabled={selected.size === 0}
-          >
-            <Icon name="folder" size={15} />
-            <span>{t('Move selected ({count})…', { count: selected.size })}</span>
-          </button>
-          <button
-            type="button"
-            className="button button--danger"
-            onClick={() => setPendingDelete([...selected])}
-            disabled={selected.size === 0}
-          >
-            <Icon name="trash" size={15} />
-            <span>{t('Delete selected ({count})', { count: selected.size })}</span>
-          </button>
+        <div className="manage-toolbar__top">
+          <TriStateSelect
+            checked={allSelected}
+            indeterminate={someSelected}
+            onChange={toggleAll}
+            label={selectionLabel}
+            ariaLabel={t('Select all sources')}
+            disabled={state.feeds.length === 0}
+          />
+          <div className="manage-toolbar__actions">
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => setPickerOpen(true)}
+              disabled={selected.size === 0}
+            >
+              <Icon name="folder" size={15} />
+              <span>{t('Move selected ({count})…', { count: selected.size })}</span>
+            </button>
+            <button
+              type="button"
+              className="button button--danger"
+              onClick={() => setPendingDelete([...selected])}
+              disabled={selected.size === 0}
+            >
+              <Icon name="trash" size={15} />
+              <span>{t('Delete selected ({count})', { count: selected.size })}</span>
+            </button>
+          </div>
         </div>
         <span className="manage-toolbar__count">
           {t('{sources} · {selected} selected', {
@@ -336,6 +393,17 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
     feedCount: number;
   } | null>(null);
   const [newName, setNewName] = useState('');
+  const allSelected = folders.length > 0 && selected.size === folders.length;
+  const someSelected = selected.size > 0 && !allSelected;
+  const selectionLabel = allSelected
+    ? t('All')
+    : selected.size
+      ? t('{count} selected', { count: selected.size })
+      : t('None');
+
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(folders.map((folder) => folder.name)));
+  };
 
   useEffect(() => {
     const valid = new Set(folders.map((folder) => folder.name));
@@ -416,31 +484,41 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
       )}
 
       <div className="manage-toolbar">
-        <div className="manage-toolbar__actions">
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setPickerOpen(true)}
-            disabled={selected.size === 0}
-          >
-            <Icon name="folder" size={15} />
-            <span>{t('Merge selected ({count})…', { count: selected.size })}</span>
-          </button>
-          <button
-            type="button"
-            className="button button--danger"
-            onClick={() => {
-              const names = [...selected];
-              const feedCount = state.feeds.filter((feed) =>
-                names.includes(feed.folder?.trim() ?? '')
-              ).length;
-              setPendingDelete({ names, feedCount });
-            }}
-            disabled={selected.size === 0}
-          >
-            <Icon name="trash" size={15} />
-            <span>{t('Delete selected ({count})', { count: selected.size })}</span>
-          </button>
+        <div className="manage-toolbar__top">
+          <TriStateSelect
+            checked={allSelected}
+            indeterminate={someSelected}
+            onChange={toggleAll}
+            label={selectionLabel}
+            ariaLabel={t('Select all groups')}
+            disabled={folders.length === 0}
+          />
+          <div className="manage-toolbar__actions">
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => setPickerOpen(true)}
+              disabled={selected.size === 0 || selected.size >= folders.length}
+            >
+              <Icon name="folder" size={15} />
+              <span>{t('Merge selected ({count})…', { count: selected.size })}</span>
+            </button>
+            <button
+              type="button"
+              className="button button--danger"
+              onClick={() => {
+                const names = [...selected];
+                const feedCount = state.feeds.filter((feed) =>
+                  names.includes(feed.folder?.trim() ?? '')
+                ).length;
+                setPendingDelete({ names, feedCount });
+              }}
+              disabled={selected.size === 0}
+            >
+              <Icon name="trash" size={15} />
+              <span>{t('Delete selected ({count})', { count: selected.size })}</span>
+            </button>
+          </div>
         </div>
         <span className="manage-toolbar__count">
           {t('{groups} · {selected} selected', {

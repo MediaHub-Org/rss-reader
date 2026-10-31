@@ -1026,6 +1026,34 @@ try {
     sourceListOverflow === 'visible',
     sourceListOverflow
   );
+  const sourceSelectAll = page.locator('#settings-feeds .manage-select-all input');
+  check(
+    'Sources have a tri-state select-all control',
+    (await sourceSelectAll.count()) === 1 &&
+      (await page.textContent('#settings-feeds .manage-select-all span'))?.trim() === 'None',
+    (await page.textContent('#settings-feeds .manage-select-all span'))?.trim() || ''
+  );
+  await sourceSelectAll.click();
+  const allSourcesText = await page.textContent('#settings-feeds .manage-toolbar__count');
+  const allSourcesChecked = await sourceSelectAll.evaluate(
+    (el) => el.checked && !el.indeterminate
+  );
+  await sourceSelectAll.click();
+  const noSourcesText = await page.textContent('#settings-feeds .manage-toolbar__count');
+  await page.locator('#settings-feeds .manage-item input[type="checkbox"]').first().check();
+  const mixedSources = await sourceSelectAll.evaluate((el) => el.indeterminate);
+  await sourceSelectAll.click();
+  const selectedAfterMixed = await page.textContent('#settings-feeds .manage-toolbar__count');
+  await sourceSelectAll.click();
+  check(
+    'Sources tri-state cycles None -> All -> partial -> All',
+    allSourcesChecked &&
+      /[1-9]\d* selected$/.test((allSourcesText || '').trim()) &&
+      /\b0 selected$/.test((noSourcesText || '').trim()) &&
+      mixedSources &&
+      /[1-9]\d* selected$/.test((selectedAfterMixed || '').trim()),
+    `${allSourcesText?.trim()} / ${noSourcesText?.trim()} / ${selectedAfterMixed?.trim()}`
+  );
   await page.setViewportSize({ width: 1440, height: 640 });
   await page.click('.settings-nav__item:has-text("Preferences")');
   await page.waitForTimeout(200);
@@ -1090,6 +1118,22 @@ try {
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
   await openSettings('Groups');
   await page.waitForSelector('#settings-folders');
+  const groupSelectAll = page.locator('#settings-folders .manage-select-all input');
+  await groupSelectAll.click();
+  const allGroupsText = await page.textContent('#settings-folders .manage-toolbar__count');
+  const mergeDisabledForAll = await page
+    .locator('#settings-folders button:has-text("Merge selected")')
+    .isDisabled();
+  await groupSelectAll.click();
+  const noGroupsText = await page.textContent('#settings-folders .manage-toolbar__count');
+  check(
+    'Groups tri-state selects all, disables merge and clears',
+    /[1-9]\d* selected$/.test((allGroupsText || '').trim()) &&
+      mergeDisabledForAll &&
+      /\b0 selected$/.test((noGroupsText || '').trim()),
+    `${allGroupsText?.trim()} / ${noGroupsText?.trim()}`
+  );
+
   const folderRowChecks = page.locator('#settings-folders .manage-folder-row input[type="checkbox"]');
   await folderRowChecks.nth(0).check();
   await folderRowChecks.nth(1).check();
@@ -1587,6 +1631,33 @@ try {
       backoff.failuresAfterForce === 2,
     `${backoff.failures} → ${backoff.failuresAfterSkip} → ${backoff.failuresAfterForce}`
   );
+
+  /* ------------------------- delete a source --------------------------- */
+  await openSettings('Sources');
+  await page.waitForSelector('#settings-feeds');
+  const feedsBeforeSourceDelete = await page.evaluate(
+    () => window.__store.getSnapshot().feeds.length
+  );
+  await page.locator('#settings-feeds .manage-item input[type="checkbox"]').first().check();
+  await page.click('#settings-feeds button:has-text("Delete selected")');
+  await page.waitForSelector('.manage-confirm');
+  const deleteSourceText = (await page.textContent('.manage-confirm__text'))?.trim() || '';
+  await page.click('.manage-confirm button:has-text("Delete sources")');
+  await page.waitForFunction(
+    (expected) => window.__store.getSnapshot().feeds.length === expected,
+    feedsBeforeSourceDelete - 1,
+    { timeout: 5000 }
+  );
+  const sourcesAfterDelete = await page.evaluate(
+    () => window.__store.getSnapshot().feeds.length
+  );
+  check(
+    'Deleting a source asks for confirmation and removes it',
+    /cached articles|starred/i.test(deleteSourceText) &&
+      sourcesAfterDelete === feedsBeforeSourceDelete - 1,
+    `${feedsBeforeSourceDelete} → ${sourcesAfterDelete}`
+  );
+  await page.keyboard.press('Escape');
 
   /* ---------------------------- console noise -------------------------- */
   // Direct-first fetching always logs a CORS refusal before the proxy hop, and
