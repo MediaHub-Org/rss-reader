@@ -5,6 +5,7 @@ import { leaveArticle } from '../lib/viewHistory';
 import { ArticleDetail } from './ArticleDetail';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
+import { t } from '../lib/i18n';
 
 /** Card-view reader: blurred backdrop, previous/next arrows and close. */
 export function ArticleOverlay() {
@@ -42,8 +43,8 @@ export function ArticleOverlay() {
         className="article-overlay__nav article-overlay__nav--prev"
         onClick={() => previous && open(previous.id)}
         disabled={!previous}
-        aria-label="Previous article"
-        title="Previous article"
+        aria-label={t('Previous article')}
+        title={t('Previous article')}
       >
         <Icon name="back" size={20} />
       </button>
@@ -52,8 +53,8 @@ export function ArticleOverlay() {
         className="article-overlay__nav article-overlay__nav--next"
         onClick={() => next && open(next.id)}
         disabled={!next}
-        aria-label="Next article"
-        title="Next article"
+        aria-label={t('Next article')}
+        title={t('Next article')}
       >
         <Icon name="chevronRight" size={20} />
       </button>

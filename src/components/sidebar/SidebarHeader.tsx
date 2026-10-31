@@ -3,6 +3,7 @@ import { store } from '../../store/store';
 import { useStore } from '../../hooks/useStore';
 import { Icon } from '../Icon';
 import { SearchOptions } from '../SearchOptions';
+import { t } from '../../lib/i18n';
 
 interface SidebarHeaderProps {
   searchRef: RefObject<HTMLInputElement>;
@@ -17,14 +18,14 @@ export function SidebarHeader({ searchRef, onSearchKey, onClose }: SidebarHeader
   return (
     <>
       <div className="sidebar__header">
-        <span className="brand" title="RSS Reader" aria-label="RSS Reader">
+        <span className="brand" title={t('RSS Reader')} aria-label={t('RSS Reader')}>
           <Icon name="rss" size={18} />
         </span>
         <button
           type="button"
           className="icon-button sidebar__close"
           onClick={onClose}
-          aria-label="Close feed list"
+          aria-label={t('Close feed list')}
         >
           <Icon name="close" />
         </button>
@@ -36,8 +37,8 @@ export function SidebarHeader({ searchRef, onSearchKey, onClose }: SidebarHeader
           ref={searchRef}
           type="search"
           className="search__input"
-          placeholder="Search articles (full text)"
-          aria-label="Search articles"
+          placeholder={t('Search articles (full text)')}
+          aria-label={t('Search articles')}
           value={state.ui.query}
           onChange={(event) => store.setQuery(event.target.value)}
           onKeyDown={onSearchKey}
@@ -47,19 +48,19 @@ export function SidebarHeader({ searchRef, onSearchKey, onClose }: SidebarHeader
           type="button"
           className={`search__scope ${state.ui.searchAllFeeds ? 'is-active' : ''}`}
           aria-pressed={state.ui.searchAllFeeds}
-          aria-label={
+          aria-label={t(
             state.ui.searchAllFeeds
               ? 'Search current view instead of all feeds'
               : 'Search all feeds instead of the current view'
-          }
-          title={
+          )}
+          title={t(
             state.ui.searchAllFeeds
               ? 'Searching all feeds — click for current view'
               : 'Searching current view — click for all feeds'
-          }
+          )}
           onClick={() => store.setSearchAllFeeds(!state.ui.searchAllFeeds)}
         >
-          {state.ui.searchAllFeeds ? 'All' : 'View'}
+          {t(state.ui.searchAllFeeds ? 'All' : 'View')}
         </button>
         <SearchOptions />
       </div>

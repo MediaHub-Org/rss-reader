@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Dialog } from './Dialog';
+import { t } from '../lib/i18n';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -18,7 +19,7 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = 'Confirm',
+  confirmLabel = t('Confirm'),
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -50,7 +51,7 @@ export function ConfirmDialog({
             className="button button--ghost"
             onClick={onCancel}
           >
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             type="button"

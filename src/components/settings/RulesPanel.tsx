@@ -6,16 +6,17 @@ import { byName } from '../../lib/portability';
 import { countLabel } from '../../lib/format';
 import { isValidPattern, ruleId, ruleMatchesArticle } from '../../lib/rules';
 import { Dropdown, type DropdownOption } from '../Dropdown';
+import { t } from '../../lib/i18n';
 import { Icon } from '../Icon';
 
 const FIELD_OPTIONS: Array<DropdownOption<RuleField>> = [
-  { value: 'title', label: 'Title' },
-  { value: 'content', label: 'Title or content' },
+  { value: 'title', label: t('Title') },
+  { value: 'content', label: t('Title or content') },
 ];
 
 const MODE_OPTIONS: Array<DropdownOption<RuleMatchMode>> = [
-  { value: 'contains', label: 'contains' },
-  { value: 'regex', label: 'matches regex' },
+  { value: 'contains', label: t('contains') },
+  { value: 'regex', label: t('matches regex') },
 ];
 
 function scopeLabel(scope: string, feeds: ReturnType<typeof useStore>['feeds']): string {
@@ -116,22 +117,20 @@ export function RulesPanel() {
     <section className="settings-section">
       <div className="settings-section__header">
         <div>
-          <h2 className="settings-section__title">Automatic rules</h2>
+          <h2 className="settings-section__title">{t('Automatic rules')}</h2>
           <p className="settings-note settings-note--tight">
-            Rules run when new articles arrive. They can mark matching articles as read or star
-            them, and cascade in order. Use “Apply to existing” to run them over the cache now.
+            {t('Rules run when new articles arrive. They can mark matching articles as read or star them, and cascade in order. Use “Apply to existing” to run them over the cache now.')}
           </p>
         </div>
         <button type="button" className="button button--primary" onClick={startNew}>
           <Icon name="plus" size={15} />
-          <span>New rule</span>
+          <span>{t('New rule')}</span>
         </button>
       </div>
 
       {!state.rules.length && !draft && (
         <p className="settings-empty">
-          No rules yet. Create one to hide the noise from a busy source or to keep important
-          stories.
+          {t('No rules yet. Create one to hide the noise from a busy source or to keep important stories.')}
         </p>
       )}
 
@@ -161,7 +160,7 @@ export function RulesPanel() {
                 <div className="rule-card__actions">
                   <button type="button" className="ghost-button" onClick={() => edit(rule)}>
                     <Icon name="pencil" size={14} />
-                    <span>Edit</span>
+                    <span>{t('Edit')}</span>
                   </button>
                   <button
                     type="button"
@@ -172,7 +171,7 @@ export function RulesPanel() {
                     }}
                   >
                     <Icon name="trash" size={14} />
-                    <span>Delete</span>
+                    <span>{t('Delete')}</span>
                   </button>
                 </div>
               </div>
@@ -182,9 +181,9 @@ export function RulesPanel() {
       )}
 
       {draft && (
-        <div className="rule-editor" role="group" aria-label="Rule editor">
+        <div className="rule-editor" role="group" aria-label={t('Rule editor')}>
           <div className="rule-editor__row">
-            <span className="rule-editor__label">Apply to</span>
+            <span className="rule-editor__label">{t('Apply to')}</span>
             <Dropdown<string>
               value={draft.scope}
               options={scopeOptions}
@@ -195,7 +194,7 @@ export function RulesPanel() {
           </div>
 
           <div className="rule-editor__row rule-editor__row--wrap">
-            <span className="rule-editor__label">Condition</span>
+            <span className="rule-editor__label">{t('Condition')}</span>
             <div className="rule-editor__condition">
               <Dropdown<RuleField>
                 value={draft.field}
@@ -214,7 +213,7 @@ export function RulesPanel() {
               <input
                 className="input rule-editor__pattern"
                 placeholder={draft.mode === 'regex' ? 'e.g. \\bAI\\b' : 'e.g. bitcoin'}
-                aria-label="Rule pattern"
+                aria-label={t('Rule pattern')}
                 value={draft.pattern}
                 onChange={(event) => setDraft({ ...draft, pattern: event.target.value })}
                 spellCheck={false}
@@ -225,13 +224,13 @@ export function RulesPanel() {
                   checked={draft.negate}
                   onChange={(event) => setDraft({ ...draft, negate: event.target.checked })}
                 />
-                <span>doesn&apos;t match</span>
+                <span>{t('doesn\'t match')}</span>
               </label>
             </div>
           </div>
 
           <div className="rule-editor__row">
-            <span className="rule-editor__label">Then</span>
+            <span className="rule-editor__label">{t('Then')}</span>
             <div className="rule-editor__actions">
               <label className="rule-check">
                 <input
@@ -239,7 +238,7 @@ export function RulesPanel() {
                   checked={draft.actions.includes('read')}
                   onChange={() => toggleAction('read')}
                 />
-                <span>Mark as read</span>
+                <span>{t('Mark as read')}</span>
               </label>
               <label className="rule-check">
                 <input
@@ -247,7 +246,7 @@ export function RulesPanel() {
                   checked={draft.actions.includes('star')}
                   onChange={() => toggleAction('star')}
                 />
-                <span>Star</span>
+                <span>{t('Star')}</span>
               </label>
             </div>
           </div>
@@ -273,10 +272,10 @@ export function RulesPanel() {
                 setError(null);
               }}
             >
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="button button--primary" onClick={save}>
-              Save rule
+              {t('Save rule')}
             </button>
           </div>
         </div>
@@ -298,7 +297,7 @@ export function RulesPanel() {
           disabled={!state.rules.some((rule) => rule.enabled)}
         >
           <Icon name="refresh" size={15} />
-          <span>Apply to existing articles</span>
+          <span>{t('Apply to existing articles')}</span>
         </button>
       </div>
     </section>

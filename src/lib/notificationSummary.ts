@@ -1,4 +1,4 @@
-import { countLabel } from './format';
+import { plural, t } from './i18n';
 
 export interface NotificationItem {
   feed: string;
@@ -20,8 +20,8 @@ export function summarizeNotifications(
   const total = cleaned.reduce((sum, item) => sum + item.count, 0);
   if (cleaned.length === 1) {
     return {
-      title: `New articles in ${cleaned[0].feed}`,
-      body: countLabel(total, 'new article'),
+      title: t('New articles in {feed}', { feed: cleaned[0].feed }),
+      body: plural(total, '{count} new article', '{count} new articles'),
     };
   }
 
@@ -29,9 +29,13 @@ export function summarizeNotifications(
     .slice(0, 3)
     .map((item) => `${item.feed} (${item.count})`)
     .join(', ');
-  const more = cleaned.length > 3 ? ` +${cleaned.length - 3} more` : '';
+  const more = cleaned.length > 3 ? ` ${t('+{count} more', { count: cleaned.length - 3 })}` : '';
   return {
-    title: `${total} new articles`,
-    body: `Across ${countLabel(cleaned.length, 'feed')}: ${names}${more}`,
+    title: plural(total, '{count} new article', '{count} new articles'),
+    body: t('Across {label}: {names}{more}', {
+      label: plural(cleaned.length, '{count} feed', '{count} feeds'),
+      names,
+      more,
+    }),
   };
 }

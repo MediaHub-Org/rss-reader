@@ -3,6 +3,7 @@ import { store } from '../../store/store';
 import { useStore } from '../../hooks/useStore';
 import { copyText } from '../../lib/clipboard';
 import { isDesktopApp, isTauriApp } from '../../lib/desktop';
+import { t } from '../../lib/i18n';
 import { Icon } from '../Icon';
 
 export function AboutPanel({ usage }: { usage: { used: number } }) {
@@ -34,16 +35,14 @@ export function AboutPanel({ usage }: { usage: { used: number } }) {
           </span>
           <div>
             <h2 className="about__name">RSS Reader</h2>
-            <p className="about__version">Version {__APP_VERSION__}</p>
+            <p className="about__version">{t('Version')} {__APP_VERSION__}</p>
           </div>
         </div>
         <p className="settings-note settings-note--tight">
-          A local-first RSS/Atom reader. Subscriptions, read/starred state, rules, preferences and
-          cached articles stay on this device — there is no account, server or telemetry.
+          {t('A local-first RSS/Atom reader. Subscriptions, read/starred state, rules, preferences and cached articles stay on this device — there is no account, server or telemetry.')}
         </p>
         <p className="settings-note settings-note--tight">
-          Desktop builds use Tauri and the system WebView; the PWA build is installable from the
-          browser. Both share the same interface and JSON backup format.
+          {t('Desktop builds use Tauri and the system WebView; the PWA build is installable from the browser. Both share the same interface and JSON backup format.')}
         </p>
         <div className="settings-data-actions">
           <a
@@ -53,74 +52,73 @@ export function AboutPanel({ usage }: { usage: { used: number } }) {
             rel="noopener noreferrer"
           >
             <Icon name="external" size={15} />
-            <span>Project on GitHub</span>
+            <span>{t('Project on GitHub')}</span>
           </a>
           <button type="button" className="button button--ghost" onClick={() => void copyDiagnostics()}>
             <Icon name="copy" size={15} />
-            <span>Copy diagnostics</span>
+            <span>{t('Copy diagnostics')}</span>
           </button>
         </div>
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-section__title">Keyboard shortcuts</h2>
+        <h2 className="settings-section__title">{t('Keyboard shortcuts')}</h2>
         <dl className="about-shortcuts">
           <div>
             <dt>
               <kbd>j</kbd> / <kbd>k</kbd> <span>or</span> <kbd>↓</kbd> / <kbd>↑</kbd>
             </dt>
-            <dd>Move through articles</dd>
+            <dd>{t('Move through articles')}</dd>
           </div>
           <div>
             <dt>
               <kbd>←</kbd> / <kbd>→</kbd>
             </dt>
-            <dd>Previous / next article</dd>
+            <dd>{t('Previous / next article')}</dd>
           </div>
           <div>
             <dt>
               <kbd>Enter</kbd> / <kbd>o</kbd>
             </dt>
-            <dd>Open the selected article</dd>
+            <dd>{t('Open the selected article')}</dd>
           </div>
           <div>
             <dt>
               <kbd>m</kbd>
             </dt>
-            <dd>Toggle read / unread</dd>
+            <dd>{t('Toggle read / unread')}</dd>
           </div>
           <div>
             <dt>
               <kbd>r</kbd>
             </dt>
-            <dd>Refresh all sources</dd>
+            <dd>{t('Refresh all sources')}</dd>
           </div>
           <div>
             <dt>
               <kbd>/</kbd>
             </dt>
-            <dd>Focus search</dd>
+            <dd>{t('Focus search')}</dd>
           </div>
           <div>
             <dt>
               <kbd>a</kbd>
             </dt>
-            <dd>Add source</dd>
+            <dd>{t('Add source')}</dd>
           </div>
           <div>
             <dt>
               <kbd>Esc</kbd>
             </dt>
-            <dd>Close article, drawer or dialog</dd>
+            <dd>{t('Close article, drawer or dialog')}</dd>
           </div>
         </dl>
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-section__title">Data</h2>
+        <h2 className="settings-section__title">{t('Data')}</h2>
         <p className="settings-note settings-note--tight">
-          {formatBytes(usage.used)} stored locally in this app&apos;s profile. Clearing the article
-          cache from Services keeps subscriptions and reading state intact.
+          {t('{size} stored locally in this app’s profile. Clearing the article cache from Services keeps subscriptions and reading state intact.', { size: formatBytes(usage.used) })}
         </p>
       </section>
     </>

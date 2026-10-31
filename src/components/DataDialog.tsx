@@ -12,12 +12,12 @@ import {
   type SaveOutcome,
 } from '../lib/portability';
 import { loadAllArticles } from '../lib/storage';
-import { countLabel } from '../lib/format';
 import { applyImport } from '../lib/applyImport';
 import { feedIdForUrl } from '../lib/feedParser';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Dialog } from './Dialog';
+import { plural, t } from '../lib/i18n';
 import { SourcesManager, GroupsManager } from './settings/CollectionManagers';
 
 export type DataTab = 'import' | 'export' | 'manage' | 'xml';
@@ -159,7 +159,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
       store.notify(result.changed ? 'success' : 'info', result.message);
       close();
     } catch {
-      store.notify('error', 'Could not apply that backup.');
+      store.notify('error', t('Could not apply that backup.'));
     }
   };
 
@@ -173,7 +173,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           'text/x-opml+xml'
         );
       } else {
-        store.notify('info', 'Preparing full backup…');
+        store.notify('info', t('Preparing full backup…'));
         const articles = await loadAllArticles();
         outcome = await downloadFile(
           'rss-reader-backup.json',
@@ -190,16 +190,16 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
         );
       }
       if (outcome === 'cancelled') {
-        store.notify('info', 'Export cancelled');
+        store.notify('info', t('Export cancelled'));
         return;
       }
       if (outcome === 'error') {
-        store.notify('error', 'Could not save the export file.');
+        store.notify('error', t('Could not save the export file.'));
         return;
       }
-      store.notify('success', kind === 'opml' ? 'OPML exported' : 'Full backup exported');
+      store.notify('success', t(kind === 'opml' ? 'OPML exported' : 'Full backup exported'));
     } catch {
-      store.notify('error', 'Export failed.');
+      store.notify('error', t('Export failed.'));
     }
   };
 
@@ -285,10 +285,10 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     <Dialog
       open={open}
       onClose={close}
-      title="Subscriptions & OPML"
+      title={t('Subscriptions & OPML')}
       size="md"
     >
-      <div className="tabs" role="tablist" aria-label="Subscriptions and OPML">
+      <div className="tabs" role="tablist" aria-label={t('Subscriptions and OPML')}>
         <button
           type="button"
           role="tab"
@@ -298,7 +298,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           className={`tab ${tab === 'import' ? 'is-active' : ''}`}
           onClick={() => setTab('import')}
         >
-          Import
+          {t('Import')}
         </button>
         <button
           type="button"
@@ -309,7 +309,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           className={`tab ${tab === 'export' ? 'is-active' : ''}`}
           onClick={() => setTab('export')}
         >
-          Export
+          {t('Export')}
         </button>
         <button
           type="button"
@@ -320,7 +320,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           className={`tab ${tab === 'manage' ? 'is-active' : ''}`}
           onClick={() => setTab('manage')}
         >
-          Manage ({state.feeds.length})
+          {t('Manage ({count})', { count: state.feeds.length })}
         </button>
         <button
           type="button"
@@ -331,16 +331,14 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           className={`tab ${tab === 'xml' ? 'is-active' : ''}`}
           onClick={() => setTab('xml')}
         >
-          OPML XML
+          {t('OPML XML')}
         </button>
       </div>
 
       {tab === 'import' && (
         <div id="panel-import" role="tabpanel" aria-labelledby="tab-import" className="tab-panel">
           <p className="field__hint">
-            Choose an <strong>OPML</strong> file from another reader, or a <strong>JSON</strong> backup
-            exported from this app. Folders and links are sorted A–Z, and edited titles/folders update
-            existing feeds automatically.
+            {t('Choose an OPML file from another reader, or a JSON backup exported from this app. Folders and links are sorted A–Z, and edited titles/folders update existing feeds automatically.')}
           </p>
 
           <input
@@ -348,7 +346,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
             type="file"
             accept=".opml,.xml,.json,application/xml,text/xml,application/json"
             className="file-input"
-            aria-label="Choose OPML or JSON file"
+            aria-label={t('Choose OPML or JSON file')}
             onChange={(event) => {
               void onFile(event.target.files?.[0]);
               event.target.value = '';
@@ -364,16 +362,25 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           {pending && (
             <div className="import-preview">
               <p className="import-preview__summary">
-                <strong>{pending.feeds.length}</strong> {pending.feeds.length === 1 ? 'feed' : 'feeds'} found in
-                a {pending.format.toUpperCase()} file
+                <strong>{pending.feeds.length}</strong>{' '}
+                {t(
+                  pending.feeds.length === 1
+                    ? 'feed found in a {format} file'
+                    : 'feeds found in a {format} file',
+                  { format: pending.format.toUpperCase() }
+                )}
                 {pending.folders.length
-                  ? ` across ${countLabel(pending.folders.length, 'folder')}`
+                  ? ` ${t('across {label}', {
+                      label: plural(pending.folders.length, '{count} folder', '{count} folders'),
+                    })}`
                   : ''}
                 {pending.readIds
-                  ? ` · ${countLabel(Object.keys(pending.readIds).length, 'read entry', 'read entries')}`
+                  ? ` · ${plural(Object.keys(pending.readIds).length, '{count} read entry', '{count} read entries')}`
                   : ''}
-                {pendingArticleCount ? ` · ${countLabel(pendingArticleCount, 'cached article')}` : ''}
-                {pending.preferences ? ' · preferences' : ''}.
+                {pendingArticleCount
+                  ? ` · ${plural(pendingArticleCount, '{count} cached article', '{count} cached articles')}`
+                  : ''}
+                {pending.preferences ? ` · ${t('preferences')}` : ''}.
               </p>
 
               <ul className="import-preview__list">
@@ -384,11 +391,11 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                   </li>
                 ))}
                 {pending.feeds.length > 8 && (
-                  <li className="is-more">+{pending.feeds.length - 8} more</li>
+                  <li className="is-more">{t('+{count} more', { count: pending.feeds.length - 8 })}</li>
                 )}
                 {!pending.feeds.length &&
                   pending.folders.slice(0, 8).map((folder) => (
-                    <li key={`folder:${folder}`}>{folder} (empty folder)</li>
+                    <li key={`folder:${folder}`}>{folder} {t('(empty folder)')}</li>
                   ))}
               </ul>
 
@@ -402,7 +409,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
 
               <div className="import-preview__actions">
                 <button type="button" className="button button--ghost" onClick={() => setPending(null)}>
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button
                   type="button"
@@ -410,10 +417,11 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                   onClick={() => void confirmImport()}
                   disabled={!pending.feeds.length && !pending.folders.length}
                 >
-                  Import{' '}
-                  {pending.feeds.length
-                    ? countLabel(pending.feeds.length, 'feed')
-                    : countLabel(pending.folders.length, 'folder')}
+                  {t('Import {label}', {
+                    label: pending.feeds.length
+                      ? plural(pending.feeds.length, '{count} feed', '{count} feeds')
+                      : plural(pending.folders.length, '{count} folder', '{count} folders'),
+                  })}
                 </button>
               </div>
             </div>
@@ -424,12 +432,9 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
       {tab === 'export' && (
         <div id="panel-export" role="tabpanel" aria-labelledby="tab-export" className="tab-panel">
           <p className="field__hint">
-            <strong>OPML</strong> is the standard format every reader understands — subscriptions and
-            folders (sorted A–Z, including empty folders).
+            {t('OPML is the standard format every reader understands — subscriptions and folders (sorted A–Z, including empty folders).')}
             <br />
-            <strong>JSON backup</strong> also carries read/starred status, rules, preferences and
-            every cached article, so this device can be rebuilt elsewhere (the YouTube API key is
-            not included).
+            {t('JSON backup also carries read/starred status, rules, preferences and every cached article, so this device can be rebuilt elsewhere (the YouTube API key is not included).')}
           </p>
 
           <div className="export-actions">
@@ -439,7 +444,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
               onClick={() => doExport('opml')}
               disabled={!hasAnything}
             >
-              Export OPML
+              {t('Export OPML')}
             </button>
             <button
               type="button"
@@ -447,7 +452,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
               onClick={() => void doExport('json')}
               disabled={!hasAnything}
             >
-              Export full backup (JSON)
+              {t('Export full backup (JSON)')}
             </button>
           </div>
         </div>
@@ -461,10 +466,10 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           className="tab-panel"
         >
           {!hasAnything ? (
-            <p className="field__hint">No feeds subscribed yet.</p>
+            <p className="field__hint">{t('No feeds subscribed yet.')}</p>
           ) : (
             <>
-              <div className="manage-subtabs" role="tablist" aria-label="Manage subscriptions">
+              <div className="manage-subtabs" role="tablist" aria-label={t('Manage subscriptions')}>
                 <button
                   type="button"
                   role="tab"
@@ -474,7 +479,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                   className={`manage-subtab ${manageTab === 'feeds' ? 'is-active' : ''}`}
                   onClick={() => setManageTab('feeds')}
                 >
-                  Sources ({state.feeds.length})
+                  {t('Sources ({count})', { count: state.feeds.length })}
                 </button>
                 <button
                   type="button"
@@ -485,7 +490,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                   className={`manage-subtab ${manageTab === 'folders' ? 'is-active' : ''}`}
                   onClick={() => setManageTab('folders')}
                 >
-                  Groups ({totalFolderCount})
+                  {t('Groups ({count})', { count: totalFolderCount })}
                 </button>
               </div>
 
@@ -502,14 +507,15 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
       {tab === 'xml' && (
         <div id="panel-xml" role="tabpanel" aria-labelledby="tab-xml" className="tab-panel">
           <p className="field__hint">
-            Edit feed titles (<code>text</code> / <code>title</code>), URLs (<code>xmlUrl</code>), or
-            folder <code>&lt;outline&gt;</code> groups directly in OPML XML. Applying replaces the
-            current subscriptions — you'll see a diff first.
+            {t('Edit feed titles')} (<code>text</code> / <code>title</code>),{' '}
+            {t('URLs')} (<code>xmlUrl</code>), {t('or folder')}{' '}
+            <code>&lt;outline&gt;</code>{' '}
+            {t('groups directly in OPML XML. Applying replaces the current subscriptions — you will see a diff first.')}
           </p>
 
           <textarea
             className="input opml-editor"
-            aria-label="OPML XML editor"
+            aria-label={t('OPML XML editor')}
             placeholder={OPML_PLACEHOLDER}
             value={xmlText}
             onChange={(event) => {
@@ -530,13 +536,13 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           {xmlPreview && (
             <div className="import-preview" role="status" aria-live="polite">
               <p className="import-preview__summary">
-                <strong>{xmlPreview.added.length}</strong> added ·{' '}
-                <strong>{xmlPreview.updated.length}</strong> updated ·{' '}
-                <strong>{xmlPreview.removed.length}</strong> removed
+                <strong>{xmlPreview.added.length}</strong> {t('added')} ·{' '}
+                <strong>{xmlPreview.updated.length}</strong> {t('updated')} ·{' '}
+                <strong>{xmlPreview.removed.length}</strong> {t('removed')}
                 {(xmlPreview.foldersAdded.length > 0 || xmlPreview.foldersRemoved.length > 0) && (
                   <>
                     {' '}
-                    · folders +{xmlPreview.foldersAdded.length} / −
+                    · {t('folders')} +{xmlPreview.foldersAdded.length} / −
                     {xmlPreview.foldersRemoved.length}
                   </>
                 )}
@@ -565,12 +571,12 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                   ))}
                   {xmlPreview.foldersAdded.map((folder) => (
                     <li key={`folder-add:${folder}`} className="diff-added">
-                      + folder: {folder}
+                      + {t('folder')}: {folder}
                     </li>
                   ))}
                   {xmlPreview.foldersRemoved.map((folder) => (
                     <li key={`folder-del:${folder}`} className="diff-removed">
-                      − folder: {folder}
+                      − {t('folder')}: {folder}
                     </li>
                   ))}
                 </ul>
@@ -582,10 +588,10 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                   className="button button--ghost"
                   onClick={() => setXmlPreview(null)}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button type="button" className="button button--primary" onClick={applyXml}>
-                  Apply changes
+                  {t('Apply changes')}
                 </button>
               </div>
             </div>
@@ -601,7 +607,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                 setXmlPreview(null);
               }}
             >
-              Clear
+              {t('Clear')}
             </button>
             <button
               type="button"
@@ -612,10 +618,10 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
                 setXmlPreview(null);
               }}
             >
-              Reset
+              {t('Reset')}
             </button>
             <button type="button" className="button button--primary" onClick={previewXml}>
-              Preview changes
+              {t('Preview changes')}
             </button>
           </div>
         </div>

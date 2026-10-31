@@ -4,6 +4,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export type Density = 'compact' | 'comfortable';
 export type FontSize = 'small' | 'medium' | 'large';
 export type ReaderFont = 'sans' | 'serif' | 'mono';
+export type LanguagePreference = 'system' | 'en' | 'es';
 export type SyncService =
   | 'local'
   | 'fever'
@@ -34,6 +35,8 @@ export interface Preferences {
   fontSize: FontSize;
   /** Reading typeface for article bodies. */
   readerFont: ReaderFont;
+  /** UI language; system follows the browser/OS. */
+  language: LanguagePreference;
   /** External sync provider. Local-only remains the default. */
   syncService: SyncService;
   syncServer: string;
@@ -88,6 +91,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   density: 'comfortable',
   fontSize: 'medium',
   readerFont: 'sans',
+  language: 'system',
   syncService: 'local',
   syncServer: '',
   syncUsername: '',

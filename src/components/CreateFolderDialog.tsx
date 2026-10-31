@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from './Dialog';
+import { t } from '../lib/i18n';
 
 interface CreateFolderDialogProps {
   open: boolean;
@@ -24,7 +25,7 @@ export function CreateFolderDialog({ open, feedTitle, onClose, onCreate }: Creat
   const submit = () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Folder name cannot be empty.');
+      setError(t('Folder name cannot be empty.'));
       return;
     }
     const message = onCreate(trimmed);
@@ -44,10 +45,10 @@ export function CreateFolderDialog({ open, feedTitle, onClose, onCreate }: Creat
       footer={
         <>
           <button type="button" className="button button--ghost" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </button>
           <button type="button" className="button button--primary" onClick={submit}>
-            Create folder
+            {t('Create folder')}
           </button>
         </>
       }
@@ -59,7 +60,7 @@ export function CreateFolderDialog({ open, feedTitle, onClose, onCreate }: Creat
         }}
       >
         <label className="field">
-          <span className="field__label">Folder name</span>
+          <span className="field__label">{t('Folder name')}</span>
           <input
             className="input"
             value={name}
@@ -67,7 +68,7 @@ export function CreateFolderDialog({ open, feedTitle, onClose, onCreate }: Creat
               setName(event.target.value);
               setError(null);
             }}
-            placeholder="e.g. Technology"
+            placeholder={t('e.g. Technology')}
             autoComplete="off"
             data-autofocus
           />

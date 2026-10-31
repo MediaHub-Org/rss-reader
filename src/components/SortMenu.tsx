@@ -3,6 +3,7 @@ import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { usePopover } from '../hooks/usePopover';
 import { Icon } from './Icon';
+import { t } from '../lib/i18n';
 
 const SORTS: Array<{
   value: SortMode;
@@ -29,17 +30,17 @@ export function SortMenu() {
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Sort: ${sort.label}`}
-        title={`Sort: ${sort.label}`}
+        aria-label={`${t('Sort')}: ${t(sort.label)}`}
+        title={`${t('Sort')}: ${t(sort.label)}`}
       >
         <Icon name="sort" size={18} />
-        <span className="topbar-tool__label">{sort.label}</span>
+        <span className="topbar-tool__label">{t(sort.label)}</span>
         <Icon name="chevronDown" size={12} className="topbar-tool__caret" />
       </button>
 
       {open && (
-        <div className="view-menu sort-menu" role="menu" aria-label="Sort articles">
-          <p className="view-menu__section">Sort</p>
+        <div className="view-menu sort-menu" role="menu" aria-label={t('Sort articles')}>
+          <p className="view-menu__section">{t('Sort')}</p>
           {SORTS.map((entry) => (
             <button
               key={entry.value}
@@ -56,7 +57,7 @@ export function SortMenu() {
                 {state.ui.sort === entry.value && <Icon name="check" size={15} />}
               </span>
               <Icon name={entry.icon} size={16} className="view-menu__icon" />
-              <span>{entry.label}</span>
+              <span>{t(entry.label)}</span>
             </button>
           ))}
         </div>

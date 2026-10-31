@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { store } from '../store/store';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
+import { t } from '../lib/i18n';
 
 interface FolderPickerDialogProps {
   open: boolean;
@@ -133,7 +134,7 @@ export function FolderPickerDialog({
       onClose={onClose}
       footer={
         <button type="button" className="button button--ghost" onClick={onClose}>
-          Cancel
+          {t('Cancel')}
         </button>
       }
     >
@@ -147,7 +148,7 @@ export function FolderPickerDialog({
             }}
           >
             <label className="field">
-              <span className="field__label">New folder name</span>
+              <span className="field__label">{t('New folder name')}</span>
               <input
                 ref={newRef}
                 className="input"
@@ -170,10 +171,10 @@ export function FolderPickerDialog({
                   setError(null);
                 }}
               >
-                Back
+                {t('Back')}
               </button>
               <button type="submit" className="button button--primary" disabled={!newName.trim()}>
-                Create and move
+                {t('Create and move')}
               </button>
             </div>
           </form>
@@ -192,7 +193,7 @@ export function FolderPickerDialog({
                 aria-activedescendant={
                   options[active] ? `${listBaseId}-${active}` : undefined
                 }
-                placeholder="Search folders…"
+                placeholder={t('Search folders…')}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -206,7 +207,7 @@ export function FolderPickerDialog({
               id={`${listBaseId}-list`}
               className="folder-picker__list"
               role="listbox"
-              aria-label="Folders"
+              aria-label={t('Folders')}
             >
               {options.map((option, index) => (
                 <li
@@ -233,7 +234,7 @@ export function FolderPickerDialog({
                 </li>
               ))}
               {options.length === 0 ? (
-                <li className="folder-picker__empty">No folders match “{query.trim()}”.</li>
+                <li className="folder-picker__empty">{t('No folders match “{query}”.', { query: query.trim() })}</li>
               ) : null}
             </ul>
 
@@ -243,7 +244,7 @@ export function FolderPickerDialog({
               onClick={() => setCreating(true)}
             >
               <Icon name="folderPlus" size={15} />
-              <span>New folder…</span>
+              <span>{t('New folder…')}</span>
             </button>
           </>
         )}

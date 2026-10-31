@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { estimateUsage } from '../lib/storage';
+import { useStore } from '../hooks/useStore';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
+import { t } from '../lib/i18n';
 import { AboutPanel } from './settings/AboutPanel';
 import { GroupsManager, SourcesManager } from './settings/CollectionManagers';
 import { PreferencesPanel } from './settings/PreferencesPanel';
@@ -48,6 +50,7 @@ export function SettingsDialog({
   hasFeeds,
   initialSection,
 }: SettingsDialogProps) {
+  useStore(); // language changes must re-render the nav labels
   const [usage] = useState(() => estimateUsage());
   const [section, setSection] = useState<SettingsSection>('preferences');
 
@@ -59,12 +62,12 @@ export function SettingsDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="Settings"
+      title={t('Settings')}
       size="lg"
       className="settings-dialog"
     >
       <div className="settings-layout">
-        <nav className="settings-nav" aria-label="Settings sections">
+        <nav className="settings-nav" aria-label={t('Settings sections')}>
           {SECTIONS.map((entry) => (
             <button
               key={entry.id}
@@ -74,7 +77,7 @@ export function SettingsDialog({
               onClick={() => setSection(entry.id)}
             >
               <Icon name={entry.icon} size={16} />
-              <span>{entry.label}</span>
+              <span>{t(entry.label)}</span>
             </button>
           ))}
         </nav>
@@ -84,10 +87,9 @@ export function SettingsDialog({
 
           {section === 'groups' && (
             <section className="settings-section">
-              <h2 className="settings-section__title">Groups</h2>
+              <h2 className="settings-section__title">{t('Groups')}</h2>
               <p className="settings-note settings-note--tight">
-                Select groups to merge them into another group or delete them together. Merging
-                keeps every source and only replaces the group label.
+                {t('Select groups to merge them into another group or delete them together. Merging keeps every source and only replaces the group label.')}
               </p>
               <GroupsManager idPrefix="settings" />
             </section>
@@ -95,10 +97,9 @@ export function SettingsDialog({
 
           {section === 'sources' && (
             <section className="settings-section">
-              <h2 className="settings-section__title">Sources</h2>
+              <h2 className="settings-section__title">{t('Sources')}</h2>
               <p className="settings-note settings-note--tight">
-                Select sources to move them into a group or delete them in bulk. Deleting a source
-                also removes its cached articles, read state and stars.
+                {t('Select sources to move them into a group or delete them in bulk. Deleting a source also removes its cached articles, read state and stars.')}
               </p>
               <SourcesManager idPrefix="settings" onImport={onImport} />
             </section>

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { t } from '../lib/i18n';
 
 interface Props {
   children: ReactNode;
@@ -30,10 +31,9 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="app-error" role="alert">
         <div className="app-error__panel">
-          <h1>Something went wrong</h1>
+          <h1>{t('Something went wrong')}</h1>
           <p>
-            The reader hit an unexpected UI error. Your subscriptions and read state are still
-            saved on this device.
+            {t('The reader hit an unexpected UI error. Your subscriptions and read state are still saved on this device.')}
           </p>
           <pre>{error.message}</pre>
           <button
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
             className="button button--primary"
             onClick={() => window.location.reload()}
           >
-            Reload
+            {t('Reload')}
           </button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { copyText } from '../lib/clipboard';
 import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
+import { t } from '../lib/i18n';
 
 const PAGE_SIZE = 30;
 
@@ -50,7 +51,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
     const starred = Boolean(state.starredIds[article.id]);
     const feed = feedsById.get(article.feedId);
     const items: ContextMenuItem[] = [
-      { icon: 'book', label: 'Open article', onSelect: () => openArticle(article) },
+      { icon: 'book', label: t('Open article'), onSelect: () => openArticle(article) },
     ];
     if (article.link) {
       items.push({
@@ -61,12 +62,12 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
     }
     items.push({
       icon: read ? 'eyeOff' : 'eye',
-      label: read ? 'Mark as unread' : 'Mark as read',
+      label: t(read ? 'Mark as unread' : 'Mark as read'),
       onSelect: () => store.toggleRead(article.id),
     });
     items.push({
       icon: starred ? 'starFilled' : 'star',
-      label: starred ? 'Unstar article' : 'Star article',
+      label: t(starred ? 'Unstar article' : 'Star article'),
       onSelect: () => store.toggleStar(article.id),
     });
     if (article.link) {
@@ -78,14 +79,14 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
     }
     items.push({
       icon: 'copy',
-      label: 'Copy title',
+      label: t('Copy title'),
       onSelect: () => void copyValue(article.title, 'Title'),
     });
     if (feed) {
       items.push({ type: 'divider' });
       items.push({
         icon: 'rss',
-        label: `Show only ${feed.title}`,
+        label: t('Show only {feed}', { feed: feed.title }),
         onSelect: () => store.setActiveFeed(feed.id),
       });
     }
@@ -95,7 +96,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
   if (!state.hydrated) {
     return (
       <div className={`list list--loading list--${state.prefs.viewMode}`} aria-busy="true" aria-live="polite">
-        <p className="sr-only">Loading feeds</p>
+        <p className="sr-only">{t('Loading feeds')}</p>
         <div className={`article-grid article-grid--${state.prefs.viewMode}`}>
           {Array.from({ length: 6 }).map((_, index) => (
             <div className="skeleton-card" key={index} />
@@ -109,14 +110,14 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
     return (
       <div className="empty-state">
         <Icon name="rss" size={40} />
-        <h2>Welcome</h2>
-        <p>Add an RSS or Atom feed URL to start reading. You can also import an OPML file.</p>
+        <h2>{t('Welcome')}</h2>
+        <p>{t('Add an RSS or Atom feed URL to start reading. You can also import an OPML file.')}</p>
         <div className="empty-state__actions">
           <button type="button" className="button button--primary" onClick={onAddFeed}>
-            Add feed
+            {t('Add feed')}
           </button>
           <button type="button" className="button button--ghost" onClick={onImport}>
-            Import OPML
+            {t('Import OPML')}
           </button>
         </div>
       </div>
@@ -132,7 +133,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
           <h2>{searching ? 'No matches' : 'Nothing here yet'}</h2>
           <p>
             {searching
-              ? 'No articles match your search in this view.'
+              ? t('No articles match your search in this view.')
               : 'Refresh your feeds, or check back later for new articles.'}
           </p>
         </div>
@@ -141,7 +142,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
   }
 
   return (
-    <div className={`list list--${state.prefs.viewMode}`} role="feed" aria-label="Articles">
+    <div className={`list list--${state.prefs.viewMode}`} role="feed" aria-label={t('Articles')}>
       <ul className={`article-grid article-grid--${state.prefs.viewMode}`}>
         {slice.map((article) => (
           <ArticleCard
@@ -159,11 +160,11 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
       {visible < articles.length ? (
         <div className="list__more" ref={sentinelRef}>
           <button type="button" className="button button--ghost" onClick={loadMore}>
-            Load more ({articles.length - visible} remaining)
+            {t('Load more ({count} remaining)', { count: articles.length - visible })}
           </button>
         </div>
       ) : (
-        <p className="list__end">End of list · {articles.length} articles</p>
+        <p className="list__end">{t('End of list · {count} articles', { count: articles.length })}</p>
       )}
 
       {menu && (
@@ -231,7 +232,7 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
         data-article-id={article.id}
         tabIndex={0}
         role="link"
-        aria-label={`${article.title}${read ? ' (read)' : ' (unread)'}`}
+        aria-label={`${article.title}${read ? ` (${t('read')})` : ` (${t('unread')})`}`}
         aria-current={active ? 'true' : undefined}
         onClick={open}
         onContextMenu={(event) => {
@@ -258,12 +259,12 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
               onError={() => setImgFailed(true)}
             />
             {videoEmbed && (
-              <span className="article-card__play" title="Video player" aria-hidden="true">
+              <span className="article-card__play" title={t('Video player')} aria-hidden="true">
                 <Icon name="play" size={18} />
               </span>
             )}
             {audioEmbed && (
-              <span className="article-card__play" title="Audio player" aria-hidden="true">
+              <span className="article-card__play" title={t('Audio player')} aria-hidden="true">
                 <Icon name="music" size={18} />
               </span>
             )}
@@ -285,14 +286,14 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
           {feed && <FeedIcon feed={feed} className="article-card__favicon" />}
           <span className="article-card__feed">{feed?.title ?? 'Feed'}</span>
           {starred && (
-            <span className="article-card__star" title="Starred" aria-label="Starred">
+            <span className="article-card__star" title={t('Starred')} aria-label={t('Starred')}>
               <Icon name="starFilled" size={12} />
             </span>
           )}
           {embed && (
             <span
               className="article-card__media-chip"
-              title={`Plays inline · ${embed.label}`}
+              title={`${t('Plays inline')} · ${embed.label}`}
               aria-label={embed.label}
             >
               <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={11} />
@@ -309,8 +310,8 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
               event.stopPropagation();
               store.toggleRead(article.id);
             }}
-            aria-label={read ? 'Mark as unread' : 'Mark as read'}
-            title={read ? 'Mark as unread' : 'Mark as read'}
+            aria-label={t(read ? 'Mark as unread' : 'Mark as read')}
+            title={t(read ? 'Mark as unread' : 'Mark as read')}
           >
             <Icon name={read ? 'eyeOff' : 'eye'} size={14} />
           </button>

@@ -3,6 +3,7 @@ import { store } from '../../store/store';
 import { useStore } from '../../hooks/useStore';
 import { Dropdown, type DropdownOption } from '../Dropdown';
 import { Icon } from '../Icon';
+import { t } from '../../lib/i18n';
 
 const SORT_OPTIONS: Array<DropdownOption<SidebarSort>> = [
   { value: 'name-asc', label: 'Name (A to Z)' },
@@ -39,8 +40,8 @@ export function SidebarToolbar({
         type="button"
         className="icon-button"
         onClick={onNewFolder}
-        aria-label="New folder"
-        title="New folder"
+        aria-label={t('New folder')}
+        title={t('New folder')}
       >
         <Icon name="folderPlus" size={16} />
       </button>
@@ -48,8 +49,8 @@ export function SidebarToolbar({
         type="button"
         className="icon-button"
         onClick={onAddFeed}
-        aria-label="New feed"
-        title="New feed"
+        aria-label={t('New feed')}
+        title={t('New feed')}
       >
         <Icon name="plus" size={16} />
       </button>
@@ -78,8 +79,8 @@ export function SidebarToolbar({
         type="button"
         className="icon-button"
         onClick={onReveal}
-        aria-label="Reveal active feed"
-        title="Reveal active feed"
+        aria-label={t('Reveal active feed')}
+        title={t('Reveal active feed')}
       >
         <Icon name="locate" size={15} />
       </button>

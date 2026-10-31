@@ -2,6 +2,7 @@ import { folderNameFromViewId } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { useVisibleArticles } from '../hooks/useVisibleArticles';
+import { plural, t } from '../lib/i18n';
 import { Icon } from './Icon';
 import { ViewMenu } from './ViewMenu';
 import { FilterMenu } from './FilterMenu';
@@ -18,7 +19,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
 
   const activeFeed = state.feeds.find((f) => f.id === state.ui.activeFeedId);
   const activeFolder = folderNameFromViewId(state.ui.activeFeedId);
-  const heading = activeFolder ?? activeFeed?.title ?? 'All articles';
+  const heading = activeFolder ?? activeFeed?.title ?? t('All articles');
 
   const visible = useVisibleArticles(state);
 
@@ -27,7 +28,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
 
   return (
     <header className="topbar">
-      <button type="button" className="icon-button topbar__menu" onClick={onMenu} aria-label="Show feed list">
+      <button type="button" className="icon-button topbar__menu" onClick={onMenu} aria-label={t('Show feed list')}>
         <Icon name="menu" />
       </button>
 
@@ -35,8 +36,8 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         type="button"
         className="icon-button topbar__sidebar-toggle"
         onClick={() => store.setPreferences({ sidebarCollapsed: !state.prefs.sidebarCollapsed })}
-        aria-label={state.prefs.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
-        title={state.prefs.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        aria-label={t(state.prefs.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar')}
+        title={t(state.prefs.sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar')}
       >
         <Icon name="panelLeft" size={17} />
       </button>
@@ -46,9 +47,9 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
           {heading}
         </h1>
         <p className="topbar__meta">
-          {visible.length} {visible.length === 1 ? 'article' : 'articles'}
-          {unreadInView > 0 ? ` · ${unreadInView} unread` : ''}
-          {state.ui.query && state.ui.searchAllFeeds ? ' · all feeds' : ''}
+          {plural(visible.length, '{count} article', '{count} articles')}
+          {unreadInView > 0 ? ` · ${plural(unreadInView, '{count} unread', '{count} unread')}` : ''}
+          {state.ui.query && state.ui.searchAllFeeds ? ` · ${t('all feeds')}` : ''}
         </p>
       </div>
 
@@ -58,8 +59,8 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
           className="icon-button"
           onClick={() => void store.refreshAll({ force: true })}
           disabled={anyLoading || !state.feeds.length}
-          aria-label="Refresh all feeds"
-          title="Refresh all feeds (R)"
+          aria-label={t('Refresh all feeds')}
+          title={`${t('Refresh all feeds')} (R)`}
         >
           <Icon name="refresh" className={anyLoading ? 'spin' : undefined} />
         </button>
@@ -75,8 +76,8 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
           type="button"
           className="icon-button"
           onClick={onSettings}
-          aria-label="Settings"
-          title="Settings"
+          aria-label={t('Settings')}
+          title={t('Settings')}
         >
           <Icon name="settings" size={17} />
         </button>

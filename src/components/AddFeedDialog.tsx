@@ -3,6 +3,7 @@ import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/portability';
 import { Dialog } from './Dialog';
+import { t } from '../lib/i18n';
 
 interface AddFeedDialogProps {
   open: boolean;
@@ -48,7 +49,7 @@ export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogPro
     if (busy) return;
     const url = raw.trim();
     if (!url) {
-      setError('Enter a feed URL.');
+      setError(t('Enter a feed URL.'));
       return;
     }
     setBusy(true);
@@ -70,11 +71,11 @@ export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogPro
     <Dialog
       open={open}
       onClose={onClose}
-      title="Add feed"
+      title={t('Add feed')}
       footer={
         <>
           <button type="button" className="button button--ghost" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             type="button"
@@ -82,7 +83,7 @@ export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogPro
             onClick={() => void submit(value)}
             disabled={busy || !value.trim()}
           >
-            {busy ? 'Checking…' : 'Subscribe'}
+            {busy ? t('Checking…') : t('Subscribe')}
           </button>
         </>
       }
@@ -94,7 +95,7 @@ export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogPro
         }}
       >
         <label className="field">
-          <span className="field__label">Feed URL</span>
+          <span className="field__label">{t('Feed URL')}</span>
           <input
             className="input"
             type="url"
@@ -119,17 +120,17 @@ export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogPro
           </p>
         ) : (
           <p className="field__hint" id="add-feed-hint">
-            Paste a feed URL, or a website address — the feed is discovered automatically.
+            {t('Paste a feed URL, or a website address — the feed is discovered automatically.')}
           </p>
         )}
 
         <label className="field">
-          <span className="field__label">Folder (optional)</span>
+          <span className="field__label">{t('Folder (optional)')}</span>
           <input
             className="input"
             type="text"
             list="feed-folder-options"
-            placeholder="e.g. Tech, News — or leave blank"
+            placeholder={t('e.g. Tech, News — or leave blank')}
             value={folder}
             onChange={(event) => setFolder(event.target.value)}
             spellCheck={false}
@@ -143,7 +144,7 @@ export function AddFeedDialog({ open, initialFolder, onClose }: AddFeedDialogPro
       </form>
 
       <div className="suggestions">
-        <p className="suggestions__title">Popular feeds</p>
+        <p className="suggestions__title">{t('Popular feeds')}</p>
         <div className="suggestions__list">
           {SUGGESTIONS.map((suggestion) => (
             <button

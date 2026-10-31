@@ -8,6 +8,7 @@ import { copyText } from '../lib/clipboard';
 import { thumbnailUrl, watchUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml, type MediaEmbed } from '../lib/embeds';
 import { cachedFullContent, fetchFullContent } from '../lib/fullContent';
+import { t } from '../lib/i18n';
 import { Icon } from './Icon';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 
@@ -64,8 +65,8 @@ export function ArticleDetail() {
       <div className="detail detail--empty">
         <div className="empty-state">
           <Icon name="book" size={38} />
-          <h2>No article selected</h2>
-          <p>Choose an article from the list to read it here.</p>
+          <h2>{t('No article selected')}</h2>
+          <p>{t('Choose an article from the list to read it here.')}</p>
         </div>
       </div>
     );
@@ -122,11 +123,14 @@ export function ArticleDetail() {
     setMenu({ kind: 'article', x: event.clientX, y: event.clientY });
   };
 
-  const copyValue = async (value: string, label: string) => {
+  const copyValue = async (value: string, labelKey: string) => {
+    const label = t(labelKey);
     const ok = await copyText(value);
     store.notify(
       ok ? 'success' : 'error',
-      ok ? `${label} copied to the clipboard` : `Could not copy ${label.toLowerCase()}`
+      ok
+        ? t('{label} copied to the clipboard', { label })
+        : t('Could not copy {label}', { label: label.toLowerCase() })
     );
   };
 
@@ -149,7 +153,7 @@ export function ArticleDetail() {
       }
       setFullContent(next);
       setShowFullContent(true);
-      store.notify('success', 'Loaded the original article content');
+      store.notify('success', t('Loaded the original article content'));
     } catch (err) {
       if (
         request !== fullContentRequest.current ||
@@ -159,7 +163,7 @@ export function ArticleDetail() {
       }
       store.notify(
         'error',
-        err instanceof Error ? err.message : 'Could not load the original article content.'
+        err instanceof Error ? err.message : t('Could not load the original article content.')
       );
     } finally {
       if (request === fullContentRequest.current) setLoadingFullContent(false);
@@ -177,12 +181,12 @@ export function ArticleDetail() {
         },
         {
           icon: 'copy',
-          label: 'Copy link address',
+          label: t('Copy link address'),
           onSelect: () => void copyValue(menu.href, 'Link'),
         },
         {
           icon: 'copy',
-          label: 'Copy link text',
+          label: t('Copy link text'),
           onSelect: () => void copyValue(menu.text, 'Link text'),
         },
       ];
@@ -197,30 +201,30 @@ export function ArticleDetail() {
       });
       items.push({
         icon: 'copy',
-        label: 'Copy article link',
+        label: t('Copy article link'),
         onSelect: () => void copyValue(article.link as string, 'Article link'),
       });
     }
     items.push({
       icon: 'copy',
-      label: 'Copy title',
+      label: t('Copy title'),
       onSelect: () => void copyValue(article.title, 'Title'),
     });
     items.push({
       icon: read ? 'eyeOff' : 'eye',
-      label: read ? 'Mark as unread' : 'Mark as read',
+      label: t(read ? 'Mark as unread' : 'Mark as read'),
       onSelect: () => store.toggleRead(article.id),
     });
     items.push({
       icon: starred ? 'starFilled' : 'star',
-      label: starred ? 'Unstar article' : 'Star article',
+      label: t(starred ? 'Unstar article' : 'Star article'),
       onSelect: () => store.toggleStar(article.id),
     });
     if (feed) {
       items.push({ type: 'divider' });
       items.push({
         icon: 'rss',
-        label: `Show only ${feed.title}`,
+        label: t('Show only {feed}', { feed: feed.title }),
         onSelect: () => store.setActiveFeed(feed.id),
       });
     }
@@ -236,19 +240,19 @@ export function ArticleDetail() {
             className={`ghost-button ${starred ? 'is-starred' : ''}`}
             onClick={() => store.toggleStar(article.id)}
             aria-pressed={starred}
-            aria-label={starred ? 'Unstar article' : 'Star article'}
+            aria-label={t(starred ? 'Unstar article' : 'Star article')}
           >
             <Icon name={starred ? 'starFilled' : 'star'} size={16} />
-            <span>{starred ? 'Starred' : 'Star'}</span>
+            <span>{t(starred ? 'Starred' : 'Star')}</span>
           </button>
           <button
             type="button"
             className="ghost-button"
             onClick={() => store.toggleRead(article.id)}
-            aria-label={read ? 'Mark as unread' : 'Mark as read'}
+            aria-label={t(read ? 'Mark as unread' : 'Mark as read')}
           >
             <Icon name={read ? 'eyeOff' : 'eye'} size={16} />
-            <span>{read ? 'Unread' : 'Read'}</span>
+            <span>{t(read ? 'Unread' : 'Read')}</span>
           </button>
 
           {article.link && (
@@ -256,10 +260,10 @@ export function ArticleDetail() {
               type="button"
               className="ghost-button"
               onClick={() => void copyValue(article.link as string, 'Article link')}
-              aria-label="Copy article link"
+              aria-label={t('Copy article link')}
             >
               <Icon name="copy" size={16} />
-              <span>Copy link</span>
+              <span>{t('Copy link')}</span>
             </button>
           )}
 
@@ -270,20 +274,20 @@ export function ArticleDetail() {
               onClick={() => void toggleFullContent()}
               disabled={loadingFullContent}
               aria-pressed={showFullContent}
-              aria-label={showFullContent ? 'Show feed content' : 'Load full article content'}
+              aria-label={t(showFullContent ? 'Show feed content' : 'Load full article content')}
               title={
                 showFullContent
-                  ? 'Show the feed\'s own content'
-                  : 'Fetch and extract the original article text'
+                  ? t('Show the feed\'s own content')
+                  : t('Fetch and extract the original article text')
               }
             >
               <Icon name="book" size={16} />
               <span>
                 {loadingFullContent
-                  ? 'Loading…'
+                  ? t('Loading…')
                   : showFullContent
-                    ? 'Full content'
-                    : 'Load full content'}
+                    ? t('Full content')
+                    : t('Load full content')}
               </span>
             </button>
           )}
@@ -294,10 +298,10 @@ export function ArticleDetail() {
               href={article.link}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Open original article in a new tab"
+              aria-label={t('Open original article in a new tab')}
             >
               <Icon name="external" size={16} />
-              <span>Original</span>
+              <span>{t('Original')}</span>
             </a>
           )}
         </div>
@@ -358,8 +362,8 @@ export function ArticleDetail() {
                 </div>
                 <div className="media-card__footer">
                   <span className="media-card__text">
-                    <strong>Watch on YouTube</strong>
-                    <span>Opens in a new tab</span>
+                    <strong>{t('Watch on YouTube')}</strong>
+                    <span>{t('Opens in a new tab')}</span>
                   </span>
                   <Icon name="external" size={16} />
                 </div>
@@ -375,8 +379,8 @@ export function ArticleDetail() {
                   <Icon name={embed.layout === 'video' ? 'play' : 'music'} size={18} />
                 </span>
                 <span className="media-card__compact-text">
-                  <strong>Play on {embed.label}</strong>
-                  <span>Opens in a new tab</span>
+                  <strong>{t('Play on {label}', { label: embed.label })}</strong>
+                  <span>{t('Opens in a new tab')}</span>
                 </span>
                 <Icon name="external" size={16} />
               </a>
@@ -393,7 +397,7 @@ export function ArticleDetail() {
                   className="ghost-button"
                   onClick={() => setInlineMedia(null)}
                 >
-                  Close player
+                  {t('Close player')}
                 </button>
               )}
             </div>
@@ -401,10 +405,10 @@ export function ArticleDetail() {
         )}
 
         {article.audioUrl && (
-          <section className="audio-card" aria-label="Episode audio">
+          <section className="audio-card" aria-label={t('Episode audio')}>
             <audio controls preload="none" src={article.audioUrl}>
               <a href={article.audioUrl} target="_blank" rel="noopener noreferrer">
-                Download the audio
+                {t('Download the audio')}
               </a>
             </audio>
           </section>
@@ -419,12 +423,12 @@ export function ArticleDetail() {
 
         {!html && !embed && !article.audioUrl && (
           <p className="detail__fallback">
-            This article has no readable content.
+            {t('This article has no readable content.')}
             {article.link && (
               <>
                 {' '}
                 <a href={article.link} target="_blank" rel="noopener noreferrer">
-                  Open the original
+                  {t('Open the original')}
                 </a>
                 .
               </>

@@ -10,6 +10,7 @@ import {
 import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/portability';
+import { t } from '../lib/i18n';
 import { isDesktopApp } from '../lib/desktop';
 import { copyText } from '../lib/clipboard';
 import { Icon } from './Icon';
@@ -234,10 +235,15 @@ export function Sidebar({
   const createFolder = (name: string): string | null => {
     const moveFeedId = moveAfterCreate;
     const result = store.createFolder(name);
-    if (!result.ok) return result.message ?? 'Could not create that folder.';
+    if (!result.ok) return result.message ?? t('Could not create that folder.');
 
     if (moveFeedId) store.moveFeedToFolder(moveFeedId, name);
-    store.notify('success', moveFeedId ? `Moved feed to “${name}”` : `Created folder “${name}”`);
+    store.notify(
+      'success',
+      moveFeedId
+        ? t('Moved feed to “{name}”', { name })
+        : t('Created folder “{name}”', { name })
+    );
     return null;
   };
 
@@ -280,22 +286,28 @@ export function Sidebar({
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const copyValue = async (value: string, label: string) => {
+  const copyValue = async (value: string, labelKey: string) => {
+    const label = t(labelKey);
     const ok = await copyText(value);
     store.notify(
       ok ? 'success' : 'error',
-      ok ? `${label} copied to the clipboard` : `Could not copy ${label.toLowerCase()}`
+      ok
+        ? t('{label} copied to the clipboard', { label })
+        : t('Could not copy {label}', { label: label.toLowerCase() })
     );
   };
 
   const setArticlesRead = (ids: string[], read: boolean, label: string) => {
     if (!ids.length) {
-      store.notify('info', 'No cached articles in this view yet.');
+      store.notify('info', t('No cached articles in this view yet.'));
       return;
     }
     if (read) store.markAllRead(ids);
     else store.markAllUnread(ids);
-    store.notify('success', `${read ? 'Marked all as read' : 'Marked all as unread'} — ${label}`);
+    store.notify(
+      'success',
+      t(read ? 'Marked all as read — {label}' : 'Marked all as unread — {label}', { label })
+    );
   };
 
   const feedContextItems = (feed: Feed): ContextMenuItem[] => {
@@ -306,27 +318,27 @@ export function Sidebar({
     return [
       {
         icon: 'external',
-        label: 'Open website',
+        label: t('Open website'),
         onSelect: () => openExternal(feed.siteUrl ?? feed.url),
       },
       {
         icon: 'refresh',
-        label: 'Refresh feed',
+        label: t('Refresh feed'),
         onSelect: () => {
           void store.refreshFeed(feed.id, { force: true });
-          store.notify('info', `Refreshing “${feed.title}”…`);
+          store.notify('info', t('Refreshing “{name}”…', { name: feed.title }));
         },
       },
       { type: 'divider' },
       {
         icon: 'eye',
-        label: 'Mark all as read',
+        label: t('Mark all as read'),
         disabled: unread === 0,
         onSelect: () => setArticlesRead(ids, true, feed.title),
       },
       {
         icon: 'eyeOff',
-        label: 'Mark all as unread',
+        label: t('Mark all as unread'),
         disabled: ids.length === 0,
         onSelect: () => setArticlesRead(ids, false, feed.title),
       },
@@ -334,7 +346,7 @@ export function Sidebar({
         ? [
             {
               icon: notificationsMuted ? 'bellOff' : 'bell',
-              label: notificationsMuted ? 'Unmute notifications' : 'Mute notifications',
+              label: t(notificationsMuted ? 'Unmute notifications' : 'Mute notifications'),
               onSelect: () => {
                 const nowMuted = store.toggleMutedFeed(feed.id);
                 store.notify(
@@ -347,16 +359,16 @@ export function Sidebar({
             } satisfies ContextMenuItem,
           ]
         : []),
-      { icon: 'copy', label: 'Copy feed URL', onSelect: () => void copyValue(feed.url, 'Feed URL') },
+      { icon: 'copy', label: t('Copy feed URL'), onSelect: () => void copyValue(feed.url, 'Feed URL') },
       { type: 'divider' },
-      { icon: 'pencil', label: 'Rename feed', onSelect: () => startRenameFeed(feed) },
+      { icon: 'pencil', label: t('Rename feed'), onSelect: () => startRenameFeed(feed) },
       // One searchable picker instead of one menu item per folder: the menu
       // stays short no matter how many folders exist.
-      { icon: 'folder', label: 'Move to folder…', onSelect: () => setMoveFeed(feed) },
-      { icon: 'folderPlus', label: 'New folder…', onSelect: () => beginCreateFolder(feed.id) },
+      { icon: 'folder', label: t('Move to folder…'), onSelect: () => setMoveFeed(feed) },
+      { icon: 'folderPlus', label: t('New folder…'), onSelect: () => beginCreateFolder(feed.id) },
       {
         icon: 'sliders',
-        label: 'Manage sources…',
+        label: t('Manage sources…'),
         onSelect: () => {
           onClose();
           onManageSources();
@@ -365,7 +377,7 @@ export function Sidebar({
       { type: 'divider' },
       {
         icon: 'trash',
-        label: 'Unsubscribe',
+        label: t('Unsubscribe'),
         danger: true,
         onSelect: () => onUnsubscribe(feed),
       },
@@ -378,12 +390,14 @@ export function Sidebar({
     if (!feed) return;
     const result = store.moveFeedToFolder(feed.id, folder);
     if (!result.ok) {
-      store.notify('error', result.message ?? 'Could not move that feed.');
+      store.notify('error', result.message ?? t('Could not move that feed.'));
       return;
     }
     store.notify(
       'success',
-      folder ? `Moved “${feed.title}” to “${folder}”` : `Removed “${feed.title}” from its folder`
+      folder
+        ? t('Moved “{name}” to “{folder}”', { name: feed.title, folder })
+        : t('Removed “{name}” from its folder', { name: feed.title })
     );
   };
 
@@ -396,10 +410,10 @@ export function Sidebar({
     const open = !isCollapsed(name);
 
     return [
-      { icon: 'folder', label: 'Open folder', onSelect: () => selectFolder(name) },
+      { icon: 'folder', label: t('Open folder'), onSelect: () => selectFolder(name) },
       {
         icon: 'plus',
-        label: 'Add feed to this folder',
+        label: t('Add feed to this folder'),
         onSelect: () => {
           onClose();
           onAddFeedInFolder(name);
@@ -408,32 +422,32 @@ export function Sidebar({
       { type: 'divider' },
       {
         icon: 'eye',
-        label: 'Mark folder as read',
+        label: t('Mark folder as read'),
         disabled: unread === 0,
         onSelect: () => setArticlesRead(ids, true, name),
       },
       {
         icon: 'eyeOff',
-        label: 'Mark folder as unread',
+        label: t('Mark folder as unread'),
         disabled: ids.length === 0,
         onSelect: () => setArticlesRead(ids, false, name),
       },
       {
         icon: 'copy',
-        label: 'Copy folder name',
+        label: t('Copy folder name'),
         onSelect: () => void copyValue(name, 'Folder name'),
       },
       { type: 'divider' },
-      { icon: 'pencil', label: 'Rename folder', onSelect: () => startRenameFolder(name) },
+      { icon: 'pencil', label: t('Rename folder'), onSelect: () => startRenameFolder(name) },
       {
         icon: open ? 'collapse' : 'expand',
         label: open ? 'Collapse folder' : 'Expand folder',
         onSelect: () => setFolderCollapsed(name, open),
       },
-      { icon: 'folderPlus', label: 'New folder…', onSelect: () => beginCreateFolder() },
+      { icon: 'folderPlus', label: t('New folder…'), onSelect: () => beginCreateFolder() },
       {
         icon: 'sliders',
-        label: 'Manage groups…',
+        label: t('Manage groups…'),
         onSelect: () => {
           onClose();
           onManageGroups();
@@ -442,7 +456,7 @@ export function Sidebar({
       { type: 'divider' },
       {
         icon: 'trash',
-        label: 'Delete folder',
+        label: t('Delete folder'),
         danger: true,
         onSelect: () => onRemoveFolder(name),
       },
@@ -454,23 +468,23 @@ export function Sidebar({
       .flat()
       .map((article) => article.id);
     return [
-      { icon: 'refresh', label: 'Refresh all feeds', onSelect: () => void store.refreshAll({ force: true }) },
+      { icon: 'refresh', label: t('Refresh all feeds'), onSelect: () => void store.refreshAll({ force: true }) },
       { type: 'divider' },
       {
         icon: 'eye',
-        label: 'Mark all as read',
+        label: t('Mark all as read'),
         disabled: totalUnread === 0,
         onSelect: () => setArticlesRead(ids, true, 'all articles'),
       },
       {
         icon: 'eyeOff',
-        label: 'Mark all as unread',
+        label: t('Mark all as unread'),
         disabled: ids.length === 0,
         onSelect: () => setArticlesRead(ids, false, 'all articles'),
       },
       { type: 'divider' },
-      { icon: 'folderPlus', label: 'New folder', onSelect: () => beginCreateFolder() },
-      { icon: 'plus', label: 'Add feed', onSelect: onAddFeed },
+      { icon: 'folderPlus', label: t('New folder'), onSelect: () => beginCreateFolder() },
+      { icon: 'plus', label: t('Add feed'), onSelect: onAddFeed },
     ];
   };
 
@@ -553,7 +567,7 @@ export function Sidebar({
   return (
     <nav
       className={`sidebar ${isResizing ? 'sidebar--resizing' : ''}`}
-      aria-label="Feeds"
+      aria-label={t('Feeds')}
       ref={navRef}
       style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
@@ -584,7 +598,7 @@ export function Sidebar({
               <span className="feed-icon feed-icon--all" aria-hidden="true">
                 <Icon name="inbox" size={16} />
               </span>
-              <span className="feed-row__title">All articles</span>
+              <span className="feed-row__title">{t('All articles')}</span>
               {totalUnread > 0 && <span className="badge">{totalUnread > 999 ? '999+' : totalUnread}</span>}
             </button>
           </li>
@@ -629,8 +643,8 @@ export function Sidebar({
                         className="folder-row__toggle"
                         onClick={() => setFolderCollapsed(folder.name, isOpen)}
                         aria-expanded={isOpen}
-                        aria-label={`${isOpen ? 'Collapse' : 'Expand'} folder ${folder.name}`}
-                        title={isOpen ? `Collapse “${folder.name}”` : `Expand “${folder.name}”`}
+                        aria-label={t(isOpen ? 'Collapse folder' : 'Expand folder') + ' ' + folder.name}
+                        title={isOpen ? t('Collapse folder') + ` “${folder.name}”` : t('Expand folder') + ` “${folder.name}”`}
                       >
                         <Icon
                           name="chevronDown"
@@ -643,7 +657,7 @@ export function Sidebar({
                         className={`feed-row folder-row ${isActive ? 'is-active' : ''}`}
                         onClick={() => openFolder(folder.name)}
                         aria-current={isActive ? 'page' : undefined}
-                        title={`Show articles from “${folder.name}”`}
+                        title={t('Show articles from “{name}”', { name: folder.name })}
                       >
                         <Icon name="folder" size={15} className="folder-row__icon" />
                         <span className="feed-row__title">{folder.name}</span>
@@ -663,8 +677,8 @@ export function Sidebar({
                           const { x, y } = menuAtButton(event);
                           setContextMenu({ type: 'folder', name: folder.name, x, y });
                         }}
-                        aria-label={`More actions for folder ${folder.name}`}
-                        title="More actions"
+                        aria-label={`${t('More actions')} · ${folder.name}`}
+                        title={t('More actions')}
                       >
                         <Icon name="more" size={15} />
                       </button>
@@ -685,9 +699,9 @@ export function Sidebar({
 
           {state.feeds.length === 0 && state.hydrated && (
             <li className="feed-list__empty">
-              <p>No feeds yet.</p>
+              <p>{t('No feeds yet.')}</p>
               <button type="button" className="link-button" onClick={onAddFeed}>
-                Add your first feed
+                {t('Add your first feed')}
               </button>
             </li>
           )}
@@ -699,8 +713,8 @@ export function Sidebar({
         onMouseDown={startResize}
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize sidebar"
-        title="Drag to resize"
+        aria-label={t('Resize sidebar')}
+        title={t('Drag to resize')}
       />
 
       <CreateFolderDialog
@@ -712,7 +726,7 @@ export function Sidebar({
 
       <FolderPickerDialog
         open={moveFeed !== null}
-        title={moveFeed ? `Move “${moveFeed.title}” to…` : 'Move to folder'}
+        title={moveFeed ? t('Move “{name}” to…', { name: moveFeed.title }) : t('Move to folder')}
         folders={folders.map((folder) => folder.name)}
         current={moveFeed?.folder?.trim() || undefined}
         onClose={() => setMoveFeed(null)}

@@ -3,6 +3,7 @@
  * backup adds read state, preferences and cached articles.
  */
 import type { Feed } from '../../types';
+import { t } from '../i18n';
 import {
   byName,
   collectFolderNames,
@@ -82,11 +83,11 @@ export function parseOpml(text: string): ImportResult {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   const parseError = doc.querySelector('parsererror');
   if (parseError) {
-    throw new ImportError('That file is not valid XML/OPML.');
+    throw new ImportError(t('That file is not valid XML/OPML.'));
   }
   const root = doc.documentElement;
   if (!root || root.localName.toLowerCase() !== 'opml') {
-    throw new ImportError('That XML file is not an OPML document.');
+    throw new ImportError(t('That XML file is not an OPML document.'));
   }
 
   const warnings: string[] = [];
@@ -96,7 +97,7 @@ export function parseOpml(text: string): ImportResult {
 
   const outlines = Array.from(doc.querySelectorAll('outline'));
   if (!outlines.length) {
-    throw new ImportError('The OPML file contains no subscriptions.');
+    throw new ImportError(t('The OPML file contains no subscriptions.'));
   }
 
   /**
@@ -150,7 +151,7 @@ export function parseOpml(text: string): ImportResult {
   walk(body, []);
 
   if (!feeds.length && !folderNames.size) {
-    throw new ImportError('No valid feed URLs or folders were found in that OPML file.');
+    throw new ImportError(t('No valid feed URLs or folders were found in that OPML file.'));
   }
   return {
     feeds: sortImportedFeeds(feeds),

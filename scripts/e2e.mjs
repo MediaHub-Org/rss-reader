@@ -33,7 +33,10 @@ const check = (name, condition, detail = '') => {
 };
 
 const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 900 },
+  locale: 'en-US',
+});
 await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
 const page = await context.newPage();
 
@@ -547,6 +550,23 @@ try {
   check('Density preference applied', density === 'compact', density || '');
   check('Font size preference applied', fontSize === 'large', fontSize || '');
   check('Reading typeface preference applied', readerFont === 'serif', readerFont || '');
+
+  /* language switch (Spanish) */
+  await page.click('[role="dialog"] .segmented__option:has-text("Español")');
+  await page.waitForFunction(() =>
+    document.querySelector('.settings-nav')?.textContent?.includes('Preferencias')
+  );
+  const spanishNav = (await page.textContent('.settings-nav'))?.replace(/\s+/g, ' ').trim();
+  const spanishHeading = (await page.textContent('.topbar__heading'))?.trim();
+  check(
+    'Language switch translates the app chrome',
+    /Preferencias/.test(spanishNav || '') && spanishHeading === 'Todos los artículos',
+    `${spanishNav} · ${spanishHeading}`
+  );
+  await page.click('[role="dialog"] .segmented__option:has-text("English")');
+  await page.waitForFunction(() =>
+    document.querySelector('.settings-nav')?.textContent?.includes('Preferences')
+  );
 
   /* Inline-media switch defaults to true; toggle off and back on */
   await page.click('[role="dialog"] .settings-nav__item:has-text("Preferences")');

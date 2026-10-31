@@ -7,6 +7,7 @@ import { formatBytes } from '../../lib/format';
 import { isDesktopApp } from '../../lib/desktop';
 import { Dropdown, type DropdownOption } from '../Dropdown';
 import { Icon } from '../Icon';
+import { t } from '../../lib/i18n';
 
 interface ServicesPanelProps {
   onImport: () => void;
@@ -66,11 +67,12 @@ const SYNC_SERVICES: Array<{
   },
 ];
 
-const SYNC_OPTIONS: Array<DropdownOption<SyncService>> = SYNC_SERVICES.map((entry) => ({
-  value: entry.value,
-  label: entry.label,
-  hint: entry.hint,
-}));
+const syncOptions = (): Array<DropdownOption<SyncService>> =>
+  SYNC_SERVICES.map((entry) => ({
+    value: entry.value,
+    label: t(entry.label),
+    hint: t(entry.hint),
+  }));
 
 export function ServicesPanel({
   onImport,
@@ -97,19 +99,18 @@ export function ServicesPanel({
   return (
     <>
       <section className="settings-section">
-        <h2 className="settings-section__title">Sync service</h2>
+        <h2 className="settings-section__title">{t('Sync service')}</h2>
         <p className="settings-note settings-note--tight">
-          Choose an external reader service or stay local. Connection details are stored on this
-          device only and are never included in backups.
+          {t('Choose an external reader service or stay local. Connection details are stored on this device only and are never included in backups.')}
         </p>
         <div className="setting-row">
           <span className="setting-row__label">
-            Service
-            <small>{service?.hint}</small>
+            {t('Service')}
+            <small>{service ? t(service.hint) : ''}</small>
           </span>
           <Dropdown<SyncService>
             value={state.prefs.syncService}
-            options={SYNC_OPTIONS}
+            options={syncOptions()}
             onChange={(syncService) => store.setPreferences({ syncService })}
             label="Sync service"
             className="settings-sync-select"
@@ -120,7 +121,7 @@ export function ServicesPanel({
           <>
             <div className="settings-sync-fields">
               <label className="field">
-                <span className="field__label">Server URL</span>
+                <span className="field__label">{t('Server URL')}</span>
                 <input
                   className="input"
                   type="url"
@@ -133,7 +134,7 @@ export function ServicesPanel({
                 />
               </label>
               <label className="field">
-                <span className="field__label">Username</span>
+                <span className="field__label">{t('Username')}</span>
                 <input
                   className="input"
                   autoComplete="username"
@@ -142,7 +143,7 @@ export function ServicesPanel({
                 />
               </label>
               <label className="field">
-                <span className="field__label">Password / API token</span>
+                <span className="field__label">{t('Password / API token')}</span>
                 <input
                   className="input"
                   type="password"
@@ -153,27 +154,22 @@ export function ServicesPanel({
               </label>
             </div>
             <p className="settings-note settings-note--tight">
-              Server and username are saved locally; the password/token is kept only for this
-              session. Two-way sync is not enabled in this build yet; use OPML or a full backup to
-              move subscriptions today.
+              {t('Server and username are saved locally; the password/token is kept only for this session. Two-way sync is not enabled in this build yet; use OPML or a full backup to move subscriptions today.')}
             </p>
           </>
         )}
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-section__title">YouTube Data API</h2>
+        <h2 className="settings-section__title">{t('YouTube Data API')}</h2>
         <p className="settings-note settings-note--tight">
-          Optional. Lets a channel/playlist feed pull up to 50 recent videos through the official
-          API instead of the ~15 YouTube&apos;s own public RSS feed caps at — from a Google Cloud
-          project with the YouTube Data API v3 enabled. Stored on this device only and never
-          included in backups.
+          {t('Optional. Lets a channel/playlist feed pull up to 50 recent videos through the official API instead of the ~15 YouTube’s own public RSS feed caps at — from a Google Cloud project with the YouTube Data API v3 enabled. Stored on this device only and never included in backups.')}
         </p>
         <div className="setting-key-row">
           <input
             className="input"
             type={showApiKey ? 'text' : 'password'}
-            placeholder="Paste your API key"
+            placeholder={t('Paste your API key')}
             autoComplete="off"
             spellCheck={false}
             value={state.prefs.youtubeApiKey}
@@ -183,8 +179,8 @@ export function ServicesPanel({
             type="button"
             className="icon-button"
             onClick={() => setShowApiKey((value) => !value)}
-            aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
-            title={showApiKey ? 'Hide API key' : 'Show API key'}
+            aria-label={t(showApiKey ? 'Hide API key' : 'Show API key')}
+            title={t(showApiKey ? 'Hide API key' : 'Show API key')}
           >
             <Icon name={showApiKey ? 'eyeOff' : 'eye'} size={16} />
           </button>
@@ -192,15 +188,14 @@ export function ServicesPanel({
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-section__title">Subscriptions & data</h2>
+        <h2 className="settings-section__title">{t('Subscriptions & data')}</h2>
         <p className="settings-note settings-note--tight">
-          Import or export OPML, or move everything — subscriptions, groups, read/starred state,
-          rules, preferences and cached articles — with a full JSON backup.
+          {t('Import or export OPML, or move everything — subscriptions, groups, read/starred state, rules, preferences and cached articles — with a full JSON backup.')}
         </p>
         <div className="settings-data-actions">
           <button type="button" className="button button--ghost" onClick={onImport}>
             <Icon name="upload" size={15} />
-            <span>Import</span>
+            <span>{t('Import')}</span>
           </button>
           <button
             type="button"
@@ -209,27 +204,26 @@ export function ServicesPanel({
             disabled={!hasFeeds}
           >
             <Icon name="download" size={15} />
-            <span>Export</span>
+            <span>{t('Export')}</span>
           </button>
           <button type="button" className="button button--ghost" onClick={onBackups}>
             <Icon name="refresh" size={15} />
-            <span>Backups</span>
+            <span>{t('Backups')}</span>
           </button>
         </div>
         <div className="setting-row">
           <span className="setting-row__label">
-            Local storage
+            {t('Local storage')}
             <small>
-              {formatBytes(usage.used)} used · subscriptions, read state, rules and article cache
-              stay on this device
+              {t('{size} used · subscriptions, read state, rules and article cache stay on this device', { size: formatBytes(usage.used) })}
             </small>
           </span>
         </div>
         <div className="setting-row">
           <span className="setting-row__label">
-            Clear cached articles
+            {t('Clear cached articles')}
             <small>
-              Removes downloaded content. Subscriptions, groups, rules and read state are kept.
+              {t('Removes downloaded content. Subscriptions, groups, rules and read state are kept.')}
             </small>
           </span>
           <button
@@ -238,13 +232,13 @@ export function ServicesPanel({
             onClick={() => void clearCache()}
             disabled={clearing}
           >
-            {clearing ? 'Clearing…' : 'Clear cache'}
+            {clearing ? t('Clearing…') : t('Clear cache')}
           </button>
         </div>
       </section>
 
       <section className="settings-section">
-        <h2 className="settings-section__title">Feed fetching</h2>
+        <h2 className="settings-section__title">{t('Feed fetching')}</h2>
         <p className="settings-note settings-note--tight">
           {desktop
             ? 'The desktop app fetches feeds natively with ETag/Last-Modified validators and retry backoff.'

@@ -5,6 +5,7 @@ import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { countLabel } from '../lib/format';
 import { articlesToMarkRead } from '../lib/markRead';
 import { Icon } from './Icon';
+import { t } from '../lib/i18n';
 
 const OPTIONS: Array<{ days: number; label: string }> = [
   { days: 0, label: 'All articles' },
@@ -39,8 +40,8 @@ export function MarkReadMenu() {
         className="icon-button"
         onClick={() => mark(0)}
         disabled={!unread}
-        aria-label="Mark all visible articles as read"
-        title="Mark all visible as read"
+        aria-label={t('Mark all visible articles as read')}
+        title={t('Mark all visible as read')}
       >
         <Icon name="check" />
       </button>
@@ -51,15 +52,15 @@ export function MarkReadMenu() {
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Mark as read options"
-        title="Mark as read…"
+        aria-label={t('Mark as read options')}
+        title={t('Mark as read…')}
       >
         <Icon name="chevronDown" size={13} />
       </button>
 
       {open && (
-        <div className="view-menu mark-read__menu" role="menu" aria-label="Mark as read">
-          <p className="view-menu__section">Mark as read</p>
+        <div className="view-menu mark-read__menu" role="menu" aria-label={t('Mark as read')}>
+          <p className="view-menu__section">{t('Mark as read')}</p>
           {OPTIONS.map((option) => (
             <button
               key={option.days}
@@ -68,7 +69,7 @@ export function MarkReadMenu() {
               className="view-menu__item view-menu__item--plain"
               onClick={() => mark(option.days)}
             >
-              {option.label}
+              {t(option.label)}
             </button>
           ))}
         </div>

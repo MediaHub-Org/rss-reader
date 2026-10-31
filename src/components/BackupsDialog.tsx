@@ -14,6 +14,7 @@ import { formatBytes, formatDate } from '../lib/format';
 import { store } from '../store/store';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Dialog } from './Dialog';
+import { t } from '../lib/i18n';
 
 interface BackupsDialogProps {
   open: boolean;
@@ -89,8 +90,8 @@ export function BackupsDialog({ open, onClose }: BackupsDialogProps) {
         err instanceof ImportError
           ? err.message
           : kind === 'restore'
-            ? 'Could not restore that backup.'
-            : 'Could not delete that backup.'
+            ? t('Could not restore that backup.')
+            : t('Could not delete that backup.')
       );
     } finally {
       setBusy(null);
@@ -102,14 +103,14 @@ export function BackupsDialog({ open, onClose }: BackupsDialogProps) {
     const when = formatDate(confirm.item.createdAt);
     return confirm.kind === 'restore'
       ? {
-          title: 'Restore this backup?',
+          title: t('Restore this backup?'),
           message: `This replaces your current feeds, read state, preferences and cached articles with the snapshot from ${when}. This cannot be undone.`,
-          label: 'Restore',
+          label: t('Restore'),
         }
       : {
-          title: 'Delete this backup?',
+          title: t('Delete this backup?'),
           message: `The snapshot from ${when} will be removed from disk. This cannot be undone.`,
-          label: 'Delete',
+          label: t('Delete'),
         };
   })();
 
@@ -118,13 +119,13 @@ export function BackupsDialog({ open, onClose }: BackupsDialogProps) {
       <Dialog
         open={open}
         onClose={onClose}
-        title="Backups"
+        title={t('Backups')}
         size="md"
         suspended={confirm !== null}
         footer={
           <>
             <button type="button" className="button button--ghost" onClick={onClose} disabled={busy !== null}>
-              Close
+              {t('Close')}
             </button>
             <button
               type="button"
@@ -132,21 +133,19 @@ export function BackupsDialog({ open, onClose }: BackupsDialogProps) {
               onClick={() => void backupNow()}
               disabled={!available || busy !== null}
             >
-              {busy === 'backup' ? 'Backing up…' : 'Back up now'}
+              {busy === 'backup' ? t('Backing up…') : t('Back up now')}
             </button>
           </>
         }
       >
         {!available ? (
           <p className="field__hint">
-            Automatic snapshots are part of the desktop app. In the browser/PWA, use
-            <strong> Export full backup</strong> to save one manually.
+            {t('Automatic snapshots are part of the desktop app. In the browser/PWA, use Export full backup in the Data dialog to save one manually.')}
           </p>
         ) : (
           <>
             <p className="field__hint">
-              The desktop app keeps the last <strong>7 daily snapshots</strong> — subscriptions,
-              read state, preferences and cached articles. They stay on this device.
+              {t('The desktop app keeps the last 7 daily snapshots — subscriptions, read state, preferences and cached articles. They stay on this device.')}
             </p>
             {list.directory && (
               <p className="backup-path">
@@ -161,9 +160,9 @@ export function BackupsDialog({ open, onClose }: BackupsDialogProps) {
             )}
 
             {loading ? (
-              <p className="backup-empty">Loading backups…</p>
+              <p className="backup-empty">{t('Loading backups…')}</p>
             ) : list.items.length === 0 ? (
-              <p className="backup-empty">No snapshots yet.</p>
+              <p className="backup-empty">{t('No snapshots yet.')}</p>
             ) : (
               <ul className="backup-list">
                 {list.items.map((item) => (
@@ -179,7 +178,7 @@ export function BackupsDialog({ open, onClose }: BackupsDialogProps) {
                         onClick={() => setConfirm({ kind: 'restore', item })}
                         disabled={busy !== null}
                       >
-                        Restore
+                        {t('Restore')}
                       </button>
                       <button
                         type="button"
@@ -188,7 +187,7 @@ export function BackupsDialog({ open, onClose }: BackupsDialogProps) {
                         disabled={busy !== null}
                         aria-label={`Delete backup from ${formatDate(item.createdAt)}`}
                       >
-                        Delete
+                        {t('Delete')}
                       </button>
                     </div>
                   </li>

@@ -29,6 +29,8 @@ export function isHttpUrl(value: string): boolean {
   }
 }
 
+import { t } from './i18n';
+
 export type UrlValidation = { ok: true; url: string } | { ok: false; error: string };
 
 /**
@@ -37,7 +39,7 @@ export type UrlValidation = { ok: true; url: string } | { ok: false; error: stri
  */
 export function normalizeFeedUrl(raw: string): UrlValidation {
   const value = raw.trim();
-  if (!value) return { ok: false, error: 'Enter a feed URL to subscribe.' };
+  if (!value) return { ok: false, error: t('Enter a feed URL to subscribe.') };
 
   let candidate = value;
   if (!/^[a-z][a-z0-9+.-]*:/i.test(candidate)) candidate = `https://${candidate}`;
@@ -46,16 +48,16 @@ export function normalizeFeedUrl(raw: string): UrlValidation {
   try {
     url = new URL(candidate);
   } catch {
-    return { ok: false, error: 'That does not look like a valid URL.' };
+    return { ok: false, error: t('That does not look like a valid URL.') };
   }
 
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    return { ok: false, error: 'Feed URLs must start with http:// or https://.' };
+    return { ok: false, error: t('Feed URLs must start with http:// or https://.') };
   }
   if (!url.hostname || url.hostname === '0.0.0.0') {
-    return { ok: false, error: 'That host name is not valid.' };
+    return { ok: false, error: t('That host name is not valid.') };
   }
-  if (/\s/.test(value)) return { ok: false, error: 'URLs cannot contain spaces.' };
+  if (/\s/.test(value)) return { ok: false, error: t('URLs cannot contain spaces.') };
 
   return { ok: true, url: url.toString() };
 }

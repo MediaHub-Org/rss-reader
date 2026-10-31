@@ -19,6 +19,7 @@ import type { DataTab } from './components/DataDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Toasts } from './components/Toasts';
 import { AUTO_BACKUP_CHECK_MS, maybeAutoBackup } from './lib/backups';
+import { t } from './lib/i18n';
 
 const SettingsDialog = lazy(() =>
   import('./components/SettingsDialog').then((module) => ({ default: module.SettingsDialog }))
@@ -279,7 +280,7 @@ export default function App() {
       data-article-open={Boolean(state.ui.activeArticleId)}
     >
       <a className="skip-link" href="#main-content">
-        Skip to content
+        {t('Skip to content')}
       </a>
 
       <div className="app__body">
@@ -379,9 +380,12 @@ export default function App() {
 
       <ConfirmDialog
         open={Boolean(confirmFeed)}
-        title="Unsubscribe?"
-        message={`“${confirmFeed?.title ?? ''}” will be removed from your feed list along with its cached articles. Your read history for other feeds is unaffected.`}
-        confirmLabel="Unsubscribe"
+        title={t('Unsubscribe?')}
+        message={t(
+          '“{name}” will be removed from your feed list along with its cached articles. Your read history for other feeds is unaffected.',
+          { name: confirmFeed?.title ?? '' }
+        )}
+        confirmLabel={t('Unsubscribe')}
         onConfirm={() => {
           if (confirmFeed) store.removeFeed(confirmFeed.id);
           setConfirmFeed(null);
@@ -391,9 +395,12 @@ export default function App() {
 
       <ConfirmDialog
         open={Boolean(confirmFolder)}
-        title="Delete folder?"
-        message={`Folder “${confirmFolder ?? ''}” and all feeds inside it will be removed along with their cached articles.`}
-        confirmLabel="Delete folder"
+        title={t('Delete folder?')}
+        message={t(
+          'Folder “{name}” and all feeds inside it will be removed along with their cached articles.',
+          { name: confirmFolder ?? '' }
+        )}
+        confirmLabel={t('Delete folder')}
         onConfirm={() => {
           if (confirmFolder) store.removeFolder(confirmFolder);
           setConfirmFolder(null);

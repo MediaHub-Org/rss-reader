@@ -23,6 +23,7 @@ import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { queueNewArticles } from '../lib/notifications';
 import { articleMatches } from '../lib/search';
 import { clampFutureDates } from '../lib/articleDates';
+import { plural, resolveLocale, setLocale, t } from '../lib/i18n';
 import { applyRulesToArticles, idMap } from '../lib/rules';
 import { normalizeFeedUrl } from '../lib/url';
 import {
@@ -146,6 +147,7 @@ export class Store {
     root.dataset.density = prefs.density;
     root.dataset.fontSize = prefs.fontSize;
     root.dataset.readerFont = prefs.readerFont;
+    setLocale(resolveLocale(prefs.language));
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
 
     if (prefs.theme === 'system' && !this.mediaQuery && typeof window !== 'undefined') {
@@ -232,7 +234,7 @@ export class Store {
     const url = validated.url;
     const feedId = feedIdForUrl(url);
     if (this.state.feeds.some((f) => f.id === feedId || f.url === url)) {
-      return { ok: false, message: 'You are already subscribed to that feed.' };
+      return { ok: false, message: t('You are already subscribed to that feed.') };
     }
 
     const folderName = folder?.trim() || undefined;
@@ -297,12 +299,12 @@ export class Store {
       if (finalUrl !== url) this.trackAlternate(url, finalUrl);
       this.schedulePersist();
       void saveArticles(feedId, parsed.articles);
-      return { ok: true, message: `Subscribed to “${feed.title}”` };
+      return { ok: true, message: t('Subscribed to “{name}”', { name: feed.title }) };
     } catch (err) {
       const message =
         err instanceof FeedParseError || err instanceof FeedFetchError
           ? err.message
-          : 'Something went wrong while reading that feed.';
+          : t('Something went wrong while reading that feed.');
       // Roll back: a feed that never loaded has no place in the list.
       this.update({
         feeds: this.state.feeds.filter((f) => f.id !== feedId),
@@ -437,7 +439,7 @@ export class Store {
       const message =
         err instanceof FeedFetchError || err instanceof FeedParseError
           ? err.message
-          : 'Refresh failed.';
+          : t('Refresh failed.');
       const current = this.state.feeds.find((f) => f.id === feedId);
       const failures = (current?.failures ?? 0) + 1;
       const nextRetryAt = Date.now() + retryDelayMs(failures);
@@ -489,14 +491,14 @@ export class Store {
       }
     );
     await Promise.all(workers);
-    if (!options.silent) this.notify('success', 'Feeds updated');
+    if (!options.silent) this.notify('success', t('Feeds updated'));
   }
 
   removeFeed(feedId: string): void {
     const feed = this.state.feeds.find((f) => f.id === feedId);
     if (!feed) return;
     this.removeFeeds([feedId], { silent: true });
-    this.notify('success', `Unsubscribed from “${feed.title}”`);
+    this.notify('success', t('Unsubscribed from “{name}”', { name: feed.title }));
   }
 
   /**
@@ -565,7 +567,7 @@ export class Store {
     if (!options.silent) {
       this.notify(
         'success',
-        `Removed ${removedCount} feed${removedCount === 1 ? '' : 's'}`
+        plural(removedCount, 'Removed {count} feed', 'Removed {count} feeds')
       );
     }
     return removedCount;
@@ -579,10 +581,10 @@ export class Store {
    */
   createFolder(name: string): ActionResult {
     const target = name.trim();
-    if (!target) return { ok: false, message: 'Folder name cannot be empty.' };
+    if (!target) return { ok: false, message: t('Folder name cannot be empty.') };
     const exists =
       this.state.folders.includes(target) || this.state.feeds.some((f) => f.folder?.trim() === target);
-    if (exists) return { ok: false, message: `A folder named "${target}" already exists.` };
+    if (exists) return { ok: false, message: t('A folder named “{name}” already exists.', { name: target }) };
 
     this.update({ folders: [...this.state.folders, target] });
     this.schedulePersist();
@@ -624,8 +626,8 @@ export class Store {
       this.notify(
         'success',
         removed > 0
-          ? `Removed folder “${target}” (${removed} feed${removed === 1 ? '' : 's'})`
-          : `Removed folder “${target}”`
+          ? t('Removed folder “{name}” ({count} feeds)', { name: target, count: removed })
+          : t('Removed folder “{name}”', { name: target })
       );
     }
     return removed;
@@ -634,9 +636,9 @@ export class Store {
   /** Rename a feed's display title (its id stays derived from the feed URL). */
   renameFeed(feedId: string, title: string): ActionResult {
     const next = title.trim();
-    if (!next) return { ok: false, message: 'Feed name cannot be empty.' };
+    if (!next) return { ok: false, message: t('Feed name cannot be empty.') };
     const feed = this.state.feeds.find((f) => f.id === feedId);
-    if (!feed) return { ok: false, message: 'Feed not found.' };
+    if (!feed) return { ok: false, message: t('Feed not found.') };
     if (next === feed.title) return { ok: true };
 
     this.update({
@@ -649,7 +651,7 @@ export class Store {
   /** Move a feed into a different folder, or ungroup it with `folder: undefined`. */
   moveFeedToFolder(feedId: string, folder: string | undefined): ActionResult {
     const feed = this.state.feeds.find((f) => f.id === feedId);
-    if (!feed) return { ok: false, message: 'Feed not found.' };
+    if (!feed) return { ok: false, message: t('Feed not found.') };
     const next = folder?.trim() || undefined;
     if ((feed.folder?.trim() || undefined) === next) return { ok: true };
 
@@ -749,12 +751,15 @@ export class Store {
       this.notify(
         'success',
         next
-          ? `Merged ${folderCount} folder${folderCount === 1 ? '' : 's'} into “${next}” (${
-              moved === 1 ? '1 feed' : `${moved} feeds`
-            })`
-          : `Removed ${folderCount} folder${folderCount === 1 ? '' : 's'}; ${moved} feed${
-              moved === 1 ? '' : 's'
-            } now ungrouped`
+          ? t('Merged {count} folders into “{name}” ({feeds})', {
+              count: folderCount,
+              name: next,
+              feeds: plural(moved, '{count} feed', '{count} feeds'),
+            })
+          : t('Removed {count} folders; {feeds} now ungrouped', {
+              count: folderCount,
+              feeds: plural(moved, '{count} feed', '{count} feeds'),
+            })
       );
     }
 
@@ -806,9 +811,8 @@ export class Store {
     if (folderCount) {
       this.notify(
         'success',
-        `Removed ${folderCount} folder${folderCount === 1 ? '' : 's'}${
-          removed ? ` (${removed} feed${removed === 1 ? '' : 's'})` : ''
-        }`
+        t('Removed {count} folders', { count: folderCount }) +
+          (removed ? ` (${plural(removed, '{count} feed', '{count} feeds')})` : '')
       );
     }
 
@@ -823,11 +827,11 @@ export class Store {
   renameFolder(oldName: string, newName: string): ActionResult {
     const from = oldName.trim();
     const to = newName.trim();
-    if (!to) return { ok: false, message: 'Folder name cannot be empty.' };
+    if (!to) return { ok: false, message: t('Folder name cannot be empty.') };
     if (to === from) return { ok: true };
     const collision =
       this.state.folders.includes(to) || this.state.feeds.some((f) => f.folder?.trim() === to);
-    if (collision) return { ok: false, message: `A folder named "${to}" already exists.` };
+    if (collision) return { ok: false, message: t('A folder named “{name}” already exists.', { name: to }) };
 
     const collapsed = this.state.prefs.collapsedFolders;
     const nextCollapsed = collapsed.includes(from)

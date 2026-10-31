@@ -8,7 +8,7 @@
 import type { ImportResult } from './portability';
 import { collectFolderNames } from './portability';
 import { store } from '../store/store';
-import { countLabel } from './format';
+import { plural, t } from './i18n';
 
 export interface AppliedImport {
   message: string;
@@ -68,20 +68,33 @@ export async function applyImport(
   if (pending.preferences) store.setPreferences(pending.preferences);
 
   const parts: string[] = [];
-  if (added) parts.push(`${replace ? 'Restored' : 'Imported'} ${countLabel(added, 'feed')}`);
-  if (updated) parts.push(`${added ? 'updated' : 'Updated'} ${updated}`);
-  if (removed) parts.push(`removed ${countLabel(removed, 'feed')}`);
+  if (added)
+    parts.push(
+      t(replace ? 'Restored {label}' : 'Imported {label}', {
+        label: plural(added, '{count} feed', '{count} feeds'),
+      })
+    );
+  if (updated) parts.push(t(added ? 'updated {count}' : 'Updated {count}', { count: updated }));
+  if (removed)
+    parts.push(t('removed {label}', { label: plural(removed, '{count} feed', '{count} feeds') }));
   if (addedFolders.length) {
-    parts.push(`added ${countLabel(addedFolders.length, 'folder')}`);
+    parts.push(
+      t('added {label}', {
+        label: plural(addedFolders.length, '{count} folder', '{count} folders'),
+      })
+    );
   }
-  if (skipped) parts.push(`skipped ${skipped}`);
+  if (skipped) parts.push(t('skipped {count}', { count: skipped }));
 
   const restored: string[] = [];
-  if (readCount) restored.push(countLabel(readCount, 'read entry', 'read entries'));
-  if (starredCount) restored.push(countLabel(starredCount, 'starred article'));
-  if (ruleCount) restored.push(countLabel(ruleCount, 'rule'));
-  if (articleCount) restored.push(countLabel(articleCount, 'cached article'));
-  if (pending.preferences) restored.push('preferences');
+  if (readCount)
+    restored.push(plural(readCount, '{count} read entry', '{count} read entries'));
+  if (starredCount)
+    restored.push(plural(starredCount, '{count} starred article', '{count} starred articles'));
+  if (ruleCount) restored.push(plural(ruleCount, '{count} rule', '{count} rules'));
+  if (articleCount)
+    restored.push(plural(articleCount, '{count} cached article', '{count} cached articles'));
+  if (pending.preferences) restored.push(t('preferences'));
 
   const changed = Boolean(
     added ||
@@ -97,13 +110,18 @@ export async function applyImport(
 
   let message: string;
   if (parts.length && restored.length) {
-    message = `${parts.join(', ')} · restored ${restored.join(', ')}`;
+    message = t('{parts} · restored {restored}', {
+      parts: parts.join(', '),
+      restored: restored.join(', '),
+    });
   } else if (parts.length) {
     message = parts.join(', ');
   } else if (restored.length) {
-    message = `Restored ${restored.join(', ')}`;
+    message = t('Restored {restored}', { restored: restored.join(', ') });
   } else {
-    message = `Nothing to import — ${countLabel(skipped, 'duplicate')} skipped`;
+    message = t('Nothing to import — {label} skipped', {
+      label: plural(skipped, '{count} duplicate', '{count} duplicates'),
+    });
   }
 
   return {

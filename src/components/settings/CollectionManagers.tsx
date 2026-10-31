@@ -6,6 +6,7 @@ import { byName } from '../../lib/portability';
 import { FolderPickerDialog } from '../FolderPickerDialog';
 import { FeedIcon } from '../FeedIcon';
 import { Icon } from '../Icon';
+import { plural, t } from '../../lib/i18n';
 
 interface ManagerProps {
   /** DOM id prefix, so the dialog and Settings can keep stable test ids. */
@@ -95,28 +96,36 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
     store.notify(
       'success',
       moved
-        ? `Moved ${moved} source${moved === 1 ? '' : 's'} ${
-            folder ? `to “${folder}”` : 'to Ungrouped'
-          }`
-        : 'Those sources are already in that group.'
+        ? folder
+          ? t('Moved {label} to “{name}”', {
+              label: plural(moved, '{count} source', '{count} sources'),
+              name: folder,
+            })
+          : t('Moved {label} to Ungrouped', {
+              label: plural(moved, '{count} source', '{count} sources'),
+            })
+        : t('Those sources are already in that group.')
     );
   };
 
   return (
-    <div id={`${idPrefix}-feeds`} className="manage-subpanel" role="region" aria-label="Source selection">
+    <div id={`${idPrefix}-feeds`} className="manage-subpanel" role="region" aria-label={t('Source selection')}>
       {pendingDelete && (
-        <div className="manage-confirm" role="alertdialog" aria-label="Confirm deletion">
+        <div className="manage-confirm" role="alertdialog" aria-label={t('Confirm deletion')}>
           <p className="manage-confirm__text">
-            Remove {pendingDelete.length} selected source
-            {pendingDelete.length === 1 ? '' : 's'}? Their cached articles and starred state will be
-            deleted too.
+            {t(
+              pendingDelete.length === 1
+                ? 'Remove the selected source? Its cached articles and starred state will be deleted too.'
+                : 'Remove {count} selected sources? Their cached articles and starred state will be deleted too.',
+              { count: pendingDelete.length }
+            )}
           </p>
           <div className="manage-confirm__actions">
             <button type="button" className="button button--ghost" onClick={() => setPendingDelete(null)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="button button--danger" autoFocus onClick={confirmDelete}>
-              Delete sources
+              t('Delete sources')
             </button>
           </div>
         </div>
@@ -130,7 +139,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
             onClick={selectAll}
             disabled={selected.size === state.feeds.length}
           >
-            Select all ({state.feeds.length})
+            {t('Select all ({count})', { count: state.feeds.length })}
           </button>
           <button
             type="button"
@@ -138,7 +147,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
             onClick={selectNone}
             disabled={selected.size === 0}
           >
-            Select none
+            {t('Select none')}
           </button>
           <span className="manage-toolbar__count">
             {state.feeds.length} source{state.feeds.length === 1 ? '' : 's'} · {selected.size}{' '}
@@ -154,7 +163,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
             disabled={selected.size === 0}
           >
             <Icon name="folder" size={15} />
-            <span>Move selected ({selected.size})…</span>
+            <span>{t('Move selected ({count})…', { count: selected.size })}</span>
           </button>
           <button
             type="button"
@@ -163,19 +172,19 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
             disabled={selected.size === 0}
           >
             <Icon name="trash" size={15} />
-            <span>Delete selected ({selected.size})</span>
+            <span>{t('Delete selected ({count})', { count: selected.size })}</span>
           </button>
         </div>
       </div>
 
-      <div className="manage-list" role="region" aria-label="Source selection">
+      <div className="manage-list" role="region" aria-label={t('Source selection')}>
         {!folders.length && !ungrouped.length && state.feeds.length === 0 && (
           <div className="settings-empty">
-            <p>No sources on this device yet. Add a feed from the sidebar, or import an OPML/JSON backup.</p>
+            <p>{t('No sources on this device yet. Add a feed from the sidebar, or import an OPML/JSON backup.')}</p>
             {onImport && (
               <button type="button" className="button button--ghost" onClick={onImport}>
                 <Icon name="upload" size={15} />
-                <span>Import OPML/JSON</span>
+                <span>{t('Import OPML/JSON')}</span>
               </button>
             )}
           </div>
@@ -186,7 +195,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
         {!folders.length && !ungrouped.length && state.feeds.length > 0 && (
           <div className="manage-folder">
             <div className="manage-folder__header">
-              <span className="manage-folder__name">All sources</span>
+              <span className="manage-folder__name">{t('All sources')}</span>
               <span className="badge">{state.feeds.length}</span>
             </div>
             <ul className="manage-folder__feeds">
@@ -229,7 +238,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
               </div>
 
               {folder.feeds.length === 0 ? (
-                <p className="manage-folder__empty">Empty group</p>
+                <p className="manage-folder__empty">{t('Empty group')}</p>
               ) : (
                 <ul className="manage-folder__feeds">
                   {folder.feeds.map((feed) => (
@@ -272,7 +281,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
 
       <FolderPickerDialog
         open={pickerOpen}
-        title={`Move ${selected.size} source${selected.size === 1 ? '' : 's'} to…`}
+        title={t('Move {label} to…', { label: plural(selected.size, '{count} source', '{count} sources') })}
         folders={folders.map((folder) => folder.name)}
         onClose={() => setPickerOpen(false)}
         onPick={moveSelected}
@@ -311,8 +320,8 @@ function SourceRow({
         type="button"
         className="icon-button"
         onClick={onDelete}
-        aria-label={`Remove ${feed.title || feed.url}`}
-        title="Remove source"
+        aria-label={t('Remove {name}', { name: feed.title || feed.url })}
+        title={t('Remove source')}
       >
         <Icon name="trash" size={14} />
       </button>
@@ -380,27 +389,34 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
   };
 
   return (
-    <div id={`${idPrefix}-folders`} className="manage-subpanel" role="region" aria-label="Group selection">
+    <div id={`${idPrefix}-folders`} className="manage-subpanel" role="region" aria-label={t('Group selection')}>
       {pendingDelete && (
-        <div className="manage-confirm" role="alertdialog" aria-label="Confirm deletion">
+        <div className="manage-confirm" role="alertdialog" aria-label={t('Confirm deletion')}>
           <p className="manage-confirm__text">
-            Delete{' '}
             {pendingDelete.names.length === 1
-              ? `group “${pendingDelete.names[0]}”`
-              : `${pendingDelete.names.length} groups`}
-            {pendingDelete.feedCount
-              ? ` and ${
-                  pendingDelete.names.length === 1 ? 'its' : 'their'
-                } ${pendingDelete.feedCount} source${pendingDelete.feedCount === 1 ? '' : 's'}`
-              : ''}
-            ? This cannot be undone.
+              ? pendingDelete.feedCount
+                ? t('Delete group “{name}” and its {count} sources? This cannot be undone.', {
+                    name: pendingDelete.names[0],
+                    count: pendingDelete.feedCount,
+                  })
+                : t('Delete group “{name}”? This cannot be undone.', {
+                    name: pendingDelete.names[0],
+                  })
+              : pendingDelete.feedCount
+                ? t('Delete {count} groups and their {sourceCount} sources? This cannot be undone.', {
+                    count: pendingDelete.names.length,
+                    sourceCount: pendingDelete.feedCount,
+                  })
+                : t('Delete {count} groups? This cannot be undone.', {
+                    count: pendingDelete.names.length,
+                  })}
           </p>
           <div className="manage-confirm__actions">
             <button type="button" className="button button--ghost" onClick={() => setPendingDelete(null)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" className="button button--danger" autoFocus onClick={confirmDelete}>
-              {pendingDelete.names.length === 1 ? 'Delete group' : 'Delete groups'}
+              {pendingDelete.names.length === 1 ? t('Delete group') : t('Delete groups')}
             </button>
           </div>
         </div>
@@ -414,7 +430,7 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
             onClick={() => setSelected(new Set(folders.map((folder) => folder.name)))}
             disabled={!folders.length || selected.size === folders.length}
           >
-            Select all ({folders.length})
+            {t('Select all ({count})', { count: folders.length })}
           </button>
           <button
             type="button"
@@ -422,9 +438,9 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
             onClick={() => setSelected(new Set())}
             disabled={selected.size === 0}
           >
-            Select none
+            {t('Select none')}
           </button>
-          <span className="manage-toolbar__count">{selected.size} selected</span>
+          <span className="manage-toolbar__count">{t('{count} selected', { count: selected.size })}</span>
         </div>
 
         <div className="manage-toolbar__actions">
@@ -435,7 +451,7 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
             disabled={selected.size === 0}
           >
             <Icon name="folder" size={15} />
-            <span>Merge selected ({selected.size})…</span>
+            <span>{t('Merge selected ({count})…', { count: selected.size })}</span>
           </button>
           <button
             type="button"
@@ -450,7 +466,7 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
             disabled={selected.size === 0}
           >
             <Icon name="trash" size={15} />
-            <span>Delete selected ({selected.size})</span>
+            <span>{t('Delete selected ({count})', { count: selected.size })}</span>
           </button>
         </div>
       </div>
@@ -464,18 +480,18 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
       >
         <input
           className="input"
-          placeholder="New group name"
-          aria-label="New group name"
+          placeholder={t('New group name')}
+          aria-label={t('New group name')}
           value={newName}
           onChange={(event) => setNewName(event.target.value)}
         />
         <button type="submit" className="button button--ghost" disabled={!newName.trim()}>
           <Icon name="plus" size={15} />
-          <span>Create group</span>
+          <span>{t('Create group')}</span>
         </button>
       </form>
 
-      <div className="manage-list" role="region" aria-label="Group selection">
+      <div className="manage-list" role="region" aria-label={t('Group selection')}>
         {folders.map((folder) => (
           <div className="manage-folder-row" key={`group-row:${folder.name}`}>
             <label className="manage-check">
@@ -494,8 +510,7 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
 
         {!folders.length && (
           <p className="field__hint">
-            No groups yet. Create one above, or select sources in the Sources section and move
-            them to a new group.
+            {t('No groups yet. Create one above, or select sources in the Sources section and move them to a new group.')}
           </p>
         )}
       </div>

@@ -4,6 +4,7 @@
  * defensive because the file is user-supplied.
  */
 import type { Article, ArticleRule, Feed, Preferences } from '../../types';
+import { t } from '../i18n';
 import { feedIdForUrl } from '../feedParser';
 import { parseRules } from '../rules';
 import { isFeedId } from '../feedId';
@@ -80,6 +81,9 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
   if (isOneOf(raw.fontSize, ['small', 'medium', 'large'] as const)) out.fontSize = raw.fontSize;
   if (isOneOf(raw.readerFont, ['sans', 'serif', 'mono'] as const)) {
     out.readerFont = raw.readerFont;
+  }
+  if (isOneOf(raw.language, ['system', 'en', 'es'] as const)) {
+    out.language = raw.language;
   }
   if (
     isOneOf(raw.syncService, [
@@ -184,17 +188,17 @@ export function parseJsonBackup(text: string): ImportResult {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new ImportError('That file is not valid JSON.');
+    throw new ImportError(t('That file is not valid JSON.'));
   }
   if (!isRecord(parsed)) {
-    throw new ImportError('That JSON file is not an RSS Reader backup.');
+    throw new ImportError(t('That JSON file is not an RSS Reader backup.'));
   }
 
   const warnings: string[] = [];
   const rawFeeds = Array.isArray(parsed.feeds) ? parsed.feeds : [];
   const rawFolders = Array.isArray(parsed.folders) ? parsed.folders : [];
   if (!Array.isArray(parsed.feeds) && !Array.isArray(parsed.folders)) {
-    throw new ImportError('That JSON file is not an RSS Reader backup.');
+    throw new ImportError(t('That JSON file is not an RSS Reader backup.'));
   }
 
   const feeds: ExportFeed[] = [];
@@ -312,7 +316,7 @@ export function parseJsonBackup(text: string): ImportResult {
   }
 
   if (!feeds.length && !folderNames.size) {
-    throw new ImportError('No valid feed URLs or folders were found in that backup.');
+    throw new ImportError(t('No valid feed URLs or folders were found in that backup.'));
   }
 
   const full = parsed.version === 2;

@@ -3,8 +3,8 @@
 [![CI](https://github.com/MediaHub-Org/rss-reader/actions/workflows/ci.yml/badge.svg)](https://github.com/MediaHub-Org/rss-reader/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/MediaHub-Org/rss-reader?label=download)](https://github.com/MediaHub-Org/rss-reader/releases/latest)
 
-A lightweight, **local-first** RSS/Atom reader for Windows and the web. No account, no
-backend, no telemetry: subscriptions, read/starred state, rules, preferences and cached
+A lightweight, **local-first** RSS/Atom reader for Windows, macOS, Linux, Android and the
+web. No account, no backend, no telemetry: subscriptions, read/starred state, rules, preferences and cached
 articles stay on your device. Built with React and Tauri, inspired by Fluent Reader.
 
 ## Download
@@ -55,6 +55,8 @@ refreshes. The desktop app fetches natively and needs no Node process at runtime
   without API keys.
 - **Desktop extras** — tray icon, close-to-tray, background refresh, native
   notifications and start-at-login.
+- **English and Spanish** — the whole interface follows the system language, or pick one
+  in Settings → Preferences → Language. A missing translation falls back to English.
 
 ## Features
 
@@ -69,6 +71,10 @@ validators keep unchanged feeds on a 304.
 list/compact; magazine and card use an overlay with previous/next arrows. Article HTML
 is sanitized, relative URLs are resolved, and external links open safely in a new tab.
 Mark as read works per article, all visible, or older than 1/3/7 days.
+
+**Language.** The interface ships in English and Spanish with a `system` default. Every
+label, dialog, toast and error message goes through the same tiny catalog, so new strings
+fall back to English instead of breaking the UI.
 
 **Settings.** Six sections: **Preferences**, **Groups**, **Sources**, **Rules**,
 **Services & Integration** and **About**. Theme, density, reading typeface (sans, serif,
@@ -152,12 +158,15 @@ server/            shared local feed proxy
 ## Known limitations
 
 - State is per device. Use the full JSON backup to move it.
+- The Spanish catalog is hand-written; native-speaker review is welcome.
 - Automatic refresh runs every 15 minutes while the window is visible, plus on launch.
 - Below 1100 px the article view becomes single-pane and the sidebar becomes a compressed left-side drawer.
 - The Windows installer and macOS disk image are unsigned; macOS needs a first-run
   right-click → Open. The Android APK is debug-signed.
 - Android file import/export uses the WebView download flow; the desktop save dialog and
   daily snapshots remain desktop-only.
+- The Android APK is arm64 debug-signed with a committed keystore so updates install over
+  earlier builds; Play Store signing is not configured.
 - Services has a sync-provider selector, but two-way sync is not implemented yet; the
   server and username are stored locally (the password/token is session-only) and
   excluded from backups.

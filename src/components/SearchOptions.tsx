@@ -2,6 +2,7 @@ import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { usePopover } from '../hooks/usePopover';
 import { Icon } from './Icon';
+import { t } from '../lib/i18n';
 
 /** Case/full-text options attached to the sidebar search field. */
 export function SearchOptions() {
@@ -17,15 +18,15 @@ export function SearchOptions() {
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Search options"
-        title="Search options"
+        aria-label={t('Search options')}
+        title={t('Search options')}
       >
         Aa
       </button>
 
       {open && (
-        <div className="search-options" role="menu" aria-label="Search options">
-          <p className="view-menu__section">Search</p>
+        <div className="search-options" role="menu" aria-label={t('Search options')}>
+          <p className="view-menu__section">{t('Search')}</p>
           <button
             type="button"
             role="menuitemcheckbox"
@@ -40,7 +41,7 @@ export function SearchOptions() {
             <span className="view-menu__check">
               {state.prefs.searchCaseSensitive && <Icon name="check" size={15} />}
             </span>
-            <span>Case sensitive</span>
+            <span>{t('Case sensitive')}</span>
           </button>
           <button
             type="button"
@@ -56,7 +57,7 @@ export function SearchOptions() {
             <span className="view-menu__check">
               {state.prefs.searchFullText && <Icon name="check" size={15} />}
             </span>
-            <span>Search in full text</span>
+            <span>{t('Search in full text')}</span>
           </button>
           <button
             type="button"
@@ -72,7 +73,7 @@ export function SearchOptions() {
             <span className="view-menu__check">
               {state.prefs.searchRegex && <Icon name="check" size={15} />}
             </span>
-            <span>Regular expression</span>
+            <span>{t('Regular expression')}</span>
           </button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { t } from '../lib/i18n';
 import { Icon, type IconProps } from './Icon';
 
 export interface ContextMenuItem {
@@ -113,7 +114,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       ref={ref}
       className="context-menu"
       role="menu"
-      aria-label="Context menu"
+      aria-label={t('Context menu')}
       style={{ left: pos.x, top: pos.y, visibility: ready ? 'visible' : 'hidden' }}
       onContextMenu={(event) => event.preventDefault()}
     >

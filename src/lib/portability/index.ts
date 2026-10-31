@@ -6,6 +6,7 @@
  * content-based: XML → OPML, `{` → JSON backup.
  */
 import { parseJsonBackup } from './backup';
+import { t } from '../i18n';
 import { parseOpml } from './opml';
 import { ImportError, type ImportResult } from './types';
 
@@ -17,10 +18,10 @@ export type { SaveOutcome } from '../desktop';
 
 export function importSubscriptions(text: string): ImportResult {
   const trimmed = text.trim();
-  if (!trimmed) throw new ImportError('That file is empty.');
+  if (!trimmed) throw new ImportError(t('That file is empty.'));
 
   if (trimmed.startsWith('{')) return parseJsonBackup(trimmed);
   if (trimmed.startsWith('<')) return parseOpml(trimmed);
 
-  throw new ImportError('Unsupported file — expected an OPML or JSON backup.');
+  throw new ImportError(t('Unsupported file — expected an OPML or JSON backup.'));
 }

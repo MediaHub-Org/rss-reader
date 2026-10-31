@@ -10,6 +10,7 @@
  * so the UI can explain *why* a feed is unavailable.
  */
 import { looksLikeFeed, parseFeedXml, type ParseResult } from './feedParser';
+import { t } from './i18n';
 import { extractYouTubeFeedTarget, fetchYouTubeChannelFeed } from './youtubeApi';
 import { invokeDesktop, isTauriApp } from './desktop';
 
@@ -85,13 +86,13 @@ async function getText(
         };
       }
       if (!result.body.trim()) {
-        throw new FeedFetchError('The feed returned an empty response.', result.status);
+        throw new FeedFetchError(t('The feed returned an empty response.'), result.status);
       }
       return { text: result.body, via: 'native', finalUrl: result.finalUrl || url, etag, lastModified };
     } catch (err) {
       if (err instanceof FeedFetchError) throw err;
       const message = typeof err === 'string' ? err : String((err as Error)?.message ?? err);
-      throw new FeedFetchError(`Could not fetch this feed (${message}).`);
+      throw new FeedFetchError(t('Could not fetch this feed ({message}).', { message }));
     }
   }
 
@@ -116,7 +117,7 @@ async function getText(
         const detail = await safeMessage(response);
         errors.push(`${attempt.via}: ${response.status}${detail ? ` — ${detail}` : ''}`);
         if (response.status === 404 || response.status === 410) {
-          throw new FeedFetchError('That feed URL returned 404 Not Found.', response.status);
+          throw new FeedFetchError(t('That feed URL returned 404 Not Found.'), response.status);
         }
         continue;
       }
@@ -235,11 +236,11 @@ export async function fetchFeedDocument(
       }
     }
     throw new FeedFetchError(
-      'That page is a website, not a feed — and no RSS/Atom link was found on it.'
+      t('That page is a website, not a feed — and no RSS/Atom link was found on it.')
     );
   }
 
-  throw new FeedFetchError('The response is not valid RSS or Atom content.');
+  throw new FeedFetchError(t('The response is not valid RSS or Atom content.'));
 }
 
 export type FeedArticlesResult =

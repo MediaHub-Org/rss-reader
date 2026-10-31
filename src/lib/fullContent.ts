@@ -1,4 +1,5 @@
 import { fetchRemoteText } from './fetchFeed';
+import { t } from './i18n';
 import { sanitizeHtml } from './sanitize';
 
 const CANDIDATES = [
@@ -126,11 +127,11 @@ export async function fetchFullContent(url: string): Promise<string> {
   try {
     page = await fetchRemoteText(url, 'text/html, application/xhtml+xml, */*');
   } catch {
-    throw new Error('Could not reach the original article page.');
+    throw new Error(t('Could not reach the original article page.'));
   }
   const html = extractReadableHtml(page, url);
   if (readableLength(html) < 120) {
-    throw new Error('Could not find readable article content on that page.');
+    throw new Error(t('Could not find readable article content on that page.'));
   }
   writeCache(url, html);
   return html;

@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import type { Feed, FeedState } from '../../types';
 import { FeedIcon } from '../FeedIcon';
 import { Icon } from '../Icon';
+import { t } from '../../lib/i18n';
 
 interface FeedItemProps {
   feed: Feed;
@@ -75,8 +76,8 @@ export function FeedItem({
           {hasError && (
             <span
               className="status-dot"
-              title={`${feedState?.message ?? 'Feed error'}${retryHint}`}
-              aria-label="Feed has an error"
+              title={`${feedState?.message ?? t('Feed error')}${retryHint}`}
+              aria-label={t('Feed has an error')}
             >
               !
             </span>
@@ -94,8 +95,8 @@ export function FeedItem({
               const rect = event.currentTarget.getBoundingClientRect();
               onMenu(feed, rect.left, rect.bottom + 4);
             }}
-            aria-label={`More actions for ${feed.title}`}
-            title="More actions"
+            aria-label={`${t('More actions')} · ${feed.title}`}
+            title={t('More actions')}
           >
             <Icon name="more" size={15} />
           </button>
@@ -103,8 +104,8 @@ export function FeedItem({
             type="button"
             className="icon-button"
             onClick={() => onUnsubscribe(feed)}
-            aria-label={`Unsubscribe from ${feed.title}`}
-            title="Unsubscribe"
+            aria-label={t('Unsubscribe from {name}', { name: feed.title })}
+            title={t('Unsubscribe')}
           >
             <Icon name="trash" size={15} />
           </button>

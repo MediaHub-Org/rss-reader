@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 import { articleId, hash } from './hash';
 import { resolveUrl } from './url';
+import { t } from './i18n';
 import { extractYouTubeId, extractYouTubeIdFromHtml, thumbnailUrl } from './youtube';
 import type { Article, Feed } from '../types';
 
@@ -205,8 +206,8 @@ export async function parseFeedXml(xml: string, feedId: string): Promise<ParseRe
     const message = err instanceof Error ? err.message : String(err);
     throw new FeedParseError(
       /valid|XML|parse|Unclosed|root tag/i.test(message)
-        ? 'That URL returned something that is not a valid RSS/Atom feed.'
-        : `Could not parse the feed: ${message}`
+        ? t('That URL returned something that is not a valid RSS/Atom feed.')
+        : t('Could not parse the feed: {message}', { message })
     );
   }
   return normalize(raw, feedId);
@@ -221,7 +222,7 @@ function normalize(raw: RawFeed, feedId: string): ParseResult {
 
   const feed: Omit<Feed, 'id' | 'addedAt'> = {
     url: resolveUrl(undefined, pickString(raw.feedUrl)) || resolveUrl(undefined, siteUrl) || '',
-    title: pickString(raw.title) || 'Untitled feed',
+    title: pickString(raw.title) || t('Untitled feed'),
     siteUrl,
     description: pickString(raw.description),
     iconUrl:
@@ -240,7 +241,7 @@ function normalize(raw: RawFeed, feedId: string): ParseResult {
     .sort((a, b) => b.publishedAt - a.publishedAt);
 
   if (!articles.length && !feed.title) {
-    throw new FeedParseError('The feed contains no readable entries.');
+    throw new FeedParseError(t('The feed contains no readable entries.'));
   }
 
   return { feed, articles };

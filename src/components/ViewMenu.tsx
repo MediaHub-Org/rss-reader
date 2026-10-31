@@ -3,6 +3,7 @@ import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { usePopover } from '../hooks/usePopover';
 import { Icon } from './Icon';
+import { t } from '../lib/i18n';
 
 const VIEWS: Array<{ value: ArticleView; label: string; icon: 'grid' | 'list' | 'magazine' | 'compact' }> = [
   { value: 'card', label: 'Card view', icon: 'grid' },
@@ -26,17 +27,17 @@ export function ViewMenu() {
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`View: ${view.label}`}
-        title={`View: ${view.label}`}
+        aria-label={`${t('View')}: ${t(view.label)}`}
+        title={`${t('View')}: ${t(view.label)}`}
       >
         <Icon name={view.icon} size={18} />
-        <span className="topbar-tool__label">{view.label}</span>
+        <span className="topbar-tool__label">{t(view.label)}</span>
         <Icon name="chevronDown" size={12} className="topbar-tool__caret" />
       </button>
 
       {open && (
-        <div className="view-menu" role="menu" aria-label="Article view">
-          <p className="view-menu__section">View</p>
+        <div className="view-menu" role="menu" aria-label={t('Article view')}>
+          <p className="view-menu__section">{t('View')}</p>
           {VIEWS.map((entry) => (
             <button
               key={entry.value}
@@ -53,7 +54,7 @@ export function ViewMenu() {
                 {state.prefs.viewMode === entry.value && <Icon name="check" size={15} />}
               </span>
               <Icon name={entry.icon} size={16} className="view-menu__icon" />
-              <span>{entry.label}</span>
+              <span>{t(entry.label)}</span>
             </button>
           ))}
         </div>
