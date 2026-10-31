@@ -89,6 +89,7 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
       'inoreader',
       'miniflux',
       'nextcloud',
+      'newsblur',
     ] as const)
   ) {
     out.syncService = raw.syncService;

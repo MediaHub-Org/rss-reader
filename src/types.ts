@@ -10,7 +10,8 @@ export type SyncService =
   | 'feedbin'
   | 'inoreader'
   | 'miniflux'
-  | 'nextcloud';
+  | 'nextcloud'
+  | 'newsblur';
 export type SortMode = 'date-desc' | 'date-asc' | 'feed';
 export type ArticleView = 'card' | 'list' | 'magazine' | 'compact';
 export type ArticleFilter = 'all' | 'unread' | 'starred';

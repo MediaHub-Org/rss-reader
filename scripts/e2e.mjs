@@ -1184,13 +1184,13 @@ try {
   const mainAfter = await page.locator('.main').boundingBox();
   const drawerBox = await page.locator('.sidebar').boundingBox();
   check(
-    'Mobile drawer overlays from the right without moving the panel',
+    'Mobile drawer overlays from the left without moving the panel',
     Boolean(mainBefore && mainAfter && drawerBox) &&
       Math.abs(mainBefore.x - mainAfter.x) < 1 &&
       Math.abs(mainBefore.width - mainAfter.width) < 1 &&
-      drawerBox.x > 0 &&
-      Math.abs(drawerBox.x + drawerBox.width - 390) < 2,
-    `drawer x=${drawerBox?.x}, main x=${mainBefore?.x}→${mainAfter?.x}`
+      Math.abs(drawerBox.x) < 2 &&
+      drawerBox.width <= 390 * 0.8,
+    `drawer x=${drawerBox?.x}, width=${drawerBox?.width}, main x=${mainBefore?.x}→${mainAfter?.x}`
   );
   await page.screenshot({ path: path.join(SHOTS, '05-mobile.png') });
   await page.click('.sidebar .feed-row:has-text("All articles")');

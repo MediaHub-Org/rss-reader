@@ -668,15 +668,6 @@ export function Sidebar({
                       >
                         <Icon name="more" size={15} />
                       </button>
-                      <button
-                        type="button"
-                        className="icon-button"
-                        onClick={() => onRemoveFolder(folder.name)}
-                        aria-label={`Delete folder ${folder.name}`}
-                        title={`Delete folder “${folder.name}”`}
-                      >
-                        <Icon name="trash" size={15} />
-                      </button>
                     </div>
                   )}
                 </div>

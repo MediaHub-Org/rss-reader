@@ -81,6 +81,12 @@ describe('parseFeedXml', () => {
     expect(articles[0].contentHtml).toContain('Atom body');
   });
 
+  it('clamps future publication dates to now', async () => {
+    const future = RSS.replace('Wed, 21 Oct 2026 09:00:00 GMT', 'Wed, 21 Oct 2099 09:00:00 GMT');
+    const { articles } = await parseFeedXml(future, 'feed-4');
+    expect(articles[0].publishedAt).toBeLessThanOrEqual(Date.now() + 1_000);
+  });
+
   it('rejects malformed XML', async () => {
     await expect(parseFeedXml('<rss><channel>', 'feed-3')).rejects.toBeInstanceOf(
       FeedParseError

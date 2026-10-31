@@ -73,7 +73,7 @@ Mark as read works per article, all visible, or older than 1/3/7 days.
 **Services & Integration** and **About**. Theme, density, reading typeface (sans, serif,
 mono) and font size live in Preferences. The top bar keeps only reading controls.
 Services includes a sync-provider selector (Fever, Feedbin, Inoreader, Miniflux,
-Nextcloud News). Server and username are stored locally; the password/token is
+Nextcloud News, NewsBlur). Server and username are stored locally; the password/token is
 session-only. Two-way sync remains future work — use OPML or a full backup today.
 
 **Privacy.** No sync service, account or telemetry. Everything is stored in
@@ -152,7 +152,7 @@ server/            shared local feed proxy
 
 - State is per device. Use the full JSON backup to move it.
 - Automatic refresh runs every 15 minutes while the window is visible, plus on launch.
-- Below 1100 px the article view becomes single-pane and the sidebar becomes a right-side drawer.
+- Below 1100 px the article view becomes single-pane and the sidebar becomes a compressed left-side drawer.
 - The Windows installer and macOS disk image are unsigned; macOS needs a first-run
   right-click → Open. The Android APK is debug-signed.
 - Android file import/export uses the WebView download flow; the desktop save dialog and

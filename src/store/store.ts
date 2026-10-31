@@ -45,6 +45,7 @@ import {
 
 const HYDRATED_ARTICLE_LIMIT = 500;
 const REFRESH_STAGGER_MS = 250;
+const REFRESH_CONCURRENCY = 8;
 
 let toastSeq = 0;
 
@@ -462,22 +463,23 @@ export class Store {
     const now = Date.now();
     const feeds = this.state.feeds.filter((feed) => options.force || isRetryDue(feed, now));
     if (!feeds.length) return;
-    await Promise.all(
-      feeds.map(
-        (feed, index) =>
-          new Promise<void>((resolve) => {
-            setTimeout(() => {
-              // Individual feed refreshes during a bulk refresh stay silent so
-              // unreachable feeds never spam error banners/toasts.
-              void this.refreshFeed(feed.id, {
-                silent: true,
-                force: options.force,
-                notify: options.notify,
-              }).finally(resolve);
-            }, index * REFRESH_STAGGER_MS);
-          })
-      )
+
+    // Bounded pool: a large subscription list must not open dozens of sockets
+    // at once. Each worker takes the next feed as soon as it is free.
+    const queue = [...feeds];
+    const workers = Array.from(
+      { length: Math.min(REFRESH_CONCURRENCY, queue.length) },
+      async () => {
+        for (let feed = queue.shift(); feed; feed = queue.shift()) {
+          await this.refreshFeed(feed.id, {
+            silent: true,
+            force: options.force,
+            notify: options.notify,
+          });
+        }
+      }
     );
+    await Promise.all(workers);
     if (!options.silent) this.notify('success', 'Feeds updated');
   }
 

@@ -58,6 +58,12 @@ const SYNC_SERVICES: Array<{
     hint: 'The News app on your Nextcloud server.',
     endpoint: 'https://cloud.example.com/index.php/apps/news/api/v1-2/',
   },
+  {
+    value: 'newsblur',
+    label: 'NewsBlur',
+    hint: 'NewsBlur’s API.',
+    endpoint: 'https://www.newsblur.com/',
+  },
 ];
 
 const SYNC_OPTIONS: Array<DropdownOption<SyncService>> = SYNC_SERVICES.map((entry) => ({

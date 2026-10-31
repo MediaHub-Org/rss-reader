@@ -144,13 +144,12 @@ function normalizeItem(feedId: string, base: string | undefined, item: RawItem):
     mediaDescHtml ||
     '';
 
-  const publishedAt = pickDate(
-    item.isoDate,
-    item.pubDate,
-    item.published,
-    item.updated,
-    item.date,
-    item['dc:date']
+  // Some feeds publish a future date (timezone mistakes, scheduled drafts).
+  // Clamping to "now" keeps those items from pinning themselves to the top
+  // forever; the original date is still visible in the feed source.
+  const publishedAt = Math.min(
+    pickDate(item.isoDate, item.pubDate, item.published, item.updated, item.date, item['dc:date']),
+    Date.now()
   );
 
   const image = extractImage(item, base);
