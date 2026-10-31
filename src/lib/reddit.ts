@@ -1,6 +1,7 @@
 import type { Article, Feed } from '../types';
 import { articleId } from './hash';
 import { toExcerpt, toPlainText, type ParseResult } from './feedParser';
+import { cleanTitle } from './format';
 
 /**
  * Reddit RSS is being retired (November 2026) and the public API follows in
@@ -100,15 +101,15 @@ export function mapRedditPosts(subreddit: string, posts: RedditPost[], feedId: s
         id: articleId(feedId, {
           guid: `reddit-${post.id}`,
           link,
-          title: post.title!,
+          title: cleanTitle(post.title!),
           publishedAt,
         }),
         feedId,
-        title: post.title!,
+        title: cleanTitle(post.title!),
         link,
-        summary: toExcerpt(html || post.title!),
+        summary: toExcerpt(html || cleanTitle(post.title!)),
         contentHtml: html,
-        searchText: `${post.title}\n${toPlainText(html)}\n${post.author ?? ''}`.toLowerCase(),
+        searchText: `${cleanTitle(post.title!)}\n${toPlainText(html)}\n${post.author ?? ''}`.toLowerCase(),
         author: post.author,
         publishedAt,
         thumbnail: postThumbnail(post),

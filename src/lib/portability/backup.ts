@@ -85,6 +85,9 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
   if (isOneOf(raw.language, ['system', 'en', 'es'] as const)) {
     out.language = raw.language;
   }
+  if (isOneOf(raw.refreshInterval, ['manual', '15', '30', '60', '180'] as const)) {
+    out.refreshInterval = raw.refreshInterval;
+  }
   if (
     isOneOf(raw.syncService, [
       'local',

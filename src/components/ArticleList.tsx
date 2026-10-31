@@ -3,7 +3,7 @@ import type { Article, Feed } from '../types';
 import { store } from '../store/store';
 import { useStore, useInfiniteList } from '../hooks/useStore';
 import { useVisibleArticles } from '../hooks/useVisibleArticles';
-import { formatRelativeTime } from '../lib/format';
+import { cleanTitle, formatRelativeTime } from '../lib/format';
 import { thumbnailUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml } from '../lib/embeds';
 import { copyText } from '../lib/clipboard';
@@ -255,7 +255,7 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
         data-article-id={article.id}
         tabIndex={0}
         role="link"
-        aria-label={`${article.title}${read ? ` (${t('read')})` : ` (${t('unread')})`}`}
+        aria-label={`${cleanTitle(article.title)}${read ? ` (${t('read')})` : ` (${t('unread')})`}`}
         aria-current={active ? 'true' : undefined}
         onClick={open}
         onContextMenu={(event) => {
@@ -340,7 +340,7 @@ function ArticleCard({ article, feed, read, starred, active, onMenu }: ArticleCa
           </button>
         </div>
 
-        <h3 className="article-card__title">{article.title}</h3>
+        <h3 className="article-card__title">{cleanTitle(article.title)}</h3>
         {article.summary && <p className="article-card__snippet">{article.summary}</p>}
       </article>
     </li>

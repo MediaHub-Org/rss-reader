@@ -4,6 +4,7 @@
  */
 import type { Feed } from '../../types';
 import { t } from '../i18n';
+import { cleanTitle } from '../format';
 import {
   byName,
   collectFolderNames,
@@ -128,7 +129,7 @@ export function parseOpml(text: string): ImportResult {
         if (folder) folderNames.add(folder);
         feeds.push({
           url,
-          title: (child.getAttribute('title') || child.getAttribute('text') || '').trim(),
+          title: cleanTitle(child.getAttribute('title') || child.getAttribute('text') || ''),
           siteUrl: child.getAttribute('htmlUrl') || undefined,
           folder,
         });

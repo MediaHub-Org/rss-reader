@@ -1,4 +1,4 @@
-import type { Density, FontSize, LanguagePreference, ReaderFont, ThemeMode } from '../../types';
+import type { Density, FontSize, LanguagePreference, ReaderFont, RefreshInterval, ThemeMode } from '../../types';
 import { store } from '../../store/store';
 import { useStore } from '../../hooks/useStore';
 import { isDesktopApp } from '../../lib/desktop';
@@ -24,6 +24,18 @@ export function PreferencesPanel() {
             { value: 'es', label: 'Español' },
           ]}
           onChange={(language) => store.setPreferences({ language })}
+        />
+        <Segmented<RefreshInterval>
+          label={t('Refresh feeds')}
+          value={state.prefs.refreshInterval}
+          options={[
+            { value: 'manual', label: t('Manual') },
+            { value: '15', label: '15 min' },
+            { value: '30', label: '30 min' },
+            { value: '60', label: t('1 hour') },
+            { value: '180', label: t('3 hours') },
+          ]}
+          onChange={(refreshInterval) => store.setPreferences({ refreshInterval })}
         />
         <Segmented<ThemeMode>
           label={t('Theme')}

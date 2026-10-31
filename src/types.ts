@@ -5,6 +5,7 @@ export type Density = 'compact' | 'comfortable';
 export type FontSize = 'small' | 'medium' | 'large';
 export type ReaderFont = 'sans' | 'serif' | 'mono';
 export type LanguagePreference = 'system' | 'en' | 'es';
+export type RefreshInterval = 'manual' | '15' | '30' | '60' | '180';
 export type SyncService =
   | 'local'
   | 'fever'
@@ -37,6 +38,8 @@ export interface Preferences {
   readerFont: ReaderFont;
   /** UI language; system follows the browser/OS. */
   language: LanguagePreference;
+  /** Automatic refresh cadence. Manual means only explicit refresh actions. */
+  refreshInterval: RefreshInterval;
   /** External sync provider. Local-only remains the default. */
   syncService: SyncService;
   syncServer: string;
@@ -92,6 +95,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   fontSize: 'medium',
   readerFont: 'sans',
   language: 'system',
+  refreshInterval: 'manual',
   syncService: 'local',
   syncServer: '',
   syncUsername: '',

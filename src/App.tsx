@@ -32,9 +32,6 @@ const BackupsDialog = lazy(() =>
   import('./components/BackupsDialog').then((module) => ({ default: module.BackupsDialog }))
 );
 
-const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
-const STALE_AFTER_MS = 10 * 60 * 1000;
-
 export default function App() {
   const state = useStore();
   const [addOpen, setAddOpen] = useState(false);
@@ -73,25 +70,29 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [state.hydrated, state.feeds.length]);
 
-  /* periodic refresh: paused while the tab is hidden in the browser, but the
-     desktop shell keeps running in the tray */
+  /* Periodic refresh is opt-in. “Manual” (the default) only refreshes on the
+     toolbar/tray action, on Add feed and on import. */
   useEffect(() => {
-    const tick = () => {
+    if (!state.hydrated || state.prefs.refreshInterval === 'manual') return;
+    const intervalMs = Number(state.prefs.refreshInterval) * 60_000;
+    lastRefreshed.current = Date.now();
+    const tick = (force = false) => {
       if (document.visibilityState !== 'visible' && !isTauriApp()) return;
-      if (Date.now() - lastRefreshed.current < STALE_AFTER_MS) return;
+      if (!force && Date.now() - lastRefreshed.current < intervalMs) return;
       lastRefreshed.current = Date.now();
       void store.refreshAll({ silent: true, notify: true });
     };
-    const timer = setInterval(tick, REFRESH_INTERVAL_MS);
+    const timer = setInterval(() => tick(true), intervalMs);
     const onVisible = () => {
-      if (document.visibilityState === 'visible') tick();
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastRefreshed.current >= intervalMs) tick(true);
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, []);
+  }, [state.hydrated, state.prefs.refreshInterval]);
 
   const totalUnread = useMemo(
     () => state.feeds.reduce((sum, feed) => sum + unreadCount(state, feed.id), 0),

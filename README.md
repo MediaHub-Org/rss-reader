@@ -89,12 +89,12 @@ import action when the device has no subscriptions yet. Feed failures back off
 from 5 minutes to 6 hours; manual refresh retries immediately. ETag/Last-Modified
 validators keep unchanged feeds on a 304.
 
-**Reddit.** Reddit retired its public RSS feeds in November 2026. Subscribed
+**Telegram and Reddit.** Subscribed `t.me/<channel>` sources are read from the public channel preview page and converted into articles. Reddit retired its public RSS feeds in November 2026. Subscribed
 `reddit.com/r/<sub>` sources are read through the public Arctic Shift archive and
 mapped into normal articles; the legacy RSS URL is still used as a fallback while it
 exists. Reddit posts also open in an inline card in the reader.
 
-**Reading.** Card, list, magazine and compact layouts. Wide windows use two panes for
+**Reading.** Card, list, magazine and compact layouts. Automatic feed refresh is off by default; choose 15 min, 30 min, 1 hour or 3 hours in Preferences, or refresh manually whenever you want. Wide windows use two panes for
 list/compact; magazine and card use an overlay with previous/next arrows. Article HTML
 is sanitized, relative URLs are resolved, and external links open safely in a new tab.
 Mark as read works per article, all visible, or older than 1/3/7 days.
@@ -190,7 +190,7 @@ server/            shared local feed proxy
 
 - State is per device. Use the full ZIP backup to move it.
 - The Spanish catalog is hand-written; native-speaker review is welcome.
-- Automatic refresh runs every 15 minutes while the window is visible, plus on launch.
+- Feed refresh is manual by default; Settings → Preferences can enable 15 min, 30 min, 1 hour or 3 hours while the window is visible.
 - Below 1100 px the article view becomes single-pane and the sidebar becomes a compressed left-side drawer.
 - The Windows installer and macOS disk image are unsigned; macOS needs a first-run
   right-click → Open. The Android APK is debug-signed.

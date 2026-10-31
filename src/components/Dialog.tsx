@@ -75,7 +75,7 @@ export function Dialog({
       panel?.querySelector<HTMLElement>(
         'input, select, textarea, button, [href], [tabindex]:not([tabindex="-1"])'
       );
-    (focusable ?? panel)?.focus();
+    (focusable ?? panel)?.focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (suspendedRef.current) return;
@@ -115,6 +115,13 @@ export function Dialog({
     document.addEventListener('keydown', onKeyDown, true);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Save the app's real scroll containers. Hiding their overflow can move
+    // the background by a pixel or two on some WebViews; restoring the exact
+    // offsets keeps the list where the user left it.
+    const scrollPositions = new Map<HTMLElement, number>();
+    document
+      .querySelectorAll<HTMLElement>('.content-area, .sidebar__scroll')
+      .forEach((element) => scrollPositions.set(element, element.scrollTop));
     // The app scrolls inside .content-area and .sidebar__scroll, not on the
     // body, so locking the body alone left the background scrolling under the
     // dialog. The attribute is what the stylesheet hooks onto; `wasLocked`
@@ -125,8 +132,11 @@ export function Dialog({
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.style.overflow = previousOverflow;
+      scrollPositions.forEach((top, element) => {
+        element.scrollTop = top;
+      });
       if (!wasLocked) delete document.body.dataset.scrollLocked;
-      restoreTo.current?.focus?.();
+      restoreTo.current?.focus?.({ preventScroll: true });
     };
   }, [open]);
 

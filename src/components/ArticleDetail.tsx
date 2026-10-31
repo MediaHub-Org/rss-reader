@@ -3,7 +3,7 @@ import type { Feed } from '../types';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { sanitizeHtml } from '../lib/sanitize';
-import { formatDate } from '../lib/format';
+import { cleanTitle, formatDate } from '../lib/format';
 import { copyText } from '../lib/clipboard';
 import { thumbnailUrl, watchUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml, type MediaEmbed } from '../lib/embeds';
@@ -322,7 +322,7 @@ export function ArticleDetail() {
       <div className="detail__scroll">
         <header className="detail__header">
           {feed && <p className="detail__feed">{feed.title}</p>}
-          <h2 className="detail__title">{article.title}</h2>
+          <h2 className="detail__title">{cleanTitle(article.title)}</h2>
           <p className="detail__meta">
             {article.author && <span>{article.author}</span>}
             <time dateTime={new Date(article.publishedAt).toISOString()}>

@@ -13,6 +13,7 @@ import { looksLikeFeed, parseFeedXml, type ParseResult } from './feedParser';
 import { t } from './i18n';
 import { extractYouTubeFeedTarget, fetchYouTubeChannelFeed } from './youtubeApi';
 import { fetchRedditSubreddit, subredditFromUrl } from './reddit';
+import { parseTelegramChannel, telegramChannelFromUrl } from './telegram';
 import { invokeDesktop, isTauriApp } from './desktop';
 
 export const PROXY_URL: string | undefined =
@@ -270,6 +271,35 @@ export async function fetchFeedArticles(
   youtubeApiKey?: string,
   validators?: FeedValidators
 ): Promise<FeedArticlesResult> {
+  const telegramChannel = telegramChannelFromUrl(url);
+  if (telegramChannel) {
+    try {
+      const page = await getText(
+        `https://t.me/s/${telegramChannel}`,
+        validators,
+        'text/html, application/xhtml+xml'
+      );
+      if (page.notModified) {
+        return {
+          notModified: true,
+          finalUrl: page.finalUrl,
+          etag: page.etag,
+          lastModified: page.lastModified,
+        };
+      }
+      const parsed = parseTelegramChannel(page.text, telegramChannel, feedId);
+      if (!parsed.articles.length) throw new Error('The Telegram channel has no posts.');
+      return {
+        parsed,
+        finalUrl: page.finalUrl,
+        etag: page.etag,
+        lastModified: page.lastModified,
+      };
+    } catch (err) {
+      console.warn('Telegram channel fetch failed, falling back to feed parsing:', err);
+    }
+  }
+
   // Reddit retired RSS in late 2026; prefer the public Arctic Shift archive and
   // fall back to the legacy RSS URL while it still exists.
   const subreddit = subredditFromUrl(url);

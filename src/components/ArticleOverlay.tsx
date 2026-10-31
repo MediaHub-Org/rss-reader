@@ -7,6 +7,7 @@ import { ArticleDetail } from './ArticleDetail';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import { t } from '../lib/i18n';
+import { cleanTitle } from '../lib/format';
 
 /** Card-view reader: blurred backdrop, previous/next arrows and close. */
 export function ArticleOverlay() {
@@ -38,7 +39,7 @@ export function ArticleOverlay() {
       onClose={leaveArticle}
       title=""
       bare
-      ariaLabel={article.title}
+      ariaLabel={cleanTitle(article.title)}
       size="lg"
       className="article-overlay__dialog"
       backdropClassName="article-overlay__backdrop"

@@ -215,7 +215,9 @@ export class Store {
 
     this.update({ articles, feedState, hydrated: true });
 
-    if (feeds.length) await this.refreshAll({ silent: true });
+    if (feeds.length && prefs.refreshInterval !== 'manual') {
+      await this.refreshAll({ silent: true });
+    }
   }
 
   /* -------------------------------- feeds --------------------------------- */

@@ -1178,7 +1178,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 .article-card__title {
   margin: 0.375rem var(--card-pad-x) 0;
-  font-size: var(--text-md);
+  font-size: 0.9375rem;
   line-height: 1.375rem;
   font-weight: var(--weight-bold);
   letter-spacing: -0.01em;
@@ -1247,7 +1247,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 .article-card.no-media .article-card__title {
   -webkit-line-clamp: 4;
-  font-size: var(--text-lg);
+  font-size: 1rem;
   line-height: 1.4375rem;
 }
 
@@ -1477,7 +1477,9 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 .media-card__poster img {
   display: block;
   width: 100%;
+  max-width: 100%;
   height: 100%;
+  max-height: 100%;
   object-fit: cover;
 }
 
@@ -1626,11 +1628,18 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 .content img,
 .content video {
   display: block;
+  width: auto;
   max-width: 100%;
   height: auto;
+  max-height: min(70vh, 40rem);
   margin-inline: auto;
+  object-fit: contain;
   border-radius: var(--radius);
   background: var(--panel-2);
+}
+
+.content iframe {
+  max-width: 100%;
 }
 
 .content figure {
@@ -1716,6 +1725,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
+  overscroll-behavior: contain;
   animation: fade-in 120ms ease-out;
 }
 
@@ -3438,6 +3448,7 @@ kbd {
   backdrop-filter: blur(14px) saturate(115%);
   -webkit-backdrop-filter: blur(14px) saturate(115%);
   padding: clamp(0.5rem, 3vh, 2rem);
+  overscroll-behavior: contain;
 }
 
 .article-overlay__dialog {
@@ -3449,6 +3460,7 @@ kbd {
   max-height: 92dvh;
   padding: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dialog--bare {

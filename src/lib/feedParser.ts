@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 import { articleId, hash } from './hash';
 import { resolveUrl } from './url';
+import { cleanTitle } from './format';
 import { t } from './i18n';
 import { extractYouTubeId, extractYouTubeIdFromHtml, thumbnailUrl } from './youtube';
 import type { Article, Feed } from '../types';
@@ -120,7 +121,7 @@ function extractAudio(item: RawItem, base?: string): { url: string; type?: strin
 }
 
 function normalizeItem(feedId: string, base: string | undefined, item: RawItem): Article | null {
-  const title = pickString(item.title) || '(untitled)';
+  const title = cleanTitle(pickString(item.title) || '(untitled)');
   const link = resolveUrl(base, pickString(item.link)) ?? undefined;
   const guid = pickString(item.guid) ?? pickString(item.id);
 
@@ -222,7 +223,7 @@ function normalize(raw: RawFeed, feedId: string): ParseResult {
 
   const feed: Omit<Feed, 'id' | 'addedAt'> = {
     url: resolveUrl(undefined, pickString(raw.feedUrl)) || resolveUrl(undefined, siteUrl) || '',
-    title: pickString(raw.title) || t('Untitled feed'),
+    title: cleanTitle(pickString(raw.title) || t('Untitled feed')),
     siteUrl,
     description: pickString(raw.description),
     iconUrl:

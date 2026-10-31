@@ -1,5 +1,17 @@
 /** Human-friendly date formatting for list rows and detail headers. */
 
+/**
+ * Some feeds double-encode quotes (`&amp;quot;` becomes `&quot;` after XML
+ * parsing). Decode the quote entities that survive that hop and collapse
+ * accidental whitespace so titles render cleanly everywhere.
+ */
+export function cleanTitle(value: string): string {
+  return value
+    .replace(/&quot;|&#0*34;|&#x0*22;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function formatRelativeTime(timestamp: number, now = Date.now()): string {
   const deltaMs = now - timestamp;
   if (Number.isNaN(deltaMs)) return '';
