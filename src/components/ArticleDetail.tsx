@@ -5,7 +5,6 @@ import { useStore } from '../hooks/useStore';
 import { sanitizeHtml } from '../lib/sanitize';
 import { formatDate } from '../lib/format';
 import { copyText } from '../lib/clipboard';
-import { leaveArticle } from '../lib/viewHistory';
 import { thumbnailUrl, watchUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml, type MediaEmbed } from '../lib/embeds';
 import { cachedFullContent, fetchFullContent } from '../lib/fullContent';
@@ -231,16 +230,6 @@ export function ArticleDetail() {
   return (
     <article className="detail" onContextMenu={handleContextMenu}>
       <div className="detail__bar">
-        <button
-          type="button"
-          className="ghost-button"
-          onClick={leaveArticle}
-          aria-label="Back to article list"
-        >
-          <Icon name="back" size={16} />
-          <span>Back</span>
-        </button>
-
         <div className="detail__actions">
           <button
             type="button"

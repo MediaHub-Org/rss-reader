@@ -138,7 +138,10 @@ export function SourcesManager({ idPrefix = 'manage' }: ManagerProps) {
           >
             Select none
           </button>
-          <span className="manage-toolbar__count">{selected.size} selected</span>
+          <span className="manage-toolbar__count">
+            {state.feeds.length} source{state.feeds.length === 1 ? '' : 's'} · {selected.size}{' '}
+            selected
+          </span>
         </div>
 
         <div className="manage-toolbar__actions">
@@ -164,10 +167,32 @@ export function SourcesManager({ idPrefix = 'manage' }: ManagerProps) {
       </div>
 
       <div className="manage-list" role="region" aria-label="Source selection">
-        {!folders.length && !ungrouped.length && (
+        {!folders.length && !ungrouped.length && state.feeds.length === 0 && (
           <p className="settings-empty">
             No sources yet. Add a feed from the sidebar to manage it here.
           </p>
+        )}
+
+        {/* Defensive fallback: feeds must always be visible even if a legacy
+            folder record is malformed and grouping returns nothing. */}
+        {!folders.length && !ungrouped.length && state.feeds.length > 0 && (
+          <div className="manage-folder">
+            <div className="manage-folder__header">
+              <span className="manage-folder__name">All sources</span>
+              <span className="badge">{state.feeds.length}</span>
+            </div>
+            <ul className="manage-folder__feeds">
+              {state.feeds.map((feed) => (
+                <SourceRow
+                  key={feed.id}
+                  feed={feed}
+                  checked={selected.has(feed.id)}
+                  onToggle={() => toggleFeed(feed.id)}
+                  onDelete={() => setPendingDelete([feed.id])}
+                />
+              ))}
+            </ul>
+          </div>
         )}
 
         {folders.map((folder) => {
@@ -456,20 +481,6 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
               <span className="manage-folder__name">{folder.name}</span>
               <span className="badge">{folder.feeds.length}</span>
             </label>
-            <button
-              type="button"
-              className="ghost-button manage-folder__delete"
-              onClick={() =>
-                setPendingDelete({ names: [folder.name], feedCount: folder.feeds.length })
-              }
-              aria-label={`Delete group ${folder.name}`}
-              title={`Delete group “${folder.name}”${
-                folder.feeds.length ? ' and its sources' : ''
-              }`}
-            >
-              <Icon name="trash" size={14} />
-              <span>Delete group</span>
-            </button>
           </div>
         ))}
 

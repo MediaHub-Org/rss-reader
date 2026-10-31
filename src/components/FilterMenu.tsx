@@ -32,8 +32,8 @@ export function FilterMenu() {
         aria-label={`Filter: ${filter.label}`}
         title={`Filter: ${filter.label}`}
       >
-        <Icon name={filter.icon} size={16} />
-        <span className="topbar-tool__label">Filter</span>
+        <Icon name={filter.icon} size={18} />
+        <span className="topbar-tool__label">{filter.label}</span>
         <Icon name="chevronDown" size={12} className="topbar-tool__caret" />
       </button>
 

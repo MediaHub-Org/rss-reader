@@ -186,10 +186,65 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  desktop-android:
+    name: Desktop (Android APK)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK/NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;28.2.13676358"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: npm ci
+
+      - name: Build Android APK
+        if: github.event_name != 'pull_request'
+        env:
+          CI: true
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          export ANDROID_NDK_HOME="$NDK_HOME"
+          npm run tauri -- android build --apk -t aarch64 --ci
+          VERSION=$(node -p "require('./package.json').version")
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk \
+            "RSS.Reader_${VERSION}_android.apk"
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: rss-reader-android-${{ github.sha }}
+          path: RSS.Reader_*_android.apk
+          if-no-files-found: error
+          retention-days: 14
+
+
   draft-release:
     name: Draft release (tag only)
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [web, desktop, desktop-linux, desktop-macos]
+    needs: [web, desktop, desktop-linux, desktop-macos, desktop-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -51,6 +51,17 @@ const waitForDetail = () =>
     { timeout: 5_000 }
   );
 
+/** Close the article like a user: backdrop click for overlays, Escape in split view. */
+const closeArticle = async () => {
+  const overlay = page.locator('.article-overlay__backdrop');
+  if (await overlay.count()) {
+    await overlay.click({ position: { x: 4, y: 4 } });
+  } else {
+    await page.keyboard.press('Escape');
+  }
+  await waitForList();
+};
+
 /**
  * Settings is reached from the top bar now (the old sidebar footer is gone);
  * Import/Export/Manage live in Settings → Data.
@@ -135,6 +146,11 @@ try {
     'Card view opens the reader overlay over the list',
     (await page.locator('.article-overlay__backdrop .article-overlay__dialog .detail').count()) === 1
   );
+  check(
+    'Reader has no close X or Back button',
+    (await page.locator('.article-overlay__close').count()) === 0 &&
+      (await page.locator('.detail .ghost-button:has-text("Back")').count()) === 0
+  );
   const html = await page.innerHTML('.detail .content');
   check('Article content rendered', html.trim().length > 100, `${html.length} chars`);
   check('No <script> injected from feed HTML', !/<script/i.test(html));
@@ -162,8 +178,7 @@ try {
   await page.screenshot({ path: path.join(SHOTS, '01-detail-light.png'), fullPage: false });
 
   /* read state — opening the article already marked it read */
-  await page.click('.detail .ghost-button:has-text("Back")');
-  await waitForList();
+  await closeArticle();
   await page.waitForSelector('.article-grid');
   const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');
   check('Read state reflected in list', /is-read/.test(firstRowRead || ''), firstRowRead);
@@ -283,8 +298,10 @@ try {
     nodes.map((node) => node.textContent?.trim())
   );
   check(
-    'View, Filter and Sort controls show their names',
-    viewLabels.includes('View') && viewLabels.includes('Filter') && viewLabels.includes('Sort'),
+    'View, Filter and Sort controls show the selected names',
+    viewLabels.includes('Card view') &&
+      viewLabels.includes('All articles') &&
+      viewLabels.includes('Newest first'),
     viewLabels.join(' · ')
   );
   const toolbarSizes = await page.$$eval(
@@ -317,8 +334,7 @@ try {
     'Starring an article flips its action',
     (await page.locator('.detail__bar .ghost-button[aria-label="Unstar article"]').count()) === 1
   );
-  await page.click('.detail .ghost-button:has-text("Back")');
-  await waitForList();
+  await closeArticle();
 
   for (const [label, className] of [
     ['Compact view', 'article-grid--compact'],
@@ -333,8 +349,7 @@ try {
       await page.click('.article-card >> nth=0');
       await page.waitForSelector('.article-overlay__dialog');
       check('Magazine view opens the reader as an overlay', true);
-      await page.click('.article-overlay__close');
-      await waitForList();
+      await closeArticle();
     }
   }
   check('Compact, magazine and card layouts switch cleanly', true);
@@ -390,8 +405,7 @@ try {
     { timeout: 5_000 }
   );
   check('Card overlay previous arrow returns', true);
-  await page.click('.article-overlay__close');
-  await waitForList();
+  await closeArticle();
 
   /* -------------------------- search options --------------------------- */
   await page.fill('.search__input', 'xylophonemarker');
@@ -723,7 +737,7 @@ try {
   }
 
   /* link mode (with thumbnail poster) after disabling the setting */
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
   await openSettings('Preferences');
   const mediaToggle = '[role="dialog"] .switch[aria-label*="Play media" i]';
   const embedDefault = await page.getAttribute(mediaToggle, 'aria-checked');
@@ -740,7 +754,7 @@ try {
     `toggle was ${embedDefault} · ${linkHref || ''}`
   );
   await page.screenshot({ path: path.join(SHOTS, '03-video-link.png') });
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
   await openSettings('Preferences');
   await page.click(mediaToggle);
   await page.keyboard.press('Escape');
@@ -942,7 +956,7 @@ try {
   const noneCountText = await page.textContent('#settings-feeds .manage-toolbar__count');
   check(
     'Sources section supports Select all and Select none',
-    /^[1-9]\d* selected$/.test((allCountText || '').trim()) && (noneCountText || '').trim() === '0 selected',
+    /[1-9]\d* selected$/.test((allCountText || '').trim()) && /\b0 selected$/.test((noneCountText || '').trim()),
     `${allCountText?.trim()} → ${noneCountText?.trim()}`
   );
 
@@ -995,7 +1009,12 @@ try {
   await page.click('#settings-folders button:has-text("Select none")');
 
   const foldersBeforeDelete = await page.locator('.sidebar .folder-group').count();
-  await page.click('#settings-folders .manage-folder__delete >> nth=0');
+  check(
+    'Groups do not repeat per-row delete buttons',
+    (await page.locator('#settings-folders .manage-folder__delete').count()) === 0
+  );
+  await page.locator('#settings-folders .manage-folder-row').first().locator('input').check();
+  await page.click('#settings-folders button:has-text("Delete selected")');
   await page.waitForSelector('.manage-confirm');
   check('Delete group asks for confirmation inside Settings', true);
   await page.keyboard.press('Enter');
@@ -1128,6 +1147,20 @@ try {
   await page.waitForTimeout(400);
   const menuVisible = await page.isVisible('.topbar__menu');
   check('Mobile menu button appears', menuVisible);
+  const refreshBox = await page
+    .locator('.topbar__tools .icon-button[aria-label="Refresh all feeds"]')
+    .boundingBox();
+  const viewBox = await page.locator('.topbar__view').boundingBox();
+  const filterBox = await page.locator('.topbar__filter').boundingBox();
+  check(
+    'Small-window toolbar icons match the refresh control size',
+    Boolean(refreshBox && viewBox && filterBox) &&
+      Math.abs(refreshBox.height - viewBox.height) < 1 &&
+      Math.abs(refreshBox.height - filterBox.height) < 1 &&
+      Math.abs(refreshBox.width - viewBox.width) < 1 &&
+      Math.abs(refreshBox.width - filterBox.width) < 1,
+    `${refreshBox?.width}×${refreshBox?.height} / ${viewBox?.width}×${viewBox?.height}`
+  );
   const mainBefore = await page.locator('.main').boundingBox();
   await page.click('.topbar__menu');
   await page.waitForTimeout(400);
@@ -1186,7 +1219,7 @@ try {
     spotifySrc || ''
   );
   await page.screenshot({ path: path.join(SHOTS, '06-spotify.png') });
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
 
   /* Vimeo item gets a 16:9 video player */
   await page.click('.article-card:has-text("Vimeo clip fixture")');
@@ -1199,7 +1232,7 @@ try {
       /--video/.test(vimeoFrameClass || ''),
     vimeoSrc || ''
   );
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
 
   /* SoundCloud uses its widget player */
   await page.click('.article-card:has-text("SoundCloud track fixture")');
@@ -1210,7 +1243,7 @@ try {
     /w\.soundcloud\.com\/player\/\?url=/.test(soundcloudSrc || ''),
     soundcloudSrc || ''
   );
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
 
   /* A provider link inside the body is detected without clicking anything */
   await page.click('.article-card:has-text("Spotify link in prose")');
@@ -1221,7 +1254,7 @@ try {
     /open\.spotify\.com\/embed\/episode\//.test(proseSrc || ''),
     proseSrc || ''
   );
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
 
   /* Clicking a provider link in the body swaps the player in place */
   const urlBeforeLink = page.url();
@@ -1255,7 +1288,7 @@ try {
     { timeout: 5000 }
   );
   check('Close player restores the article’s own media', true);
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
 
   /* Plain text item: nothing to play. Focus + Enter avoids a pointer click
      being intercepted by a transient overlay in CI. */
@@ -1265,7 +1298,7 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForSelector('.detail');
   check('Articles without media get no player', (await page.$('.detail .media-card')) === null);
-  await page.click('.detail .ghost-button:has-text("Back")');
+  await closeArticle();
 
   /* ------------------- copy link + load full content ------------------- */
   // Pointer hit-testing can get stuck on a stale compositor layer after the

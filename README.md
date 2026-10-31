@@ -23,6 +23,10 @@ Security).
 **Linux:** download the `.AppImage`, make it executable (`chmod +x RSS.Reader_*.AppImage`)
 and run it. It needs the distribution's WebKitGTK 4.1/GTK libraries (standard on Ubuntu 22.04+).
 
+**Android:** download the `.apk` from Releases (Android 8+, arm64), allow installs from
+your browser/file manager and open it. The current APK is **debug-signed** for testing;
+a Play Store / stable signing key is not configured yet.
+
 **Web / PWA:** build the app and install it from Chrome or Edge:
 
 ```bash
@@ -115,6 +119,7 @@ npm run desktop:build  # native bundle → src-tauri/target/release/bundle/
 npm run desktop:build -- --bundles nsis      # Windows installer
 npm run desktop:build -- --bundles appimage  # Linux AppImage
 npm run desktop:build -- --bundles dmg       # macOS disk image
+npm run android:build                        # Android APK (needs Android SDK/NDK)
 ```
 
 CI runs the web suite on Ubuntu and the Rust checks plus Windows installer build on
@@ -149,7 +154,9 @@ server/            shared local feed proxy
 - Automatic refresh runs every 15 minutes while the window is visible, plus on launch.
 - Below 1100 px the article view becomes single-pane and the sidebar becomes a right-side drawer.
 - The Windows installer and macOS disk image are unsigned; macOS needs a first-run
-  right-click → Open.
+  right-click → Open. The Android APK is debug-signed.
+- Android file import/export uses the WebView download flow; the desktop save dialog and
+  daily snapshots remain desktop-only.
 - Services has a sync-provider selector, but two-way sync is not implemented yet; the
   server and username are stored locally (the password/token is session-only) and
   excluded from backups.

@@ -1,7 +1,7 @@
 {
   "name": "rss-reader",
   "private": true,
-  "version": "0.10.0",
+  "version": "0.11.0",
   "type": "module",
   "description": "Lightweight local-first RSS/Atom reader with media playback",
   "scripts": {
@@ -21,7 +21,10 @@
     "desktop:build": "tauri build",
     "desktop:build:debug": "tauri build --debug",
     "icons": "node scripts/make-icons.mjs",
-    "proxy": "node server/proxy.mjs"
+    "proxy": "node server/proxy.mjs",
+    "tauri": "tauri",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build --apk"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",

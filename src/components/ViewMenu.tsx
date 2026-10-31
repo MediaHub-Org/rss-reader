@@ -29,8 +29,8 @@ export function ViewMenu() {
         aria-label={`View: ${view.label}`}
         title={`View: ${view.label}`}
       >
-        <Icon name={view.icon} size={16} />
-        <span className="topbar-tool__label">View</span>
+        <Icon name={view.icon} size={18} />
+        <span className="topbar-tool__label">{view.label}</span>
         <Icon name="chevronDown" size={12} className="topbar-tool__caret" />
       </button>
 

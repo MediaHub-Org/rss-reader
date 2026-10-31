@@ -7,8 +7,18 @@
  * loaded on demand.
  */
 
-export function isDesktopApp(): boolean {
+/** Running inside any Tauri shell, including Android/iOS. */
+export function isTauriApp(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
+
+/**
+ * Desktop-only features (tray, native save dialog, snapshots, autostart).
+ * Mobile Tauri still uses native feed fetching and link opening.
+ */
+export function isDesktopApp(): boolean {
+  if (!isTauriApp()) return false;
+  return !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 export type SaveOutcome = 'saved' | 'cancelled' | 'error';
@@ -60,7 +70,7 @@ export async function saveTextFile(filename: string, contents: string): Promise<
  *    their React handler has called preventDefault by the time this runs.
  */
 export function installDesktopLinkHandling(): void {
-  if (!isDesktopApp()) return;
+  if (!isTauriApp()) return;
 
   window.addEventListener('click', (event) => {
     if (event.defaultPrevented || event.button !== 0) return;

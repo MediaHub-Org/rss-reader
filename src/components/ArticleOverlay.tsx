@@ -39,16 +39,6 @@ export function ArticleOverlay() {
     >
       <button
         type="button"
-        className="article-overlay__close"
-        onClick={leaveArticle}
-        aria-label="Close article"
-        data-autofocus
-      >
-        <Icon name="close" size={18} />
-      </button>
-
-      <button
-        type="button"
         className="article-overlay__nav article-overlay__nav--prev"
         onClick={() => previous && open(previous.id)}
         disabled={!previous}

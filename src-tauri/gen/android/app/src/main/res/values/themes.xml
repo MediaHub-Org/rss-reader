@@ -1,0 +1,7 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.rss_reader" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Keep the system bars outside the WebView on Android 15+ edge-to-edge. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+</resources>

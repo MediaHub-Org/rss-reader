@@ -1,4 +1,4 @@
-import { invokeDesktop, isDesktopApp } from './desktop';
+import { invokeDesktop, isDesktopApp, isTauriApp } from './desktop';
 import { summarizeNotifications, type NotificationItem } from './notificationSummary';
 
 interface QueueArgs {
@@ -14,7 +14,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let permission: boolean | null = null;
 
 async function ensurePermission(): Promise<boolean> {
-  if (!isDesktopApp()) return false;
+  if (!isTauriApp()) return false;
   if (permission !== null) return permission;
 
   try {
@@ -48,6 +48,7 @@ function backgrounded(): boolean {
  * non-desktop contexts.
  */
 async function windowIsActive(): Promise<boolean> {
+  // Mobile has no tray/window state command; the DOM visibility is reliable.
   if (!isDesktopApp()) return !backgrounded();
   try {
     return await invokeDesktop<boolean>('is_main_window_active');
@@ -62,7 +63,7 @@ async function windowIsActive(): Promise<boolean> {
  * cycle with refreshFeed). The foreground check happens at flush time.
  */
 export function queueNewArticles(args: QueueArgs): void {
-  if (!isDesktopApp() || !args.enabled || args.muted || args.count <= 0) return;
+  if (!isTauriApp() || !args.enabled || args.muted || args.count <= 0) return;
 
   const previous = pending.get(args.feedId);
   pending.set(args.feedId, {

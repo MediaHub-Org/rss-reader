@@ -32,8 +32,8 @@ export function SortMenu() {
         aria-label={`Sort: ${sort.label}`}
         title={`Sort: ${sort.label}`}
       >
-        <Icon name="sort" size={16} />
-        <span className="topbar-tool__label">Sort</span>
+        <Icon name="sort" size={18} />
+        <span className="topbar-tool__label">{sort.label}</span>
         <Icon name="chevronDown" size={12} className="topbar-tool__caret" />
       </button>
 

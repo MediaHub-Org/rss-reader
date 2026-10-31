@@ -11,7 +11,7 @@
  */
 import { looksLikeFeed, parseFeedXml, type ParseResult } from './feedParser';
 import { extractYouTubeFeedTarget, fetchYouTubeChannelFeed } from './youtubeApi';
-import { invokeDesktop, isDesktopApp } from './desktop';
+import { invokeDesktop, isTauriApp } from './desktop';
 
 export const PROXY_URL: string | undefined =
   (import.meta.env.VITE_PROXY_URL as string | undefined) || undefined;
@@ -64,7 +64,7 @@ async function getText(
   accept = 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*'
 ): Promise<FetchTextResult> {
   // Desktop: one native request, no CORS and no third-party proxy.
-  if (isDesktopApp()) {
+  if (isTauriApp()) {
     try {
       const result = await invokeDesktop<NativeFeedResponse>('fetch_feed', {
         url,

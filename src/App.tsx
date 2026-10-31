@@ -5,7 +5,7 @@ import { useStore } from './hooks/useStore';
 import { useVisibleArticles } from './hooks/useVisibleArticles';
 import { useViewHistory } from './hooks/useViewHistory';
 import { leaveArticle } from './lib/viewHistory';
-import { isDesktopApp } from './lib/desktop';
+import { isTauriApp } from './lib/desktop';
 import { syncDesktopSettings, updateTrayUnread } from './lib/desktopSettings';
 import { listenForTrayRefresh } from './lib/trayEvents';
 import { Sidebar } from './components/Sidebar';
@@ -74,7 +74,7 @@ export default function App() {
      desktop shell keeps running in the tray */
   useEffect(() => {
     const tick = () => {
-      if (document.visibilityState !== 'visible' && !isDesktopApp()) return;
+      if (document.visibilityState !== 'visible' && !isTauriApp()) return;
       if (Date.now() - lastRefreshed.current < STALE_AFTER_MS) return;
       lastRefreshed.current = Date.now();
       void store.refreshAll({ silent: true, notify: true });

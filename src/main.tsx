@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { store } from './store/store';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { installDesktopLinkHandling, isDesktopApp } from './lib/desktop';
+import { installDesktopLinkHandling, isTauriApp } from './lib/desktop';
 import './styles/theme.css';
 import './styles/app.css';
 import './styles/responsive.css';
@@ -33,7 +33,7 @@ if (import.meta.env.DEV) {
 // Register the app-shell service worker so the installed PWA boots instantly
 // and keeps working offline. Production only, and never inside the desktop
 // shell: its assets already ship with the app.
-if (import.meta.env.PROD && !isDesktopApp() && 'serviceWorker' in navigator) {
+if (import.meta.env.PROD && !isTauriApp() && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js', { scope: './' }).catch((err) => {
       console.warn('Service worker registration failed', err);
