@@ -1,7 +1,30 @@
 import { formatBytes } from '../../lib/format';
+import { store } from '../../store/store';
+import { useStore } from '../../hooks/useStore';
+import { copyText } from '../../lib/clipboard';
+import { isDesktopApp, isTauriApp } from '../../lib/desktop';
 import { Icon } from '../Icon';
 
 export function AboutPanel({ usage }: { usage: { used: number } }) {
+  const state = useStore();
+  const platform = isDesktopApp() ? 'desktop' : isTauriApp() ? 'mobile' : 'web';
+
+  const copyDiagnostics = async () => {
+    const diagnostics = {
+      version: __APP_VERSION__,
+      platform,
+      feeds: state.feeds.length,
+      folders: state.folders.length,
+      cachedArticles: Object.values(state.articles).flat().length,
+      readEntries: Object.keys(state.readIds).length,
+      starredArticles: Object.keys(state.starredIds).length,
+      rules: state.rules.length,
+      storageBytes: usage.used,
+    };
+    const ok = await copyText(JSON.stringify(diagnostics, null, 2));
+    store.notify(ok ? 'success' : 'error', ok ? 'Diagnostics copied' : 'Could not copy diagnostics');
+  };
+
   return (
     <>
       <section className="settings-section about">
@@ -32,6 +55,10 @@ export function AboutPanel({ usage }: { usage: { used: number } }) {
             <Icon name="external" size={15} />
             <span>Project on GitHub</span>
           </a>
+          <button type="button" className="button button--ghost" onClick={() => void copyDiagnostics()}>
+            <Icon name="copy" size={15} />
+            <span>Copy diagnostics</span>
+          </button>
         </div>
       </section>
 

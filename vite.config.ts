@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import type { ServerResponse } from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { proxyFeedRequest } from './server/proxy-lib.mjs';
@@ -15,6 +15,18 @@ const pkg = JSON.parse(readFileSync(localPath('./package.json'), 'utf8')) as { v
  * The identical handler ships standalone as `npm run proxy` for anyone serving
  * the built bundle from a plain static host.
  */
+/** Give every production build a unique service-worker cache name. */
+function serviceWorkerVersion(): Plugin {
+  return {
+    name: 'rss-reader-sw-version',
+    closeBundle() {
+      const file = localPath('./dist/sw.js');
+      const version = `${pkg.version}-${Date.now()}`;
+      writeFileSync(file, readFileSync(file, 'utf8').replace('__BUILD_VERSION__', version));
+    },
+  };
+}
+
 function feedProxy(): Plugin {
   const handle = async (url: string | null, res: ServerResponse): Promise<boolean> => {
     if (!url) return false;
@@ -58,7 +70,7 @@ function feedProxy(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), feedProxy()],
+  plugins: [react(), feedProxy(), serviceWorkerVersion()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },

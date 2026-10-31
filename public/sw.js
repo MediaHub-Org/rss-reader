@@ -10,7 +10,7 @@
  *
  * Registered by src/main.tsx in production builds only.
  */
-const VERSION = 'rss-reader-shell-v2';
+const VERSION = 'rss-reader-shell-__BUILD_VERSION__';
 const SHELL = ['./', './index.html'];
 
 /**
