@@ -6,7 +6,7 @@ import { SearchOptions } from '../SearchOptions';
 import { t } from '../../lib/i18n';
 
 interface SidebarHeaderProps {
-  searchRef: RefObject<HTMLInputElement>;
+  searchRef: RefObject<HTMLInputElement | null>;
   onSearchKey: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   onClose: () => void;
 }

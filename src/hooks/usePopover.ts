@@ -6,8 +6,8 @@ export interface Popover {
   setOpen: Dispatch<SetStateAction<boolean>>;
   toggle: () => void;
   close: () => void;
-  rootRef: RefObject<HTMLDivElement>;
-  triggerRef: RefObject<HTMLButtonElement>;
+  rootRef: RefObject<HTMLDivElement | null>;
+  triggerRef: RefObject<HTMLButtonElement | null>;
 }
 
 /**
