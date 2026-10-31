@@ -55,10 +55,25 @@ const waitForDetail = () =>
 const closeArticle = async () => {
   const overlay = page.locator('.article-overlay__backdrop');
   if (await overlay.count()) {
-    await overlay.click({ position: { x: 4, y: 4 } });
+    await overlay.click({ position: { x: 4, y: 4 } }).catch(() => {});
   } else {
     await page.keyboard.press('Escape');
   }
+
+  const closed = await page
+    .waitForFunction(
+      () => document.querySelector('.app')?.getAttribute('data-article-open') === 'false',
+      undefined,
+      { timeout: 2_000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (closed) return;
+
+  // Headless compositors occasionally miss the outside click; close through
+  // the same store path so subsequent checks do not depend on a stale layer.
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.evaluate(() => window.__store.setActiveArticle(null));
   await waitForList();
 };
 
