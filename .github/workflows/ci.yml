@@ -260,10 +260,19 @@ jobs:
       - name: List release assets
         run: ls -lh release-assets
 
-      - name: Generate SHA-256 checksums
+      - name: Normalize asset names and generate SHA-256 checksums
         run: |
           cd release-assets
           rm -f SHA256SUMS.txt
+          # GitHub turns spaces in uploaded asset names into dots; rename first so
+          # the checksum file references the names users actually download.
+          for file in *; do
+            [ -f "$file" ] || continue
+            normalized="${file// /.}"
+            if [ "$file" != "$normalized" ]; then
+              mv -- "$file" "$normalized"
+            fi
+          done
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
