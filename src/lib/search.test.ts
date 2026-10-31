@@ -57,6 +57,12 @@ describe('search options', () => {
     expect(articleMatches(a, 'Special', { caseSensitive: true })).toBe(true);
   });
 
+  it('supports regular expressions and invalid patterns', () => {
+    expect(articleMatches(a, 'Spec[a-z]+ Token', { regex: true })).toBe(true);
+    expect(articleMatches(a, 'spec[a-z]+ token', { regex: true, caseSensitive: true })).toBe(false);
+    expect(articleMatches(a, '(', { regex: true })).toBe(false);
+  });
+
   it('can restrict matching to title/summary/author', () => {
     expect(articleMatches(a, 'Special', { fullText: false })).toBe(false);
     expect(articleMatches(a, 'normal', { fullText: false })).toBe(true);

@@ -42,8 +42,8 @@ refreshes. The desktop app fetches natively and needs no Node process at runtime
 
 - **Four layouts** — cards, list, magazine and compact. List keeps the article pane
   beside the rows; magazine and card open the reader as a blurred popup.
-- **Filters and search** — all/unread/starred, plus case-sensitive and full-text
-  options attached to the search field.
+- **Filters and search** — all/unread/starred, plus case-sensitive, full-text and
+  regular-expression options attached to the search field.
 - **Stars and rules** — keep articles, or automatically mark/star new arrivals with
   contains or regex rules scoped to a source or group.
 - **Reader tools** — copy link and load the original full article text, cached for the
@@ -60,7 +60,8 @@ refreshes. The desktop app fetches natively and needs no Node process at runtime
 
 **Sources and groups.** Subscribe by feed URL or website; the feed link is discovered
 automatically. Organize with A–Z folders/groups, resize the sidebar, collapse all, and
-bulk-select sources or groups in Settings for move/merge/delete. Feed failures back off
+bulk-select sources or groups in Settings for move/merge/delete. Sources includes an
+import action when the device has no subscriptions yet. Feed failures back off
 from 5 minutes to 6 hours; manual refresh retries immediately. ETag/Last-Modified
 validators keep unchanged feeds on a 304.
 

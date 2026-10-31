@@ -17,6 +17,7 @@ export function useVisibleArticles(state: AppState): Article[] {
         filter: state.prefs.articleFilter,
         caseSensitive: state.prefs.searchCaseSensitive,
         fullText: state.prefs.searchFullText,
+        regex: state.prefs.searchRegex,
         searchAll: state.ui.searchAllFeeds,
       }),
     [state]

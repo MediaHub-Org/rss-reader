@@ -58,6 +58,22 @@ export function SearchOptions() {
             </span>
             <span>Search in full text</span>
           </button>
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={state.prefs.searchRegex}
+            className="view-menu__item"
+            onClick={() =>
+              store.setPreferences({
+                searchRegex: !state.prefs.searchRegex,
+              })
+            }
+          >
+            <span className="view-menu__check">
+              {state.prefs.searchRegex && <Icon name="check" size={15} />}
+            </span>
+            <span>Regular expression</span>
+          </button>
         </div>
       )}
     </div>

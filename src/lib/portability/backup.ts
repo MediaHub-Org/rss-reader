@@ -107,6 +107,7 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
     out.searchCaseSensitive = raw.searchCaseSensitive;
   }
   if (typeof raw.searchFullText === 'boolean') out.searchFullText = raw.searchFullText;
+  if (typeof raw.searchRegex === 'boolean') out.searchRegex = raw.searchRegex;
   if (typeof raw.sidebarCollapsed === 'boolean') out.sidebarCollapsed = raw.sidebarCollapsed;
   if (typeof raw.closeToTray === 'boolean') out.closeToTray = raw.closeToTray;
   if (typeof raw.notifyNewArticles === 'boolean') out.notifyNewArticles = raw.notifyNewArticles;

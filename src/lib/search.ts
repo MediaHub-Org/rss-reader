@@ -3,6 +3,8 @@ import type { Article } from '../types';
 export interface SearchOptions {
   caseSensitive?: boolean;
   fullText?: boolean;
+  /** Interpret the needle as a regular expression. */
+  regex?: boolean;
 }
 
 const lowerCache = new WeakMap<Article, string>();
@@ -57,6 +59,15 @@ export function articleMatches(
   const fullText = options.fullText !== false;
   const caseSensitive = Boolean(options.caseSensitive);
   const titleText = [article.title, article.summary, article.author ?? ''].join('\n');
+
+  if (options.regex) {
+    try {
+      const pattern = new RegExp(needle, caseSensitive ? '' : 'i');
+      return pattern.test(fullText ? rawSearchableText(article) : titleText);
+    } catch {
+      return false;
+    }
+  }
 
   if (!fullText) {
     return caseSensitive

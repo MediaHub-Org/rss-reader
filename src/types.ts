@@ -52,6 +52,8 @@ export interface Preferences {
   /** Search options, edited from the search field. */
   searchCaseSensitive: boolean;
   searchFullText: boolean;
+  /** Treat the search query as a regular expression. */
+  searchRegex: boolean;
   /** Sidebar collapsed to a hidden state on desktop (persists across sessions). */
   sidebarCollapsed: boolean;
   /** Desktop: closing the window hides it to the tray instead of quitting. */
@@ -94,6 +96,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   articleFilter: 'all',
   searchCaseSensitive: false,
   searchFullText: true,
+  searchRegex: false,
   sidebarCollapsed: false,
   closeToTray: false,
   notifyNewArticles: true,

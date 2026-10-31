@@ -429,6 +429,7 @@ try {
   await page.waitForSelector('.search-options');
   const fullTextToggle = '.search-options [role="menuitemcheckbox"]:has-text("Search in full text")';
   const caseToggle = '.search-options [role="menuitemcheckbox"]:has-text("Case sensitive")';
+  const regexToggle = '.search-options [role="menuitemcheckbox"]:has-text("Regular expression")';
   check(
     'Full-text search is enabled by default',
     (await page.getAttribute(fullTextToggle, 'aria-checked')) === 'true'
@@ -446,6 +447,16 @@ try {
   await page.click(caseToggle);
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 0);
   check('Case-insensitive search still matches', true);
+
+  await page.click(regexToggle);
+  await page.fill('.search__input', 'Fixture story (one|two)');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 2);
+  check('Regular-expression search matches alternation', true);
+  await page.fill('.search__input', '(');
+  await page.waitForFunction(() => document.querySelectorAll('.article-card').length === 0);
+  check('Invalid regular expression returns no matches', true);
+  await page.click(regexToggle);
+
   await page.click('.search__options');
   await page.fill('.search__input', '');
   await page.waitForFunction(() => document.querySelectorAll('.article-card').length > 1);

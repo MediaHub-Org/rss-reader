@@ -10,6 +10,8 @@ import { Icon } from '../Icon';
 interface ManagerProps {
   /** DOM id prefix, so the dialog and Settings can keep stable test ids. */
   idPrefix?: string;
+  /** Optional import action for the empty Sources state. */
+  onImport?: () => void;
 }
 
 type FolderGroup = { name: string; feeds: Feed[] };
@@ -38,7 +40,7 @@ function groupFeeds(feeds: Feed[], folders: string[]): { folders: FolderGroup[];
 }
 
 /** Multi-select source list: bulk move to a group, bulk delete. */
-export function SourcesManager({ idPrefix = 'manage' }: ManagerProps) {
+export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) {
   const state = useStore();
   const { folders, ungrouped } = useMemo(
     () => groupFeeds(state.feeds, state.folders),
@@ -168,9 +170,15 @@ export function SourcesManager({ idPrefix = 'manage' }: ManagerProps) {
 
       <div className="manage-list" role="region" aria-label="Source selection">
         {!folders.length && !ungrouped.length && state.feeds.length === 0 && (
-          <p className="settings-empty">
-            No sources yet. Add a feed from the sidebar to manage it here.
-          </p>
+          <div className="settings-empty">
+            <p>No sources on this device yet. Add a feed from the sidebar, or import an OPML/JSON backup.</p>
+            {onImport && (
+              <button type="button" className="button button--ghost" onClick={onImport}>
+                <Icon name="upload" size={15} />
+                <span>Import OPML/JSON</span>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Defensive fallback: feeds must always be visible even if a legacy

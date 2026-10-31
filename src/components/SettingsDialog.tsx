@@ -100,7 +100,7 @@ export function SettingsDialog({
                 Select sources to move them into a group or delete them in bulk. Deleting a source
                 also removes its cached articles, read state and stars.
               </p>
-              <SourcesManager idPrefix="settings" />
+              <SourcesManager idPrefix="settings" onImport={onImport} />
             </section>
           )}
 

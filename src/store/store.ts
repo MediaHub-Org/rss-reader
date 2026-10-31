@@ -22,6 +22,7 @@ import { isRetryDue, retryDelayMs } from '../lib/backoff';
 import { fetchFeedArticles, FeedFetchError } from '../lib/fetchFeed';
 import { queueNewArticles } from '../lib/notifications';
 import { articleMatches } from '../lib/search';
+import { clampFutureDates } from '../lib/articleDates';
 import { applyRulesToArticles, idMap } from '../lib/rules';
 import { normalizeFeedUrl } from '../lib/url';
 import {
@@ -192,8 +193,16 @@ export class Store {
     const cached = await loadAllArticles();
     const known = new Set(feeds.map((f) => f.id));
     const articles: Record<string, Article[]> = {};
+    const repaired: Array<[string, Article[]]> = [];
+    const now = Date.now();
     for (const [feedId, list] of Object.entries(cached)) {
-      if (known.has(feedId)) articles[feedId] = list;
+      if (!known.has(feedId)) continue;
+      const normalized = clampFutureDates(list, now);
+      if (normalized !== list) repaired.push([feedId, normalized]);
+      articles[feedId] = normalized;
+    }
+    if (repaired.length) {
+      void Promise.all(repaired.map(([feedId, list]) => saveArticles(feedId, list)));
     }
 
     const feedState: Record<string, FeedState> = {};
@@ -366,7 +375,7 @@ export class Store {
       }
 
       const parsed = result.parsed;
-      const existing = this.state.articles[feedId] ?? [];
+      const existing = clampFutureDates(this.state.articles[feedId] ?? [], Date.now());
       const seen = new Set(existing.map((a) => a.id));
       const merged = [...existing];
       const incoming: Article[] = [];
@@ -1131,10 +1140,12 @@ export class Store {
 
     for (const [feedId, list] of Object.entries(incoming)) {
       if (!knownFeeds.has(feedId) || !Array.isArray(list) || !list.length) continue;
-      const clean = list
-        .filter((article) => article && typeof article.id === 'string')
-        .map((article) => ({ ...article, feedId }))
-        .sort((a, b) => b.publishedAt - a.publishedAt);
+      const clean = clampFutureDates(
+        list
+          .filter((article) => article && typeof article.id === 'string')
+          .map((article) => ({ ...article, feedId })),
+        Date.now()
+      ).sort((a, b) => b.publishedAt - a.publishedAt);
       if (!clean.length) continue;
 
       total += clean.length;
@@ -1263,6 +1274,7 @@ export function selectArticles(
     filter?: ArticleFilter;
     caseSensitive?: boolean;
     fullText?: boolean;
+    regex?: boolean;
     searchAll?: boolean;
   }
 ): Article[] {
@@ -1296,6 +1308,7 @@ export function selectArticles(
       articleMatches(article, needle, {
         caseSensitive: options.caseSensitive,
         fullText: options.fullText,
+        regex: options.regex,
       })
     );
   }
