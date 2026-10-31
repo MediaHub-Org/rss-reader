@@ -12,13 +12,13 @@ import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/portability';
 import { isDesktopApp } from '../lib/desktop';
 import { copyText } from '../lib/clipboard';
-import { FeedIcon } from './FeedIcon';
 import { Icon } from './Icon';
-import { Dropdown, type DropdownOption } from './Dropdown';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { FolderPickerDialog } from './FolderPickerDialog';
 import { CreateFolderDialog } from './CreateFolderDialog';
-import { SearchOptions } from './SearchOptions';
+import { FeedItem } from './sidebar/FeedItem';
+import { SidebarHeader } from './sidebar/SidebarHeader';
+import { SidebarToolbar } from './sidebar/SidebarToolbar';
 
 type ContextTarget =
   | { type: 'feed'; feed: Feed; x: number; y: number }
@@ -39,15 +39,6 @@ interface FolderGroup {
   name: string;
   feeds: Feed[];
 }
-
-const SORT_OPTIONS: Array<DropdownOption<SidebarSort>> = [
-  { value: 'name-asc', label: 'Name (A to Z)' },
-  { value: 'name-desc', label: 'Name (Z to A)' },
-  { value: 'modified-desc', label: 'Last updated (newest)' },
-  { value: 'modified-asc', label: 'Last updated (oldest)' },
-  { value: 'created-desc', label: 'Date added (newest)' },
-  { value: 'created-asc', label: 'Date added (oldest)' },
-];
 
 /** A feed's sort key for the "updated"/"added" orders -- falls back to when
  *  it was added if it has never finished a refresh yet. */
@@ -540,90 +531,24 @@ export function Sidebar({
     return { x: rect.left, y: rect.bottom + 4 };
   };
 
-  const renderFeedItem = (feed: Feed) => {
-    const unread = unreadCount(state, feed.id);
-    const feedState = state.feedState[feed.id];
-    const hasError = feedState?.status === 'error';
-    const retryHint = feedState?.nextRetryAt
-      ? ` · next automatic retry ${new Date(feedState.nextRetryAt).toLocaleTimeString()}`
-      : '';
-    const isActive = state.ui.activeFeedId === feed.id;
-    const isRenaming = renamingFeedId === feed.id;
-
-    return (
-      <li
-        key={feed.id}
-        className={`feed-item ${isActive ? 'is-active' : ''}`}
-        data-feed-id={feed.id}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          setContextMenu({ type: 'feed', feed, x: event.clientX, y: event.clientY });
-        }}
-      >
-        {isRenaming ? (
-          <div className="feed-row feed-row--renaming">
-            <FeedIcon feed={feed} />
-            <input
-              ref={renameFeedRef}
-              type="text"
-              className="input sidebar__rename-input"
-              value={renameFeedValue}
-              onChange={(event) => setRenameFeedValue(event.target.value)}
-              onKeyDown={onRenameFeedKey}
-              onBlur={submitRenameFeed}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            className={`feed-row ${isActive ? 'is-active' : ''}`}
-            onClick={() => selectFeed(feed.id)}
-            aria-current={isActive ? 'page' : undefined}
-            title={feed.description || feed.title}
-          >
-            <FeedIcon feed={feed} />
-            <span className="feed-row__title">{feed.title}</span>
-            {hasError && (
-              <span
-                className="status-dot"
-                title={`${feedState?.message ?? 'Feed error'}${retryHint}`}
-                aria-label="Feed has an error"
-              >
-                !
-              </span>
-            )}
-            {unread > 0 && <span className="badge">{unread > 999 ? '999+' : unread}</span>}
-          </button>
-        )}
-
-        {!isRenaming && (
-          <div className="feed-row__actions">
-            <button
-              type="button"
-              className="icon-button"
-              onClick={(event) => {
-                const { x, y } = menuAtButton(event);
-                setContextMenu({ type: 'feed', feed, x, y });
-              }}
-              aria-label={`More actions for ${feed.title}`}
-              title="More actions"
-            >
-              <Icon name="more" size={15} />
-            </button>
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => onUnsubscribe(feed)}
-              aria-label={`Unsubscribe from ${feed.title}`}
-              title="Unsubscribe"
-            >
-              <Icon name="trash" size={15} />
-            </button>
-          </div>
-        )}
-      </li>
-    );
-  };
+  const renderFeedItem = (feed: Feed) => (
+    <FeedItem
+      key={feed.id}
+      feed={feed}
+      unread={unreadCount(state, feed.id)}
+      feedState={state.feedState[feed.id]}
+      isActive={state.ui.activeFeedId === feed.id}
+      isRenaming={renamingFeedId === feed.id}
+      renameValue={renameFeedValue}
+      renameRef={renameFeedRef}
+      onSelect={() => selectFeed(feed.id)}
+      onRenameChange={setRenameFeedValue}
+      onRenameKey={onRenameFeedKey}
+      onRenameBlur={submitRenameFeed}
+      onMenu={(target, x, y) => setContextMenu({ type: 'feed', feed: target, x, y })}
+      onUnsubscribe={onUnsubscribe}
+    />
+  );
 
   return (
     <nav
@@ -632,99 +557,15 @@ export function Sidebar({
       ref={navRef}
       style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
-      <div className="sidebar__header">
-        <span className="brand" title="RSS Reader" aria-label="RSS Reader">
-          <Icon name="rss" size={18} />
-        </span>
-        <button type="button" className="icon-button sidebar__close" onClick={onClose} aria-label="Close feed list">
-          <Icon name="close" />
-        </button>
-      </div>
-
-      <div className="sidebar__search">
-        <Icon name="search" size={16} className="search__icon" />
-        <input
-          ref={searchRef}
-          type="search"
-          className="search__input"
-          placeholder="Search articles (full text)"
-          aria-label="Search articles"
-          value={state.ui.query}
-          onChange={(event) => store.setQuery(event.target.value)}
-          onKeyDown={onSearchKey}
-          spellCheck={false}
-        />
-        <button
-          type="button"
-          className={`search__scope ${state.ui.searchAllFeeds ? 'is-active' : ''}`}
-          aria-pressed={state.ui.searchAllFeeds}
-          aria-label={
-            state.ui.searchAllFeeds
-              ? 'Search current view instead of all feeds'
-              : 'Search all feeds instead of the current view'
-          }
-          title={
-            state.ui.searchAllFeeds
-              ? 'Searching all feeds — click for current view'
-              : 'Searching current view — click for all feeds'
-          }
-          onClick={() => store.setSearchAllFeeds(!state.ui.searchAllFeeds)}
-        >
-          {state.ui.searchAllFeeds ? 'All' : 'View'}
-        </button>
-        <SearchOptions />
-      </div>
-
-      <div className="sidebar__toolbar">
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => beginCreateFolder()}
-          aria-label="New folder"
-          title="New folder"
-        >
-          <Icon name="folderPlus" size={16} />
-        </button>
-        <button
-          type="button"
-          className="icon-button"
-          onClick={onAddFeed}
-          aria-label="New feed"
-          title="New feed"
-        >
-          <Icon name="plus" size={16} />
-        </button>
-        <span className="sidebar__toolbar-spacer" />
-        <Dropdown<SidebarSort>
-          value={state.prefs.sidebarSort}
-          options={SORT_OPTIONS}
-          onChange={(sidebarSort) => store.setPreferences({ sidebarSort })}
-          label="Sort feeds"
-          triggerTitle="Sort feeds"
-          icon={<Icon name="sort" size={15} />}
-          className="dropdown--icon"
-        />
-        {folders.length > 0 && (
-          <button
-            type="button"
-            className="icon-button"
-            onClick={toggleAllFolders}
-            aria-label={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
-            title={anyFolderOpen ? 'Collapse all folders' : 'Expand all folders'}
-          >
-            <Icon name={anyFolderOpen ? 'collapse' : 'expand'} size={15} />
-          </button>
-        )}
-        <button
-          type="button"
-          className="icon-button"
-          onClick={() => revealActiveTarget(true)}
-          aria-label="Reveal active feed"
-          title="Reveal active feed"
-        >
-          <Icon name="locate" size={15} />
-        </button>
-      </div>
+      <SidebarHeader searchRef={searchRef} onSearchKey={onSearchKey} onClose={onClose} />
+      <SidebarToolbar
+        onNewFolder={() => beginCreateFolder()}
+        onAddFeed={onAddFeed}
+        hasFolders={folders.length > 0}
+        anyFolderOpen={anyFolderOpen}
+        onToggleFolders={toggleAllFolders}
+        onReveal={() => revealActiveTarget(true)}
+      />
 
       <div className="sidebar__scroll">
         <ul className="feed-list" role="list">

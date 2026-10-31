@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from './types';
 import { store, unreadCount } from './store/store';
 import { useStore } from './hooks/useStore';
@@ -14,12 +14,21 @@ import { ArticleList } from './components/ArticleList';
 import { ArticleDetail } from './components/ArticleDetail';
 import { ArticleOverlay } from './components/ArticleOverlay';
 import { AddFeedDialog } from './components/AddFeedDialog';
-import { SettingsDialog, type SettingsSection } from './components/SettingsDialog';
-import { DataDialog, type DataTab } from './components/DataDialog';
-import { BackupsDialog } from './components/BackupsDialog';
+import type { SettingsSection } from './components/SettingsDialog';
+import type { DataTab } from './components/DataDialog';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Toasts } from './components/Toasts';
 import { AUTO_BACKUP_CHECK_MS, maybeAutoBackup } from './lib/backups';
+
+const SettingsDialog = lazy(() =>
+  import('./components/SettingsDialog').then((module) => ({ default: module.SettingsDialog }))
+);
+const DataDialog = lazy(() =>
+  import('./components/DataDialog').then((module) => ({ default: module.DataDialog }))
+);
+const BackupsDialog = lazy(() =>
+  import('./components/BackupsDialog').then((module) => ({ default: module.BackupsDialog }))
+);
 
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 const STALE_AFTER_MS = 10 * 60 * 1000;
@@ -329,31 +338,44 @@ export default function App() {
           setAddFolder(undefined);
         }}
       />
-      <SettingsDialog
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        hasFeeds={state.feeds.length > 0}
-        initialSection={settingsSection}
-        onImport={() => {
-          // Hand off to the Data dialog instead of stacking it on top of
-          // Settings -- two simultaneously open Dialogs both listen for
-          // Escape on document, and only one of them ends up closing.
-          setSettingsOpen(false);
-          setDataTab('import');
-          setDataOpen(true);
-        }}
-        onExport={() => {
-          setSettingsOpen(false);
-          setDataTab('export');
-          setDataOpen(true);
-        }}
-        onBackups={() => {
-          setSettingsOpen(false);
-          setBackupsOpen(true);
-        }}
-      />
-      <DataDialog open={dataOpen} initialTab={dataTab} onClose={() => setDataOpen(false)} />
-      <BackupsDialog open={backupsOpen} onClose={() => setBackupsOpen(false)} />
+      {settingsOpen && (
+        <Suspense fallback={null}>
+          <SettingsDialog
+            open
+            onClose={() => setSettingsOpen(false)}
+            hasFeeds={state.feeds.length > 0}
+            initialSection={settingsSection}
+            onImport={() => {
+              // Hand off to the Data dialog instead of stacking it on top of
+              // Settings -- two simultaneously open Dialogs both listen for
+              // Escape on document, and only one of them ends up closing.
+              setSettingsOpen(false);
+              setDataTab('import');
+              setDataOpen(true);
+            }}
+            onExport={() => {
+              setSettingsOpen(false);
+              setDataTab('export');
+              setDataOpen(true);
+            }}
+            onBackups={() => {
+              setSettingsOpen(false);
+              setBackupsOpen(true);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {dataOpen && (
+        <Suspense fallback={null}>
+          <DataDialog open initialTab={dataTab} onClose={() => setDataOpen(false)} />
+        </Suspense>
+      )}
+      {backupsOpen && (
+        <Suspense fallback={null}>
+          <BackupsDialog open onClose={() => setBackupsOpen(false)} />
+        </Suspense>
+      )}
 
       <ConfirmDialog
         open={Boolean(confirmFeed)}

@@ -44,7 +44,6 @@ export function exportFullBackup(
     prefsVersion: _version,
     syncServer: _server,
     syncUsername: _username,
-    syncPassword: _password,
     ...portablePrefs
   } = prefs;
 

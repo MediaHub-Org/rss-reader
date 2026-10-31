@@ -130,7 +130,6 @@ describe('full JSON backup', () => {
     syncService: 'miniflux',
     syncServer: 'https://miniflux.example/v1/',
     syncUsername: 'reader',
-    syncPassword: 'sync-secret',
   };
   const feeds = [
     feed({ title: 'Alpha', folder: 'News' }),
@@ -155,7 +154,6 @@ describe('full JSON backup', () => {
     expect(data.starredIds).toEqual(['f1-a1']);
     expect(data.preferences.youtubeApiKey).toBeUndefined();
     expect(data.preferences.prefsVersion).toBeUndefined();
-    expect(data.preferences.syncPassword).toBeUndefined();
     expect(data.preferences.syncServer).toBeUndefined();
     expect(data.preferences.syncUsername).toBeUndefined();
     expect(data.preferences.syncService).toBe('miniflux');
@@ -184,7 +182,6 @@ describe('full JSON backup', () => {
     expect(parsed.rules).toEqual([rule()]);
     expect(parsed.preferences?.theme).toBe('dark');
     expect(parsed.preferences?.syncService).toBe('miniflux');
-    expect(parsed.preferences && 'syncPassword' in parsed.preferences).toBe(false);
   });
 
   it('still accepts the v1 backup shape', () => {

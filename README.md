@@ -69,8 +69,8 @@ Mark as read works per article, all visible, or older than 1/3/7 days.
 **Services & Integration** and **About**. Theme, density, reading typeface (sans, serif,
 mono) and font size live in Preferences. The top bar keeps only reading controls.
 Services includes a sync-provider selector (Fever, Feedbin, Inoreader, Miniflux,
-Nextcloud News); connection details are stored locally, while two-way sync remains
-future work — use OPML or a full backup today.
+Nextcloud News). Server and username are stored locally; the password/token is
+session-only. Two-way sync remains future work — use OPML or a full backup today.
 
 **Privacy.** No sync service, account or telemetry. Everything is stored in
 `localStorage` and IndexedDB on this device. The web/PWA build only contacts feeds and
@@ -151,5 +151,6 @@ server/            shared local feed proxy
 - The Windows installer and macOS disk image are unsigned; macOS needs a first-run
   right-click → Open.
 - Services has a sync-provider selector, but two-way sync is not implemented yet; the
-  connection fields are stored locally and excluded from backups.
+  server and username are stored locally (the password/token is session-only) and
+  excluded from backups.
 - “Load full content” depends on the page structure and on the proxy being reachable.

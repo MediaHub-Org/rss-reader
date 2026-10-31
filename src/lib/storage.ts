@@ -55,9 +55,15 @@ function writeJson(key: string, value: unknown): void {
 }
 
 export function loadPreferences(): Preferences {
-  const stored = readJson<Partial<Preferences> & { hideRead?: boolean }>(KEYS.prefs, {});
+  const stored = readJson<Partial<Preferences> & { hideRead?: boolean; syncPassword?: string }>(
+    KEYS.prefs,
+    {}
+  );
+  // Older builds stored a sync password. It was never used by a sync engine;
+  // drop it instead of carrying plaintext credentials forward.
+  const { syncPassword: _legacyPassword, ...storedWithoutPassword } = stored;
   const storedVersion = typeof stored.prefsVersion === 'number' ? stored.prefsVersion : 0;
-  const prefs = { ...DEFAULT_PREFERENCES, ...stored };
+  const prefs = { ...DEFAULT_PREFERENCES, ...storedWithoutPassword };
   const filter =
     stored.articleFilter === 'unread' || stored.articleFilter === 'starred'
       ? stored.articleFilter

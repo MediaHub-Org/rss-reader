@@ -37,7 +37,6 @@ export interface Preferences {
   syncService: SyncService;
   syncServer: string;
   syncUsername: string;
-  syncPassword: string;
   /**
    * Play media inline in the reader — YouTube, Vimeo, Spotify, SoundCloud,
    * Deezer, Apple Podcasts/Music. When off, links open in a new tab instead.
@@ -89,7 +88,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   syncService: 'local',
   syncServer: '',
   syncUsername: '',
-  syncPassword: '',
   embedMedia: true,
   viewMode: 'card',
   articleFilter: 'all',
