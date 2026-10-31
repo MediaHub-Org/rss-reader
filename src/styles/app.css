@@ -313,11 +313,9 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .feed-item:hover > .feed-row__actions,
-.feed-item:focus-within > .feed-row__actions,
-.feed-item.is-active > .feed-row__actions,
+.feed-item:has(:focus-visible) > .feed-row__actions,
 .folder-header:hover > .feed-row__actions,
-.folder-header:focus-within > .feed-row__actions,
-.folder-header.is-active > .feed-row__actions {
+.folder-header:has(:focus-visible) > .feed-row__actions {
   opacity: 1;
   pointer-events: auto;
 }
