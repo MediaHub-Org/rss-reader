@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Feed } from '../types';
 import { store } from '../store/store';
 import { Dialog } from './Dialog';
@@ -42,6 +42,11 @@ export function EditFeedDialog({ open, feed, folders, onClose }: EditFeedDialogP
   };
 
   const urlChanged = Boolean(feed && url.trim() && url.trim() !== feed.url);
+  const groups = useMemo(() => {
+    const names = new Set(folders);
+    if (feed?.folder?.trim()) names.add(feed.folder.trim());
+    return [...names].sort((a, b) => a.localeCompare(b));
+  }, [folders, feed]);
 
   return (
     <Dialog
@@ -87,19 +92,18 @@ export function EditFeedDialog({ open, feed, folders, onClose }: EditFeedDialogP
 
         <label className="field">
           <span className="field__label">{t('Group')}</span>
-          <input
+          <select
             className="input"
-            list="edit-feed-folders"
             value={folder}
-            placeholder={t('Ungrouped')}
             onChange={(event) => setFolder(event.target.value)}
-            spellCheck={false}
-          />
-          <datalist id="edit-feed-folders">
-            {folders.map((item) => (
-              <option key={item} value={item} />
+          >
+            <option value="">{t('Ungrouped')}</option>
+            {groups.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
 
         <label className="field">

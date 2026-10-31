@@ -1048,13 +1048,17 @@ try {
   );
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.waitForTimeout(200);
-  await page.click('#settings-feeds button:has-text("Select all")');
+  const groupCheck = page
+    .locator('#settings-feeds .manage-folder:has(.manage-item) .manage-folder__header input')
+    .first();
+  await groupCheck.check();
   const allCountText = await page.textContent('#settings-feeds .manage-toolbar__count');
-  await page.click('#settings-feeds button:has-text("Select none")');
+  await groupCheck.uncheck();
   const noneCountText = await page.textContent('#settings-feeds .manage-toolbar__count');
   check(
-    'Sources section supports Select all and Select none',
-    /[1-9]\d* selected$/.test((allCountText || '').trim()) && /\b0 selected$/.test((noneCountText || '').trim()),
+    'Sources use the tri-state group checkbox for bulk selection',
+    /[1-9]\d* selected$/.test((allCountText || '').trim()) &&
+      /\b0 selected$/.test((noneCountText || '').trim()),
     `${allCountText?.trim()} → ${noneCountText?.trim()}`
   );
 
@@ -1086,11 +1090,6 @@ try {
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
   await openSettings('Groups');
   await page.waitForSelector('#settings-folders');
-  await page.click('#settings-folders button:has-text("Select all")');
-  const foldersSelected = (await page.textContent('#settings-folders .manage-toolbar__count'))?.trim();
-  check('Groups section supports multiple selection', /^[1-9]\d* selected$/.test(foldersSelected || ''), foldersSelected || '');
-  await page.click('#settings-folders button:has-text("Select none")');
-
   const folderRowChecks = page.locator('#settings-folders .manage-folder-row input[type="checkbox"]');
   await folderRowChecks.nth(0).check();
   await folderRowChecks.nth(1).check();
@@ -1104,7 +1103,10 @@ try {
   );
   await page.click('.manage-confirm button:has-text("Cancel")');
   await page.waitForSelector('.manage-confirm', { state: 'detached' });
-  await page.click('#settings-folders button:has-text("Select none")');
+  const checkedGroups = page.locator('#settings-folders .manage-folder-row input:checked');
+  for (let i = (await checkedGroups.count()) - 1; i >= 0; i -= 1) {
+    await checkedGroups.nth(i).uncheck();
+  }
 
   const foldersBeforeDelete = await page.locator('.sidebar .folder-group').count();
   check(
@@ -1174,13 +1176,14 @@ try {
   const editValues = await page.locator('[role="dialog"] input.input').evaluateAll((inputs) =>
     inputs.map((input) => input.value)
   );
+  const editGroup = await page.inputValue('[role="dialog"] select.input');
   check(
     'Edit feed dialog exposes name, group and feed link',
-    editValues.length === 3 &&
+    editValues.length === 2 &&
       editValues[0] === 'Alpha Feed' &&
-      editValues[1].length > 0 &&
-      editValues[2].includes('alpha.xml'),
-    editValues.join(' · ')
+      editGroup.length > 0 &&
+      editValues[1].includes('alpha.xml'),
+    `${editValues.join(' · ')} · ${editGroup}`
   );
   await page.fill('[role="dialog"] input.input >> nth=0', 'Alpha Renamed');
   await page.click('[role="dialog"] .dialog__footer .button--primary');
@@ -1196,9 +1199,12 @@ try {
   await page.waitForSelector('.context-menu');
   const folderMenuText = (await page.textContent('.context-menu'))?.replace(/\s+/g, ' ').trim() || '';
   check(
-    'Folder context menu drops Open folder and Copy folder name',
-    !/Open folder|Copy folder name/.test(folderMenuText) && /Rename folder/.test(folderMenuText),
-    folderMenuText.slice(0, 120)
+    'Folder context menu drops Open folder, Copy folder name and expand/collapse',
+    !/Open folder|Copy folder name|Collapse folder|Expand folder/.test(folderMenuText) &&
+      /New folder(?!…)/.test(folderMenuText) &&
+      /Rename folder/.test(folderMenuText) &&
+      !/Manage groups…/.test(folderMenuText),
+    folderMenuText.slice(0, 140)
   );
   await page.keyboard.press('Escape');
 

@@ -3350,7 +3350,7 @@ dependencies = [
 
 [[package]]
 name = "rss-reader"
-version = "0.13.5"
+version = "0.13.6"
 dependencies = [
  "reqwest 0.12.28",
  "rfd",

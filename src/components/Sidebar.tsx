@@ -326,7 +326,6 @@ export function Sidebar({
       .flatMap((feed) => state.articles[feed.id] ?? [])
       .map((article) => article.id);
     const unread = folderFeeds.reduce((sum, feed) => sum + unreadCount(state, feed.id), 0);
-    const open = !isCollapsed(name);
 
     return [
       {
@@ -351,16 +350,11 @@ export function Sidebar({
         onSelect: () => setArticlesRead(ids, false, name),
       },
       { type: 'divider' },
+      { icon: 'folderPlus', label: t('New folder'), onSelect: () => beginCreateFolder() },
       { icon: 'pencil', label: t('Rename folder'), onSelect: () => startRenameFolder(name) },
       {
-        icon: open ? 'collapse' : 'expand',
-        label: open ? 'Collapse folder' : 'Expand folder',
-        onSelect: () => setFolderCollapsed(name, open),
-      },
-      { icon: 'folderPlus', label: t('New folder…'), onSelect: () => beginCreateFolder() },
-      {
         icon: 'sliders',
-        label: t('Manage groups…'),
+        label: t('Manage groups'),
         onSelect: () => {
           onClose();
           onManageGroups();

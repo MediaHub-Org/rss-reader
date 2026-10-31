@@ -81,9 +81,6 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
     });
   };
 
-  const selectAll = () => setSelected(new Set(state.feeds.map((feed) => feed.id)));
-  const selectNone = () => setSelected(new Set());
-
   const confirmDelete = () => {
     if (!pendingDelete) return;
     store.removeFeeds(pendingDelete);
@@ -132,31 +129,6 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
       )}
 
       <div className="manage-toolbar">
-        <div className="manage-toolbar__select">
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={selectAll}
-            disabled={selected.size === state.feeds.length}
-          >
-            {t('Select all ({count})', { count: state.feeds.length })}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={selectNone}
-            disabled={selected.size === 0}
-          >
-            {t('Select none')}
-          </button>
-          <span className="manage-toolbar__count">
-            {t('{sources} · {selected} selected', {
-              sources: plural(state.feeds.length, '{count} source', '{count} sources'),
-              selected: selected.size,
-            })}
-          </span>
-        </div>
-
         <div className="manage-toolbar__actions">
           <button
             type="button"
@@ -177,6 +149,12 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
             <span>{t('Delete selected ({count})', { count: selected.size })}</span>
           </button>
         </div>
+        <span className="manage-toolbar__count">
+          {t('{sources} · {selected} selected', {
+            sources: plural(state.feeds.length, '{count} source', '{count} sources'),
+            selected: selected.size,
+          })}
+        </span>
       </div>
 
       <div className="manage-list" role="region" aria-label={t('Source selection')}>
@@ -260,12 +238,25 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
 
         {ungrouped.length > 0 && (
           <div className="manage-folder">
-            {folders.length > 0 && (
-              <div className="manage-folder__header">
+            <div className="manage-folder__header">
+              <label className="manage-check">
+                <input
+                  type="checkbox"
+                  checked={ungrouped.every((feed) => selected.has(feed.id))}
+                  ref={(el) => {
+                    if (el) {
+                      el.indeterminate =
+                        ungrouped.some((feed) => selected.has(feed.id)) &&
+                        !ungrouped.every((feed) => selected.has(feed.id));
+                    }
+                  }}
+                  onChange={() => toggleFolder(ungrouped)}
+                  aria-label={t('Select all ungrouped sources')}
+                />
                 <span className="manage-folder__name">{t('Ungrouped')}</span>
                 <span className="badge">{ungrouped.length}</span>
-              </div>
-            )}
+              </label>
+            </div>
             <ul className="manage-folder__feeds">
               {ungrouped.map((feed) => (
                 <SourceRow
@@ -425,26 +416,6 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
       )}
 
       <div className="manage-toolbar">
-        <div className="manage-toolbar__select">
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setSelected(new Set(folders.map((folder) => folder.name)))}
-            disabled={!folders.length || selected.size === folders.length}
-          >
-            {t('Select all ({count})', { count: folders.length })}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setSelected(new Set())}
-            disabled={selected.size === 0}
-          >
-            {t('Select none')}
-          </button>
-          <span className="manage-toolbar__count">{t('{count} selected', { count: selected.size })}</span>
-        </div>
-
         <div className="manage-toolbar__actions">
           <button
             type="button"
@@ -471,6 +442,12 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
             <span>{t('Delete selected ({count})', { count: selected.size })}</span>
           </button>
         </div>
+        <span className="manage-toolbar__count">
+          {t('{groups} · {selected} selected', {
+            groups: plural(folders.length, '{count} group', '{count} groups'),
+            selected: selected.size,
+          })}
+        </span>
       </div>
 
       <form

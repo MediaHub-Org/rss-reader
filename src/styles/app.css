@@ -2437,19 +2437,11 @@ kbd {
 
 .manage-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-1);
   padding-bottom: var(--space-2);
   border-bottom: 0.0625rem solid var(--border);
-}
-
-.manage-toolbar__select {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }
 
 .manage-toolbar__count {
