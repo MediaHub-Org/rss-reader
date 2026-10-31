@@ -76,12 +76,15 @@ Mark as read works per article, all visible, or older than 1/3/7 days.
 label, dialog, toast and error message goes through the same tiny catalog, so new strings
 fall back to English instead of breaking the UI.
 
-**Settings.** Six sections: **Preferences**, **Groups**, **Sources**, **Rules**,
-**Services & Integration** and **About**. Theme, density, reading typeface (sans, serif,
-mono) and font size live in Preferences. The top bar keeps only reading controls.
-Services includes a sync-provider selector (Fever, Feedbin, Inoreader, Miniflux,
-Nextcloud News, NewsBlur). Server and username are stored locally; the password/token is
-session-only. Two-way sync remains future work — use OPML or a full backup today.
+**Settings.** Six sections: **Preferences**, **Manage**, **Rules**, **Services**,
+**Data** and **About**. Theme, density, reading typeface (sans, serif, mono) and font
+size live in Preferences. Manage holds the Sources and Groups tabs. Data owns
+import/export, backups and the local cache. Services includes a sync-provider selector
+(Fever, Feedbin, Inoreader, Miniflux, Nextcloud News, NewsBlur) and the optional YouTube
+API key. Server and username are stored locally; the password/token is session-only.
+Two-way sync remains future work — use OPML or a full backup today.
+The feed context menu can edit a source's name, group and feed link in one dialog;
+changing the link resets that source's cached articles and read state.
 
 **Privacy.** No sync service, account or telemetry. Everything is stored in
 `localStorage` and IndexedDB on this device. The web/PWA build only contacts feeds and

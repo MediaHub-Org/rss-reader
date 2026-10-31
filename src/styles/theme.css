@@ -61,7 +61,6 @@
   --dialog-md: 35rem;               /* 560px */
   --dialog-lg: 45rem;               /* 720px */
   --dialog-max-h: 45rem;            /* 720px */
-  --opml-editor-min-h: 15rem;       /* 240px */
   --toast-max-width: 26.25rem;      /* 420px */
 
   /* ----------------------- Card & Grid State Tokens ----------------------- */

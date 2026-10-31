@@ -754,7 +754,6 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 /* ------------------------------ Inline rename ------------------------------ */
 
-.feed-row--renaming,
 .folder-row--renaming {
   cursor: default;
 }
@@ -1765,6 +1764,12 @@ body[data-scroll-locked='true'] .sidebar__scroll {
   line-height: 1.6;
 }
 
+.edit-feed-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 /* --------------------------------- Fields --------------------------------- */
 
 .field {
@@ -2423,7 +2428,7 @@ kbd {
   justify-content: flex-start;
 }
 
-/* --------------------- Manage Subscriptions & OPML XML -------------------- */
+/* --------------------- Manage subscriptions & data ---------------------- */
 
 .manage-toolbar {
   display: flex;
@@ -2570,7 +2575,7 @@ kbd {
   gap: var(--space-2);
 }
 
-/* OPML XML diff preview colours. */
+/* Import diff preview colours. */
 .import-preview__list .diff-added {
   color: var(--success);
 }
@@ -2758,21 +2763,6 @@ kbd {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-}
-
-.opml-editor {
-  width: 100%;
-  min-height: var(--opml-editor-min-h);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: 1.5;
-  resize: vertical;
-  white-space: pre;
-}
-
-.opml-editor::placeholder {
-  color: var(--faint);
-  opacity: 0.75;
 }
 
 /* --------------------------------- Toasts --------------------------------- */

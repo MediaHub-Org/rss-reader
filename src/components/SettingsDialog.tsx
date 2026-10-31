@@ -5,17 +5,18 @@ import { Dialog } from './Dialog';
 import { Icon } from './Icon';
 import { t } from '../lib/i18n';
 import { AboutPanel } from './settings/AboutPanel';
-import { GroupsManager, SourcesManager } from './settings/CollectionManagers';
+import { ManagePanel, type ManageTab } from './settings/ManagePanel';
+import { DataPanel } from './settings/DataPanel';
 import { PreferencesPanel } from './settings/PreferencesPanel';
 import { RulesPanel } from './settings/RulesPanel';
 import { ServicesPanel } from './settings/ServicesPanel';
 
 export type SettingsSection =
   | 'preferences'
-  | 'groups'
-  | 'sources'
+  | 'manage'
   | 'rules'
   | 'services'
+  | 'data'
   | 'about';
 
 interface SettingsDialogProps {
@@ -26,18 +27,19 @@ interface SettingsDialogProps {
   onBackups: () => void;
   hasFeeds: boolean;
   initialSection?: SettingsSection;
+  initialManageTab?: ManageTab;
 }
 
 const SECTIONS: Array<{
   id: SettingsSection;
   label: string;
-  icon: 'sliders' | 'folder' | 'rss' | 'filter' | 'link' | 'info';
+  icon: 'sliders' | 'folder' | 'filter' | 'link' | 'download' | 'info';
 }> = [
   { id: 'preferences', label: 'Preferences', icon: 'sliders' },
-  { id: 'groups', label: 'Groups', icon: 'folder' },
-  { id: 'sources', label: 'Sources', icon: 'rss' },
+  { id: 'manage', label: 'Manage', icon: 'folder' },
   { id: 'rules', label: 'Rules', icon: 'filter' },
-  { id: 'services', label: 'Services & Integration', icon: 'link' },
+  { id: 'services', label: 'Services', icon: 'link' },
+  { id: 'data', label: 'Data', icon: 'download' },
   { id: 'about', label: 'About', icon: 'info' },
 ];
 
@@ -49,6 +51,7 @@ export function SettingsDialog({
   onBackups,
   hasFeeds,
   initialSection,
+  initialManageTab,
 }: SettingsDialogProps) {
   useStore(); // language changes must re-render the nav labels
   const [usage] = useState(() => estimateUsage());
@@ -93,30 +96,16 @@ export function SettingsDialog({
         <div className="settings-panel" ref={panelRef}>
           {section === 'preferences' && <PreferencesPanel />}
 
-          {section === 'groups' && (
-            <section className="settings-section">
-              <h2 className="settings-section__title">{t('Groups')}</h2>
-              <p className="settings-note settings-note--tight">
-                {t('Select groups to merge them into another group or delete them together. Merging keeps every source and only replaces the group label.')}
-              </p>
-              <GroupsManager idPrefix="settings" />
-            </section>
-          )}
-
-          {section === 'sources' && (
-            <section className="settings-section">
-              <h2 className="settings-section__title">{t('Sources')}</h2>
-              <p className="settings-note settings-note--tight">
-                {t('Select sources to move them into a group or delete them in bulk. Deleting a source also removes its cached articles, read state and stars.')}
-              </p>
-              <SourcesManager idPrefix="settings" onImport={onImport} />
-            </section>
+          {section === 'manage' && (
+            <ManagePanel initialTab={initialManageTab} onImport={onImport} />
           )}
 
           {section === 'rules' && <RulesPanel />}
 
-          {section === 'services' && (
-            <ServicesPanel
+          {section === 'services' && <ServicesPanel />}
+
+          {section === 'data' && (
+            <DataPanel
               onImport={onImport}
               onExport={onExport}
               onBackups={onBackups}

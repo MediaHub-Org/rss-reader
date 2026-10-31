@@ -87,11 +87,17 @@ const closeArticle = async () => {
 async function openSettings(section) {
   await page.click('.topbar__tools .icon-button[aria-label="Settings"]');
   await page.waitForSelector('[role="dialog"]');
-  if (section) await page.click(`.settings-nav__item:has-text("${section}")`);
+  if (!section) return;
+  if (section === 'Sources' || section === 'Groups') {
+    await page.click('.settings-nav__item:has-text("Manage")');
+    await page.click(`.manage-subtab:has-text("${section}")`);
+    return;
+  }
+  await page.click(`.settings-nav__item:has-text("${section}")`);
 }
 
 async function openDataTab(action) {
-  await openSettings('Services');
+  await openSettings('Data');
   await page.click(`.settings-data-actions .button:has-text("${action}")`);
   await page.waitForSelector('[role="dialog"]:has-text("Subscriptions")');
 }
@@ -512,8 +518,17 @@ try {
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 
   /* ------------------------- theme + settings -------------------------- */
-  const before = await page.getAttribute('html', 'data-theme');
   await openSettings('Preferences');
+  const navLabels = (await page.textContent('.settings-nav'))?.replace(/\s+/g, ' ').trim() || '';
+  check(
+    'Settings groups sources/groups under Manage and splits Services and Data',
+    /Manage/.test(navLabels) &&
+      /Services/.test(navLabels) &&
+      /Data/.test(navLabels) &&
+      !/Services & Integration/.test(navLabels),
+    navLabels
+  );
+  const before = await page.getAttribute('html', 'data-theme');
   await page.click(
     `[role="dialog"] .segmented__option:has-text("${before === 'dark' ? 'Light' : 'Dark'}")`
   );
@@ -628,7 +643,7 @@ try {
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 
   /* --------------------------- backups panel --------------------------- */
-  await openSettings('Services');
+  await openSettings('Data');
   await page.click('.settings-data-actions .button:has-text("Backups")');
   await page.waitForSelector('[role="dialog"]:has-text("Backups")');
   const backupsNote = await page.textContent('[role="dialog"]:has-text("Backups")');
@@ -681,6 +696,11 @@ try {
   /* Restoring the same full backup merges the cache back without refetching */
   await openDataTab('Import');
   await page.waitForSelector('[role="dialog"] [role="tabpanel"]');
+  check(
+    'Data dialog only offers Import, Export and Manage',
+    (await page.locator('#tab-xml').count()) === 0 &&
+      (await page.locator('.tabs .tab').allTextContents()).length === 3
+  );
   await page.setInputFiles('.file-input', backupPath);
   await page.waitForSelector('.import-preview__summary');
   const backupSummary = (await page.textContent('.import-preview__summary'))?.replace(/\s+/g, ' ') ?? '';
@@ -708,6 +728,11 @@ try {
   const feedsBeforeImport = await page.locator('.sidebar .feed-item').count();
   await openDataTab('Import');
   await page.waitForSelector('[role="dialog"] [role="tabpanel"]');
+  check(
+    'Data dialog only offers Import, Export and Manage',
+    (await page.locator('#tab-xml').count()) === 0 &&
+      (await page.locator('.tabs .tab').allTextContents()).length === 3
+  );
   const importPath = path.join(SHOTS, 'import.opml');
   await writeFile(
     importPath,
@@ -944,8 +969,9 @@ try {
       (window.__store.getSnapshot().articles[feedId] ?? []).map((article) => article.id),
     removedFeedId
   );
-  await targetItem.hover();
-  await targetItem.locator('button[aria-label^="Unsubscribe"]').click();
+  await targetItem.click({ button: 'right' });
+  await page.waitForSelector('.context-menu');
+  await page.click('.context-menu__item:has-text("Unsubscribe")');
   await page.waitForSelector('[role="dialog"]:has-text("Unsubscribe")');
   check('Unsubscribe asks for confirmation', true);
   await page.keyboard.press('Enter');
@@ -972,35 +998,13 @@ try {
   await menuFeed.click({ button: 'right' });
   await page.waitForSelector('.context-menu');
   const contextItems = await page.locator('.context-menu__item').count();
-  check('Feed context menu opens with full actions', contextItems >= 7, `${contextItems} items`);
+  check('Feed context menu opens with the essential actions', contextItems >= 5, `${contextItems} items`);
   const menuInBody = await page.evaluate(
     () => document.querySelector('.context-menu')?.parentElement === document.body
   );
   check('Context menu is portalled to <body>', menuInBody);
   await page.keyboard.press('Escape');
   await page.waitForSelector('.context-menu', { state: 'detached' });
-
-  /* ------- feed context menu → searchable “Move to folder…” picker ------ */
-  await page.locator('.sidebar .feed-item').first().click({ button: 'right' });
-  await page.waitForSelector('.context-menu');
-  await page.click('.context-menu__item:has-text("Move to folder")');
-  await page.waitForSelector('.folder-picker__list');
-  check('Feed context menu opens the searchable folder picker', true);
-  await page.fill('.folder-picker__search input', 'zeb');
-  const pickerLabels = await page.$$eval('.folder-picker__option .folder-picker__label', (nodes) =>
-    nodes.map((node) => node.textContent)
-  );
-  check(
-    'Folder picker filters the list as you type',
-    pickerLabels.length === 1 && /Zebra/.test(pickerLabels[0] || ''),
-    pickerLabels.join(', ')
-  );
-  await page.keyboard.press('Enter');
-  await page.waitForSelector('.folder-picker', { state: 'detached' });
-  const movedByPicker = await page
-    .locator('.sidebar .folder-group:has-text("Zebra Video") .feed-item')
-    .count();
-  check('Enter in the picker moves the feed', movedByPicker >= 1, `${movedByPicker} in Zebra Video`);
 
   /* ------------------- Sources (select all/none) ----------------------- */
   await openSettings('Sources');
@@ -1023,7 +1027,8 @@ try {
     body.scrollTop = body.scrollHeight;
     return body.scrollTop;
   });
-  await page.click('.settings-nav__item:has-text("Sources")');
+  await page.click('.settings-nav__item:has-text("Manage")');
+  await page.click('.manage-subtab:has-text("Sources")');
   await page.waitForTimeout(300);
   const resetScroll = await page.evaluate(() => document.querySelector('.dialog__body')?.scrollTop ?? -1);
   check(
@@ -1139,24 +1144,55 @@ try {
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
   await openDataTab('Import');
 
-  /* ----------------------- OPML XML live editor ------------------------ */
-  await page.click('#tab-xml');
-  await page.waitForSelector('.opml-editor');
-  const placeholder = await page.getAttribute('.opml-editor', 'placeholder');
-  check('OPML editor shows an example placeholder', /<opml/.test(placeholder || ''));
-  const currentXml = await page.inputValue('.opml-editor');
-  const editedXml = currentXml.replace(/title="Fireship"/g, 'title="Fireship Channel"').replace(/text="Fireship"/g, 'text="Fireship Channel"');
-  await page.fill('.opml-editor', editedXml);
-  // React still has to commit the textarea value; without this breathing room
-  // a fast click on CI can run previewXml against the previous text.
-  await page.waitForTimeout(150);
-  await page.click('#panel-xml .button--primary:has-text("Preview changes")');
-  await page.waitForSelector('#panel-xml .import-preview', { timeout: 10_000 });
-  check('OPML XML shows a diff before applying', true);
-  await page.click('#panel-xml .button--primary:has-text("Apply changes")');
+  /* ------------------------- feed context menu ------------------------- */
+  const alphaRow = page.locator('.feed-row:has-text("Alpha Feed")').first();
+  await alphaRow.scrollIntoViewIfNeeded();
+  await alphaRow.click({ button: 'right', force: true });
+  await page.waitForSelector('.context-menu');
+  const feedMenuText = (await page.textContent('.context-menu'))?.replace(/\s+/g, ' ').trim() || '';
+  check(
+    'Feed context menu contains only the essential actions',
+    /Edit feed/.test(feedMenuText) &&
+      !/Open website|Copy feed URL|Rename feed|Move to folder|New folder|Manage sources/.test(
+        feedMenuText
+      ),
+    feedMenuText.slice(0, 120)
+  );
+  await page.click('.context-menu__item:has-text("Edit feed")');
+  await page.waitForSelector('[role="dialog"]:has-text("Edit feed")');
+  await page.waitForFunction(() =>
+    document.querySelector('[role="dialog"] input.input')?.value?.length > 0
+  );
+  const editValues = await page.locator('[role="dialog"] input.input').evaluateAll((inputs) =>
+    inputs.map((input) => input.value)
+  );
+  check(
+    'Edit feed dialog exposes name, group and feed link',
+    editValues.length === 3 &&
+      editValues[0] === 'Alpha Feed' &&
+      editValues[1].length > 0 &&
+      editValues[2].includes('alpha.xml'),
+    editValues.join(' · ')
+  );
+  await page.fill('[role="dialog"] input.input >> nth=0', 'Alpha Renamed');
+  await page.click('[role="dialog"] .dialog__footer .button--primary');
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
-  const renamedVisible = (await page.locator('.sidebar .feed-row:has-text("Fireship Channel")').count()) === 1;
-  check('OPML XML editor updates titles/folders in place', renamedVisible);
+  check(
+    'Editing a feed saves its name without touching cached articles',
+    (await page.locator('.sidebar .feed-row:has-text("Alpha Renamed")').count()) === 1
+  );
+
+  const zebraRow = page.locator('.folder-row:has-text("Zebra Video")').first();
+  await zebraRow.scrollIntoViewIfNeeded();
+  await zebraRow.click({ button: 'right', force: true });
+  await page.waitForSelector('.context-menu');
+  const folderMenuText = (await page.textContent('.context-menu'))?.replace(/\s+/g, ' ').trim() || '';
+  check(
+    'Folder context menu drops Open folder and Copy folder name',
+    !/Open folder|Copy folder name/.test(folderMenuText) && /Rename folder/.test(folderMenuText),
+    folderMenuText.slice(0, 120)
+  );
+  await page.keyboard.press('Escape');
 
   /* ------------------- folder row + collapse-all control ---------------- */
   const firstFolder = page.locator('.sidebar .folder-group').first();

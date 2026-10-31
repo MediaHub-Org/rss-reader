@@ -7,58 +7,23 @@ import {
   exportOpml,
   importSubscriptions,
   ImportError,
-  type ExportFeed,
   type ImportResult,
   type SaveOutcome,
 } from '../lib/portability';
 import { loadAllArticles } from '../lib/storage';
 import { applyImport } from '../lib/applyImport';
-import { feedIdForUrl } from '../lib/feedParser';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Dialog } from './Dialog';
 import { plural, t } from '../lib/i18n';
 import { SourcesManager, GroupsManager } from './settings/CollectionManagers';
 
-export type DataTab = 'import' | 'export' | 'manage' | 'xml';
+export type DataTab = 'import' | 'export' | 'manage';
 
 interface DataDialogProps {
   open: boolean;
   initialTab?: DataTab;
   onClose: () => void;
-}
-
-interface XmlPreview {
-  parsed: ImportResult;
-  added: ExportFeed[];
-  updated: ExportFeed[];
-  removed: Feed[];
-  foldersAdded: string[];
-  foldersRemoved: string[];
-}
-
-const OPML_PLACEHOLDER = `<?xml version="1.0" encoding="UTF-8"?>
-<opml version="2.0">
-  <head>
-    <title>My subscriptions</title>
-  </head>
-  <body>
-    <outline text="Tech">
-      <outline type="rss" text="The Verge"
-        xmlUrl="https://www.theverge.com/rss/index.xml" />
-    </outline>
-    <!-- A folder with no feeds still round-trips. -->
-    <outline text="Empty folder" />
-  </body>
-</opml>`;
-
-function folderNamesOf(feeds: Feed[], folders: string[]): Set<string> {
-  const names = new Set<string>(folders.map((name) => name.trim()).filter(Boolean));
-  for (const feed of feeds) {
-    const folder = feed.folder?.trim();
-    if (folder) names.add(folder);
-  }
-  return names;
 }
 
 export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogProps) {
@@ -67,9 +32,6 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
   const [pending, setPending] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manageTab, setManageTab] = useState<'feeds' | 'folders'>('feeds');
-  const [xmlText, setXmlText] = useState('');
-  const [xmlError, setXmlError] = useState<string | null>(null);
-  const [xmlPreview, setXmlPreview] = useState<XmlPreview | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Re-open on the tab the user asked for (Import / Export / Manage buttons).
@@ -80,27 +42,12 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     setTab(initialTab);
     setManageTab('feeds');
     setPending(null);
-    setXmlText(exportOpml(state.feeds, state.folders));
-    setXmlError(null);
-    setXmlPreview(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialTab]);
-
-  // Seed the XML buffer when switching to the OPML XML tab, not on every
-  // feed refresh.
-  useEffect(() => {
-    if (!open || tab !== 'xml') return;
-    setXmlText(exportOpml(state.feeds, state.folders));
-    setXmlError(null);
-    setXmlPreview(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tab]);
 
   const close = () => {
     setPending(null);
     setError(null);
-    setXmlError(null);
-    setXmlPreview(null);
     onClose();
   };
 
@@ -203,78 +150,6 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     }
   };
 
-  /* --------------------------- OPML XML sync ---------------------------- */
-
-  const previewXml = () => {
-    setXmlError(null);
-    setXmlPreview(null);
-
-    let parsed: ImportResult;
-    try {
-      parsed = importSubscriptions(xmlText);
-    } catch (err) {
-      setXmlError(err instanceof ImportError ? err.message : 'Invalid OPML XML.');
-      return;
-    }
-
-    const existing = new Map(state.feeds.map((feed) => [feed.id, feed]));
-    const added: ExportFeed[] = [];
-    const updated: ExportFeed[] = [];
-    for (const entry of parsed.feeds) {
-      const prev = existing.get(feedIdForUrl(entry.url));
-      if (!prev) {
-        added.push(entry);
-        continue;
-      }
-      const title = entry.title?.trim() || prev.title;
-      const folder = entry.folder?.trim() || undefined;
-      const site = entry.siteUrl || prev.siteUrl;
-      if (
-        title !== prev.title ||
-        (folder ?? '') !== (prev.folder?.trim() ?? '') ||
-        site !== prev.siteUrl
-      ) {
-        updated.push(entry);
-      }
-    }
-
-    const incoming = new Set(parsed.feeds.map((entry) => feedIdForUrl(entry.url)));
-    const removed = state.feeds.filter((feed) => !incoming.has(feed.id));
-
-    const currentFolders = folderNamesOf(state.feeds, state.folders);
-    const nextFolders = new Set(parsed.folders);
-    const foldersAdded = [...nextFolders].filter((name) => !currentFolders.has(name)).sort(byName);
-    const foldersRemoved = [...currentFolders].filter((name) => !nextFolders.has(name)).sort(byName);
-
-    setXmlPreview({ parsed, added, updated, removed, foldersAdded, foldersRemoved });
-  };
-
-  const applyXml = () => {
-    if (!xmlPreview) return;
-    const { parsed } = xmlPreview;
-    const { added, updated, removed } = store.importFeeds(parsed.feeds, {
-      replace: true,
-      folders: parsed.folders,
-    });
-    if (parsed.readIds && Object.keys(parsed.readIds).length) {
-      store.mergeReadIds(parsed.readIds);
-    }
-    const summary =
-      [
-        added ? `${added} added` : '',
-        updated ? `${updated} updated` : '',
-        removed ? `${removed} removed` : '',
-        xmlPreview.foldersAdded.length ? `${xmlPreview.foldersAdded.length} folders added` : '',
-        xmlPreview.foldersRemoved.length
-          ? `${xmlPreview.foldersRemoved.length} folders removed`
-          : '',
-      ]
-        .filter(Boolean)
-        .join(', ') || 'No changes';
-    store.notify('success', `OPML applied (${summary})`);
-    close();
-  };
-
   const totalFolderCount = folders.length;
   const hasAnything = state.feeds.length > 0 || totalFolderCount > 0;
   const pendingArticleCount = pending
@@ -285,7 +160,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     <Dialog
       open={open}
       onClose={close}
-      title={t('Subscriptions & OPML')}
+      title={t('Subscriptions & data')}
       size="md"
     >
       <div className="tabs" role="tablist" aria-label={t('Subscriptions and OPML')}>
@@ -321,17 +196,6 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           onClick={() => setTab('manage')}
         >
           {t('Manage ({count})', { count: state.feeds.length })}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-xml"
-          aria-selected={tab === 'xml'}
-          aria-controls="panel-xml"
-          className={`tab ${tab === 'xml' ? 'is-active' : ''}`}
-          onClick={() => setTab('xml')}
-        >
-          {t('OPML XML')}
         </button>
       </div>
 
@@ -501,129 +365,6 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
               )}
             </>
           )}
-        </div>
-      )}
-
-      {tab === 'xml' && (
-        <div id="panel-xml" role="tabpanel" aria-labelledby="tab-xml" className="tab-panel">
-          <p className="field__hint">
-            {t('Edit feed titles')} (<code>text</code> / <code>title</code>),{' '}
-            {t('URLs')} (<code>xmlUrl</code>), {t('or folder')}{' '}
-            <code>&lt;outline&gt;</code>{' '}
-            {t('groups directly in OPML XML. Applying replaces the current subscriptions — you will see a diff first.')}
-          </p>
-
-          <textarea
-            className="input opml-editor"
-            aria-label={t('OPML XML editor')}
-            placeholder={OPML_PLACEHOLDER}
-            value={xmlText}
-            onChange={(event) => {
-              setXmlText(event.target.value);
-              setXmlError(null);
-              setXmlPreview(null);
-            }}
-            spellCheck={false}
-            rows={12}
-          />
-
-          {xmlError && (
-            <p className="field__error" role="alert">
-              {xmlError}
-            </p>
-          )}
-
-          {xmlPreview && (
-            <div className="import-preview" role="status" aria-live="polite">
-              <p className="import-preview__summary">
-                <strong>{xmlPreview.added.length}</strong> {t('added')} ·{' '}
-                <strong>{xmlPreview.updated.length}</strong> {t('updated')} ·{' '}
-                <strong>{xmlPreview.removed.length}</strong> {t('removed')}
-                {(xmlPreview.foldersAdded.length > 0 || xmlPreview.foldersRemoved.length > 0) && (
-                  <>
-                    {' '}
-                    · {t('folders')} +{xmlPreview.foldersAdded.length} / −
-                    {xmlPreview.foldersRemoved.length}
-                  </>
-                )}
-              </p>
-
-              {(xmlPreview.added.length > 0 ||
-                xmlPreview.updated.length > 0 ||
-                xmlPreview.removed.length > 0 ||
-                xmlPreview.foldersAdded.length > 0 ||
-                xmlPreview.foldersRemoved.length > 0) && (
-                <ul className="import-preview__list">
-                  {xmlPreview.added.slice(0, 5).map((feed) => (
-                    <li key={`add:${feed.url}`} className="diff-added">
-                      + {feed.title || feed.url}
-                    </li>
-                  ))}
-                  {xmlPreview.updated.slice(0, 5).map((feed) => (
-                    <li key={`upd:${feed.url}`} className="diff-updated">
-                      ~ {feed.title || feed.url}
-                    </li>
-                  ))}
-                  {xmlPreview.removed.slice(0, 5).map((feed) => (
-                    <li key={`del:${feed.id}`} className="diff-removed">
-                      − {feed.title}
-                    </li>
-                  ))}
-                  {xmlPreview.foldersAdded.map((folder) => (
-                    <li key={`folder-add:${folder}`} className="diff-added">
-                      + {t('folder')}: {folder}
-                    </li>
-                  ))}
-                  {xmlPreview.foldersRemoved.map((folder) => (
-                    <li key={`folder-del:${folder}`} className="diff-removed">
-                      − {t('folder')}: {folder}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="import-preview__actions">
-                <button
-                  type="button"
-                  className="button button--ghost"
-                  onClick={() => setXmlPreview(null)}
-                >
-                  {t('Cancel')}
-                </button>
-                <button type="button" className="button button--primary" onClick={applyXml}>
-                  {t('Apply changes')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="import-preview__actions">
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={() => {
-                setXmlText('');
-                setXmlError(null);
-                setXmlPreview(null);
-              }}
-            >
-              {t('Clear')}
-            </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={() => {
-                setXmlText(exportOpml(state.feeds, state.folders));
-                setXmlError(null);
-                setXmlPreview(null);
-              }}
-            >
-              {t('Reset')}
-            </button>
-            <button type="button" className="button button--primary" onClick={previewXml}>
-              {t('Preview changes')}
-            </button>
-          </div>
         </div>
       )}
 

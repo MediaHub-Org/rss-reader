@@ -2,20 +2,10 @@ import { useState } from 'react';
 import type { SyncService } from '../../types';
 import { store } from '../../store/store';
 import { useStore } from '../../hooks/useStore';
-import { clearArticleCache } from '../../lib/storage';
-import { formatBytes } from '../../lib/format';
 import { isDesktopApp } from '../../lib/desktop';
 import { Dropdown, type DropdownOption } from '../Dropdown';
 import { Icon } from '../Icon';
 import { t } from '../../lib/i18n';
-
-interface ServicesPanelProps {
-  onImport: () => void;
-  onExport: () => void;
-  onBackups: () => void;
-  hasFeeds: boolean;
-  usage: { used: number };
-}
 
 const SYNC_SERVICES: Array<{
   value: SyncService;
@@ -74,27 +64,13 @@ const syncOptions = (): Array<DropdownOption<SyncService>> =>
     hint: t(entry.hint),
   }));
 
-export function ServicesPanel({
-  onImport,
-  onExport,
-  onBackups,
-  hasFeeds,
-  usage,
-}: ServicesPanelProps) {
+export function ServicesPanel() {
   const state = useStore();
   const desktop = isDesktopApp();
-  const [clearing, setClearing] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   /** Session-only until a real sync engine exists; never written to storage. */
   const [syncPassword, setSyncPassword] = useState('');
   const service = SYNC_SERVICES.find((entry) => entry.value === state.prefs.syncService);
-
-  const clearCache = async () => {
-    setClearing(true);
-    await clearArticleCache();
-    setClearing(false);
-    store.notify('success', 'Article cache cleared');
-  };
 
   return (
     <>
@@ -183,56 +159,6 @@ export function ServicesPanel({
             title={t(showApiKey ? 'Hide API key' : 'Show API key')}
           >
             <Icon name={showApiKey ? 'eyeOff' : 'eye'} size={16} />
-          </button>
-        </div>
-      </section>
-
-      <section className="settings-section">
-        <h2 className="settings-section__title">{t('Subscriptions & data')}</h2>
-        <p className="settings-note settings-note--tight">
-          {t('Import or export OPML, or move everything — subscriptions, groups, read/starred state, rules, preferences and cached articles — with a full JSON backup.')}
-        </p>
-        <div className="settings-data-actions">
-          <button type="button" className="button button--ghost" onClick={onImport}>
-            <Icon name="upload" size={15} />
-            <span>{t('Import')}</span>
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={onExport}
-            disabled={!hasFeeds}
-          >
-            <Icon name="download" size={15} />
-            <span>{t('Export')}</span>
-          </button>
-          <button type="button" className="button button--ghost" onClick={onBackups}>
-            <Icon name="refresh" size={15} />
-            <span>{t('Backups')}</span>
-          </button>
-        </div>
-        <div className="setting-row">
-          <span className="setting-row__label">
-            {t('Local storage')}
-            <small>
-              {t('{size} used · subscriptions, read state, rules and article cache stay on this device', { size: formatBytes(usage.used) })}
-            </small>
-          </span>
-        </div>
-        <div className="setting-row">
-          <span className="setting-row__label">
-            {t('Clear cached articles')}
-            <small>
-              {t('Removes downloaded content. Subscriptions, groups, rules and read state are kept.')}
-            </small>
-          </span>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => void clearCache()}
-            disabled={clearing}
-          >
-            {clearing ? t('Clearing…') : t('Clear cache')}
           </button>
         </div>
       </section>

@@ -633,18 +633,95 @@ export class Store {
     return removed;
   }
 
-  /** Rename a feed's display title (its id stays derived from the feed URL). */
-  renameFeed(feedId: string, title: string): ActionResult {
-    const next = title.trim();
-    if (!next) return { ok: false, message: t('Feed name cannot be empty.') };
+  /**
+   * Edit a feed's display name, folder and source URL in place.
+   *
+   * The feed id is kept when the URL changes so rules and folder membership
+   * survive. Cached articles and their read/starred state are dropped because
+   * they belong to the old source; the new URL is fetched immediately.
+   */
+  async updateFeed(
+    feedId: string,
+    changes: { title: string; url: string; folder?: string }
+  ): Promise<ActionResult> {
     const feed = this.state.feeds.find((f) => f.id === feedId);
     if (!feed) return { ok: false, message: t('Feed not found.') };
-    if (next === feed.title) return { ok: true };
+
+    const title = changes.title.trim();
+    if (!title) return { ok: false, message: t('Feed name cannot be empty.') };
+
+    const validated = normalizeFeedUrl(changes.url);
+    if (!validated.ok) return { ok: false, message: validated.error };
+    const url = validated.url;
+    const folder = changes.folder?.trim() || undefined;
+    const urlChanged = url !== feed.url;
+
+    const duplicate = this.state.feeds.some(
+      (other) =>
+        other.id !== feedId &&
+        (other.url === url || other.id === feedIdForUrl(url))
+    );
+    if (duplicate) return { ok: false, message: t('Another source already uses that feed URL.') };
+
+    if (
+      !urlChanged &&
+      title === feed.title &&
+      (feed.folder?.trim() || undefined) === folder
+    ) {
+      return { ok: true };
+    }
+
+    if (!urlChanged) {
+      this.update({
+        feeds: this.state.feeds.map((f) => (f.id === feedId ? { ...f, title, folder } : f)),
+      });
+      this.schedulePersist();
+      this.notify('success', t('Feed updated'));
+      return { ok: true };
+    }
+
+    const articles = { ...this.state.articles };
+    delete articles[feedId];
+    const read = { ...this.state.readIds };
+    const starred = { ...this.state.starredIds };
+    const prefix = `${feedId}-`;
+    for (const key of Object.keys(read)) {
+      if (key.startsWith(prefix)) delete read[key];
+    }
+    for (const key of Object.keys(starred)) {
+      if (key.startsWith(prefix)) delete starred[key];
+    }
 
     this.update({
-      feeds: this.state.feeds.map((f) => (f.id === feedId ? { ...f, title: next } : f)),
+      feeds: this.state.feeds.map((f) =>
+        f.id === feedId
+          ? {
+              ...f,
+              title,
+              url,
+              folder,
+              siteUrl: undefined,
+              iconUrl: undefined,
+              description: undefined,
+              etag: undefined,
+              lastModified: undefined,
+              failures: undefined,
+              nextRetryAt: undefined,
+            }
+          : f
+      ),
+      articles,
+      readIds: read,
+      starredIds: starred,
+      feedState: {
+        ...this.state.feedState,
+        [feedId]: { status: 'loading', articleCount: 0 },
+      },
     });
     this.schedulePersist();
+    void removeArticles(feedId);
+    this.notify('success', t('Feed updated — reloading…'));
+    await this.refreshFeed(feedId, { force: true, notify: true });
     return { ok: true };
   }
 

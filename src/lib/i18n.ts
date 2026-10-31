@@ -512,6 +512,22 @@ const es: Record<string, string> = {
   'Speed': 'Velocidad',
   'Playback speed': 'Velocidad de reproducción',
 
+  'Manage': 'Gestionar',
+  'Manage sources and groups': 'Gestionar fuentes y grupos',
+  'Edit or remove sources, organize them into groups, and select several at once for bulk actions.': 'Edita o elimina fuentes, organízalas en grupos y selecciona varias a la vez para acciones masivas.',
+  'Services': 'Servicios',
+  'Edit feed': 'Editar fuente',
+  'Feed name': 'Nombre de la fuente',
+  'Group': 'Grupo',
+  'Feed link': 'Enlace de la fuente',
+  'Changing the feed link clears this source’s cached articles and read state, then reloads it from the new URL.': 'Cambiar el enlace borra los artículos en caché y el estado de lectura de esta fuente, y la recarga desde la nueva URL.',
+  'Saving…': 'Guardando…',
+  'Save changes': 'Guardar cambios',
+  'Feed updated': 'Fuente actualizada',
+  'Feed updated — reloading…': 'Fuente actualizada; recargando…',
+  'Another source already uses that feed URL.': 'Otra fuente ya usa esa URL.',
+  'Could not update that feed.': 'No se pudo actualizar esa fuente.',
+
   // Common toasts / actions
   'Feed URL copied': 'URL de la fuente copiada',
   'Link copied': 'Enlace copiado',

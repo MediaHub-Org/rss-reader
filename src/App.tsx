@@ -16,6 +16,7 @@ import { ArticleOverlay } from './components/ArticleOverlay';
 import { AddFeedDialog } from './components/AddFeedDialog';
 import type { SettingsSection } from './components/SettingsDialog';
 import type { DataTab } from './components/DataDialog';
+import type { ManageTab } from './components/settings/ManagePanel';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { Toasts } from './components/Toasts';
 import { AUTO_BACKUP_CHECK_MS, maybeAutoBackup } from './lib/backups';
@@ -40,6 +41,7 @@ export default function App() {
   const [addFolder, setAddFolder] = useState<string | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('preferences');
+  const [manageTab, setManageTab] = useState<ManageTab>('sources');
   const [dataOpen, setDataOpen] = useState(false);
   const [dataTab, setDataTab] = useState<DataTab>('import');
   const [backupsOpen, setBackupsOpen] = useState(false);
@@ -267,8 +269,9 @@ export default function App() {
   }, [state, visibleArticles]);
 
   const closeSidebar = () => store.setSidebarOpen(false);
-  const openSettings = (section: SettingsSection = 'preferences') => {
+  const openSettings = (section: SettingsSection = 'preferences', tab?: ManageTab) => {
     setSettingsSection(section);
+    if (tab) setManageTab(tab);
     setSettingsOpen(true);
   };
   /* Card and magazine views open the reader as an overlay; list and compact
@@ -300,8 +303,7 @@ export default function App() {
           }}
           onUnsubscribe={setConfirmFeed}
           onRemoveFolder={setConfirmFolder}
-          onManageSources={() => openSettings('sources')}
-          onManageGroups={() => openSettings('groups')}
+          onManageGroups={() => openSettings('manage', 'groups')}
           onClose={closeSidebar}
         />
 
@@ -351,6 +353,7 @@ export default function App() {
             onClose={() => setSettingsOpen(false)}
             hasFeeds={state.feeds.length > 0}
             initialSection={settingsSection}
+            initialManageTab={manageTab}
             onImport={() => {
               // Hand off to the Data dialog instead of stacking it on top of
               // Settings -- two simultaneously open Dialogs both listen for

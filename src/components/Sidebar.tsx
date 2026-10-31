@@ -11,11 +11,9 @@ import { store, unreadCount } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { byName } from '../lib/portability';
 import { t } from '../lib/i18n';
-import { isDesktopApp } from '../lib/desktop';
-import { copyText } from '../lib/clipboard';
 import { Icon } from './Icon';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
-import { FolderPickerDialog } from './FolderPickerDialog';
+import { EditFeedDialog } from './EditFeedDialog';
 import { CreateFolderDialog } from './CreateFolderDialog';
 import { FeedItem } from './sidebar/FeedItem';
 import { SidebarHeader } from './sidebar/SidebarHeader';
@@ -31,7 +29,6 @@ interface SidebarProps {
   onAddFeedInFolder: (folder: string) => void;
   onUnsubscribe: (feed: Feed) => void;
   onRemoveFolder: (folderName: string) => void;
-  onManageSources: () => void;
   onManageGroups: () => void;
   onClose: () => void;
 }
@@ -74,7 +71,6 @@ export function Sidebar({
   onAddFeedInFolder,
   onUnsubscribe,
   onRemoveFolder,
-  onManageSources,
   onManageGroups,
   onClose,
 }: SidebarProps) {
@@ -82,26 +78,15 @@ export function Sidebar({
   const [creatingFolder, setCreatingFolder] = useState(false);
   /** Feed to move once the “New folder…” flow (started from its menu) finishes. */
   const [moveAfterCreate, setMoveAfterCreate] = useState<string | null>(null);
-  /** Feed whose “Move to folder…” picker is open. */
-  const [moveFeed, setMoveFeed] = useState<Feed | null>(null);
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextTarget | null>(null);
-  const [renamingFeedId, setRenamingFeedId] = useState<string | null>(null);
-  const [renameFeedValue, setRenameFeedValue] = useState('');
+  const [editFeed, setEditFeed] = useState<Feed | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
   const [renameFolderValue, setRenameFolderValue] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
-  const renameFeedRef = useRef<HTMLInputElement>(null);
   const renameFolderRef = useRef<HTMLInputElement>(null);
   const navRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (renamingFeedId) {
-      renameFeedRef.current?.focus();
-      renameFeedRef.current?.select();
-    }
-  }, [renamingFeedId]);
 
   useEffect(() => {
     if (renamingFolder) {
@@ -247,23 +232,6 @@ export function Sidebar({
     return null;
   };
 
-  const startRenameFeed = (feed: Feed) => {
-    setRenamingFeedId(feed.id);
-    setRenameFeedValue(feed.title);
-  };
-
-  const submitRenameFeed = () => {
-    if (!renamingFeedId) return;
-    const result = store.renameFeed(renamingFeedId, renameFeedValue);
-    if (!result.ok && result.message) store.notify('error', result.message);
-    setRenamingFeedId(null);
-  };
-
-  const onRenameFeedKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') submitRenameFeed();
-    else if (event.key === 'Escape') setRenamingFeedId(null);
-  };
-
   const startRenameFolder = (name: string) => {
     setRenamingFolder(name);
     setRenameFolderValue(name);
@@ -281,22 +249,6 @@ export function Sidebar({
     else if (event.key === 'Escape') setRenamingFolder(null);
   };
 
-  const openExternal = (url: string | undefined) => {
-    if (!url) return;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const copyValue = async (value: string, labelKey: string) => {
-    const label = t(labelKey);
-    const ok = await copyText(value);
-    store.notify(
-      ok ? 'success' : 'error',
-      ok
-        ? t('{label} copied to the clipboard', { label })
-        : t('Could not copy {label}', { label: label.toLowerCase() })
-    );
-  };
-
   const setArticlesRead = (ids: string[], read: boolean, label: string) => {
     if (!ids.length) {
       store.notify('info', t('No cached articles in this view yet.'));
@@ -312,15 +264,11 @@ export function Sidebar({
 
   const feedContextItems = (feed: Feed): ContextMenuItem[] => {
     const ids = (state.articles[feed.id] ?? []).map((article) => article.id);
-    const unread = unreadCount(state, feed.id);
+    const hasUnread = ids.some((id) => !state.readIds[id]);
+    const hasRead = ids.some((id) => state.readIds[id]);
     const notificationsMuted = state.prefs.mutedFeedIds.includes(feed.id);
 
     return [
-      {
-        icon: 'external',
-        label: t('Open website'),
-        onSelect: () => openExternal(feed.siteUrl ?? feed.url),
-      },
       {
         icon: 'refresh',
         label: t('Refresh feed'),
@@ -329,50 +277,38 @@ export function Sidebar({
           store.notify('info', t('Refreshing “{name}”…', { name: feed.title }));
         },
       },
-      { type: 'divider' },
       {
-        icon: 'eye',
+        icon: 'check',
         label: t('Mark all as read'),
-        disabled: unread === 0,
-        onSelect: () => setArticlesRead(ids, true, feed.title),
+        disabled: !hasUnread,
+        onSelect: () => {
+          const ids = (state.articles[feed.id] ?? []).map((article) => article.id);
+          setArticlesRead(ids, true, feed.title);
+        },
       },
       {
         icon: 'eyeOff',
         label: t('Mark all as unread'),
-        disabled: ids.length === 0,
-        onSelect: () => setArticlesRead(ids, false, feed.title),
+        disabled: !hasRead,
+        onSelect: () => {
+          const ids = (state.articles[feed.id] ?? []).map((article) => article.id);
+          setArticlesRead(ids, false, feed.title);
+        },
       },
-      ...(isDesktopApp()
+      ...(notificationsMuted !== null
         ? [
             {
               icon: notificationsMuted ? 'bellOff' : 'bell',
               label: t(notificationsMuted ? 'Unmute notifications' : 'Mute notifications'),
-              onSelect: () => {
-                const nowMuted = store.toggleMutedFeed(feed.id);
-                store.notify(
-                  'success',
-                  nowMuted
-                    ? `Notifications muted for “${feed.title}”`
-                    : `Notifications on for “${feed.title}”`
-                );
-              },
+              onSelect: () => store.toggleMutedFeed(feed.id),
             } satisfies ContextMenuItem,
           ]
         : []),
-      { icon: 'copy', label: t('Copy feed URL'), onSelect: () => void copyValue(feed.url, 'Feed URL') },
       { type: 'divider' },
-      { icon: 'pencil', label: t('Rename feed'), onSelect: () => startRenameFeed(feed) },
-      // One searchable picker instead of one menu item per folder: the menu
-      // stays short no matter how many folders exist.
-      { icon: 'folder', label: t('Move to folder…'), onSelect: () => setMoveFeed(feed) },
-      { icon: 'folderPlus', label: t('New folder…'), onSelect: () => beginCreateFolder(feed.id) },
       {
-        icon: 'sliders',
-        label: t('Manage sources…'),
-        onSelect: () => {
-          onClose();
-          onManageSources();
-        },
+        icon: 'pencil',
+        label: t('Edit feed'),
+        onSelect: () => setEditFeed(feed),
       },
       { type: 'divider' },
       {
@@ -384,23 +320,6 @@ export function Sidebar({
     ];
   };
 
-  const pickFolderForFeed = (folder: string | undefined) => {
-    const feed = moveFeed;
-    setMoveFeed(null);
-    if (!feed) return;
-    const result = store.moveFeedToFolder(feed.id, folder);
-    if (!result.ok) {
-      store.notify('error', result.message ?? t('Could not move that feed.'));
-      return;
-    }
-    store.notify(
-      'success',
-      folder
-        ? t('Moved “{name}” to “{folder}”', { name: feed.title, folder })
-        : t('Removed “{name}” from its folder', { name: feed.title })
-    );
-  };
-
   const folderContextItems = (name: string): ContextMenuItem[] => {
     const folderFeeds = state.feeds.filter((feed) => feed.folder?.trim() === name);
     const ids = folderFeeds
@@ -410,7 +329,6 @@ export function Sidebar({
     const open = !isCollapsed(name);
 
     return [
-      { icon: 'folder', label: t('Open folder'), onSelect: () => selectFolder(name) },
       {
         icon: 'plus',
         label: t('Add feed to this folder'),
@@ -431,11 +349,6 @@ export function Sidebar({
         label: t('Mark folder as unread'),
         disabled: ids.length === 0,
         onSelect: () => setArticlesRead(ids, false, name),
-      },
-      {
-        icon: 'copy',
-        label: t('Copy folder name'),
-        onSelect: () => void copyValue(name, 'Folder name'),
       },
       { type: 'divider' },
       { icon: 'pencil', label: t('Rename folder'), onSelect: () => startRenameFolder(name) },
@@ -552,15 +465,8 @@ export function Sidebar({
       unread={unreadCount(state, feed.id)}
       feedState={state.feedState[feed.id]}
       isActive={state.ui.activeFeedId === feed.id}
-      isRenaming={renamingFeedId === feed.id}
-      renameValue={renameFeedValue}
-      renameRef={renameFeedRef}
       onSelect={() => selectFeed(feed.id)}
-      onRenameChange={setRenameFeedValue}
-      onRenameKey={onRenameFeedKey}
-      onRenameBlur={submitRenameFeed}
       onMenu={(target, x, y) => setContextMenu({ type: 'feed', feed: target, x, y })}
-      onUnsubscribe={onUnsubscribe}
     />
   );
 
@@ -724,13 +630,12 @@ export function Sidebar({
         onCreate={createFolder}
       />
 
-      <FolderPickerDialog
-        open={moveFeed !== null}
-        title={moveFeed ? t('Move “{name}” to…', { name: moveFeed.title }) : t('Move to folder')}
+      <EditFeedDialog
+        key={editFeed?.id ?? 'none'}
+        open={editFeed !== null}
+        feed={editFeed}
         folders={folders.map((folder) => folder.name)}
-        current={moveFeed?.folder?.trim() || undefined}
-        onClose={() => setMoveFeed(null)}
-        onPick={pickFolderForFeed}
+        onClose={() => setEditFeed(null)}
       />
 
       {contextMenu && (
