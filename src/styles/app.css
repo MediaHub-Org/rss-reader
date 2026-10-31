@@ -1366,7 +1366,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
   justify-content: flex-end;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  background: linear-gradient(var(--bg) 70%, transparent);
+  background: linear-gradient(var(--detail-bar-bg, var(--bg)) 70%, transparent);
 }
 
 .detail__actions {
@@ -3439,6 +3439,10 @@ kbd {
 
 .dialog--bare {
   padding: 0;
+}
+
+.article-overlay__dialog .detail__bar {
+  --detail-bar-bg: var(--panel);
 }
 
 .article-overlay__dialog .detail {
