@@ -4,6 +4,7 @@ import { store } from '../store/store';
 import { useStore, useInfiniteList } from '../hooks/useStore';
 import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { cleanTitle, formatRelativeTime } from '../lib/format';
+import { lastUpdatedAt } from '../lib/feedStatus';
 import { thumbnailUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml } from '../lib/embeds';
 import { copyText } from '../lib/clipboard';
@@ -142,10 +143,7 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
         : filter === 'unread'
           ? t('There are no unread articles in this view.')
           : t('Refresh your feeds, or check back later for new articles.');
-    const lastUpdated = Math.max(
-      0,
-      ...Object.values(state.feedState).map((feed) => feed.updatedAt ?? 0)
-    );
+    const lastUpdated = lastUpdatedAt(state.feedState);
     return (
       <div className="list">
         <div className="empty-state">

@@ -136,6 +136,13 @@
     display: none;
   }
 
+  /* On phones the article count and filters matter more than the freshness
+     stamp; it stays available in the empty state and on wider screens. */
+  .topbar__updated,
+  .topbar__unread {
+    display: none;
+  }
+
   .settings-layout {
     flex-direction: column;
     width: 100%;

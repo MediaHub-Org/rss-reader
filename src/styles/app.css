@@ -403,6 +403,9 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 .topbar__meta {
   font-size: var(--text-xs);
   color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar__tools {

@@ -160,6 +160,7 @@ const es: Record<string, string> = {
   'There are no unread articles in this view.': 'No hay artículos sin leer en esta vista.',
   'Show all articles': 'Mostrar todos los artículos',
   'Last updated {time}': 'Última actualización: {time}',
+  'Updated {time}': 'Actualizado {time}',
   'Refresh feeds': 'Actualizar fuentes',
   'Nothing matches this search in the current view.': 'Nada coincide con esta búsqueda en la vista actual.',
   'No articles yet': 'Aún no hay artículos',

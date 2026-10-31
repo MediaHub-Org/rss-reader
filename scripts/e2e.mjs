@@ -134,6 +134,8 @@ try {
   await page.waitForSelector('.article-card', { timeout: 30_000 });
   const rowCount = await page.locator('.article-card').count();
   check('Feed parsed and articles rendered', rowCount > 5, `${rowCount} rows`);
+  const topbarMeta = (await page.textContent('.topbar__meta'))?.replace(/\s+/g, ' ').trim() || '';
+  check('Top bar reports feed freshness', /Updated/.test(topbarMeta), topbarMeta);
 
   /* second feed */
   await page.click('.sidebar__toolbar button[aria-label="New feed"]');

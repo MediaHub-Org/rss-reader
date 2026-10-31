@@ -3,6 +3,8 @@ import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { plural, t } from '../lib/i18n';
+import { formatDate, formatRelativeTime } from '../lib/format';
+import { lastUpdatedAt } from '../lib/feedStatus';
 import { Icon } from './Icon';
 import { ViewMenu } from './ViewMenu';
 import { FilterMenu } from './FilterMenu';
@@ -25,6 +27,7 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
 
   const unreadInView = visible.reduce((sum, a) => (state.readIds[a.id] ? sum : sum + 1), 0);
   const anyLoading = Object.values(state.feedState).some((f) => f.status === 'loading');
+  const updatedAt = lastUpdatedAt(state.feedState);
 
   return (
     <header className="topbar">
@@ -48,8 +51,17 @@ export function TopBar({ onMenu, onSettings }: TopBarProps) {
         </h1>
         <p className="topbar__meta">
           {plural(visible.length, '{count} article', '{count} articles')}
-          {unreadInView > 0 ? ` · ${plural(unreadInView, '{count} unread', '{count} unread')}` : ''}
+          {unreadInView > 0 && (
+            <span className="topbar__unread">
+              {` · ${plural(unreadInView, '{count} unread', '{count} unread')}`}
+            </span>
+          )}
           {state.ui.query && state.ui.searchAllFeeds ? ` · ${t('all feeds')}` : ''}
+          {updatedAt > 0 && (
+            <span className="topbar__updated" title={formatDate(updatedAt)}>
+              {` · ${t('Updated {time}', { time: formatRelativeTime(updatedAt) })}`}
+            </span>
+          )}
         </p>
       </div>
 
