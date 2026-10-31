@@ -13,7 +13,7 @@ import { ImportError, type ImportResult } from './types';
 export * from './types';
 export { exportOpml } from './opml';
 export { exportFullBackup } from './backup';
-export { downloadFile } from './download';
+export { downloadBinaryFile, downloadFile } from './download';
 export type { SaveOutcome } from '../desktop';
 
 export function importSubscriptions(text: string): ImportResult {
@@ -23,5 +23,5 @@ export function importSubscriptions(text: string): ImportResult {
   if (trimmed.startsWith('{')) return parseJsonBackup(trimmed);
   if (trimmed.startsWith('<')) return parseOpml(trimmed);
 
-  throw new ImportError(t('Unsupported file — expected an OPML or JSON backup.'));
+  throw new ImportError(t('Unsupported file — expected an OPML or JSON/ZIP backup.'));
 }

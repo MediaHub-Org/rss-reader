@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Feed } from '../types';
 import {
   byName,
+  downloadBinaryFile,
   downloadFile,
   exportFullBackup,
   exportOpml,
@@ -12,6 +13,7 @@ import {
 } from '../lib/portability';
 import { loadAllArticles } from '../lib/storage';
 import { applyImport } from '../lib/applyImport';
+import { createBackupArchive, looksLikeZip, readBackupArchive } from '../lib/backupArchive';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { Dialog } from './Dialog';
@@ -79,23 +81,30 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
     setPending(null);
     setError(null);
 
+    const looksLikeBackup = /\.(json|zip)$/i.test(file.name);
     if (file.size > 5 * 1024 * 1024) {
-      const looksLikeBackup = /\.json$/i.test(file.name);
       if (!looksLikeBackup || file.size > 250 * 1024 * 1024) {
         setError(
           looksLikeBackup
-            ? 'That backup is larger than 250 MB — it cannot be restored in one piece.'
-            : 'That file is larger than 5 MB — it is probably not an OPML file.'
+            ? t('That backup is larger than 250 MB — it cannot be restored in one piece.')
+            : t('That file is larger than 5 MB — it is probably not an OPML file.')
         );
         return;
       }
     }
 
     try {
-      const text = await file.text();
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const text = looksLikeZip(bytes)
+        ? readBackupArchive(bytes)
+        : new TextDecoder().decode(bytes);
       setPending(importSubscriptions(text));
     } catch (err) {
-      setError(err instanceof ImportError ? err.message : 'Could not read that file.');
+      setError(
+        err instanceof ImportError
+          ? err.message
+          : t('That ZIP is not a valid RSS Reader backup.')
+      );
     }
   };
 
@@ -122,18 +131,19 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
       } else {
         store.notify('info', t('Preparing full backup…'));
         const articles = await loadAllArticles();
-        outcome = await downloadFile(
-          'rss-reader-backup.json',
-          exportFullBackup(
-            state.feeds,
-            state.readIds,
-            state.folders,
-            state.prefs,
-            articles,
-            state.starredIds,
-            state.rules
-          ),
-          'application/json'
+        const json = exportFullBackup(
+          state.feeds,
+          state.readIds,
+          state.folders,
+          state.prefs,
+          articles,
+          state.starredIds,
+          state.rules
+        );
+        outcome = await downloadBinaryFile(
+          'rss-reader-backup.zip',
+          createBackupArchive(json),
+          'application/zip'
         );
       }
       if (outcome === 'cancelled') {
@@ -202,13 +212,13 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
       {tab === 'import' && (
         <div id="panel-import" role="tabpanel" aria-labelledby="tab-import" className="tab-panel">
           <p className="field__hint">
-            {t('Choose an OPML file from another reader, or a JSON backup exported from this app. Folders and links are sorted A–Z, and edited titles/folders update existing feeds automatically.')}
+            {t('Choose an OPML file from another reader, or a JSON/ZIP backup exported from this app. Folders and links are sorted A–Z, and edited titles/folders update existing feeds automatically.')}
           </p>
 
           <input
             ref={fileRef}
             type="file"
-            accept=".opml,.xml,.json,application/xml,text/xml,application/json"
+            accept=".opml,.xml,.json,.zip,application/xml,text/xml,application/json,application/zip"
             className="file-input"
             aria-label={t('Choose OPML or JSON file')}
             onChange={(event) => {
@@ -298,7 +308,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
           <p className="field__hint">
             {t('OPML is the standard format every reader understands — subscriptions and folders (sorted A–Z, including empty folders).')}
             <br />
-            {t('JSON backup also carries read/starred status, rules, preferences and every cached article, so this device can be rebuilt elsewhere (the YouTube API key is not included).')}
+            {t('ZIP backup also carries read/starred status, rules, preferences and every cached article, so this device can be rebuilt elsewhere (the YouTube API key is not included).')}
           </p>
 
           <div className="export-actions">
@@ -316,7 +326,7 @@ export function DataDialog({ open, initialTab = 'import', onClose }: DataDialogP
               onClick={() => void doExport('json')}
               disabled={!hasAnything}
             >
-              {t('Export full backup (JSON)')}
+              {t('Export full backup (ZIP)')}
             </button>
           </div>
         </div>

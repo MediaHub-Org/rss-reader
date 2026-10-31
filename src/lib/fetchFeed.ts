@@ -12,6 +12,7 @@
 import { looksLikeFeed, parseFeedXml, type ParseResult } from './feedParser';
 import { t } from './i18n';
 import { extractYouTubeFeedTarget, fetchYouTubeChannelFeed } from './youtubeApi';
+import { fetchRedditSubreddit, subredditFromUrl } from './reddit';
 import { invokeDesktop, isTauriApp } from './desktop';
 
 export const PROXY_URL: string | undefined =
@@ -269,6 +270,18 @@ export async function fetchFeedArticles(
   youtubeApiKey?: string,
   validators?: FeedValidators
 ): Promise<FeedArticlesResult> {
+  // Reddit retired RSS in late 2026; prefer the public Arctic Shift archive and
+  // fall back to the legacy RSS URL while it still exists.
+  const subreddit = subredditFromUrl(url);
+  if (subreddit) {
+    try {
+      const parsed = await fetchRedditSubreddit(subreddit, feedId);
+      return { parsed, finalUrl: url };
+    } catch (err) {
+      console.warn('Reddit archive fetch failed, falling back to RSS:', err);
+    }
+  }
+
   const target = youtubeApiKey ? extractYouTubeFeedTarget(url) : null;
   if (target) {
     try {

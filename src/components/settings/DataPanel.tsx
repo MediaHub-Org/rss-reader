@@ -35,7 +35,7 @@ export function DataPanel({
       <section className="settings-section">
         <h2 className="settings-section__title">{t('Subscriptions & data')}</h2>
         <p className="settings-note settings-note--tight">
-          {t('Import or export OPML, or move everything — subscriptions, groups, read/starred state, rules, preferences and cached articles — with a full JSON backup.')}
+          {t('Import or export OPML, or move everything — subscriptions, groups, read/starred state, rules, preferences and cached articles — with a full ZIP backup.')}
         </p>
         <div className="settings-data-actions">
           <button type="button" className="button button--ghost" onClick={onImport}>

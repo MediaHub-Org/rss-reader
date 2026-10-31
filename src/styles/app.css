@@ -127,6 +127,8 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 .feed-item {
   position: relative;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2.25rem;
 }
 
 .feed-row {
@@ -299,11 +301,10 @@ body[data-scroll-locked='true'] .sidebar__scroll {
   transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 0.125rem;
-  padding: 0.0625rem;
-  border-radius: var(--radius-sm);
-  background: var(--panel);
-  box-shadow: var(--shadow-sm);
+  gap: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
   /* Rendered for every row (keyboard/touch reachability), revealed on hover,
      focus, or when the row is the active view. */
   opacity: 0;
@@ -322,8 +323,18 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .feed-row__actions .icon-button {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0.0625rem solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  backdrop-filter: blur(0.5rem);
+  -webkit-backdrop-filter: blur(0.5rem);
+  box-shadow: 0 0.0625rem 0.25rem rgb(0 0 0 / 10%);
+}
+
+.feed-row__actions .icon-button:hover {
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
 }
 
 .badge {
@@ -777,6 +788,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 /* -------------------------------- Buttons --------------------------------- */
 
 .icon-button {
+  touch-action: manipulation;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -848,6 +860,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .ghost-button {
+  touch-action: manipulation;
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -2624,6 +2637,8 @@ kbd {
 }
 
 .manage-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;

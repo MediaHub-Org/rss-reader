@@ -69,8 +69,9 @@ simple download-and-install path.
   contains or regex rules scoped to a source or group.
 - **Reader tools** — copy link, load the original full article text (cached for the
   session) and play podcast audio at 0.75–2× speed.
-- **Local backups** — OPML plus a full JSON backup with subscriptions, folders, read
-  state, stars, rules, preferences and every cached article. Desktop keeps seven daily
+- **Local backups** — OPML plus a compressed **ZIP** backup (JSON inside) with subscriptions,
+  folders, read state, stars, rules, preferences and every cached article. Plain JSON
+  backups remain importable. Desktop keeps seven daily
   snapshots.
 - **Media** — YouTube, Vimeo, Spotify, SoundCloud, Deezer and Apple Podcasts play inline
   without API keys.
@@ -87,6 +88,11 @@ bulk-select sources or groups in Settings for move/merge/delete. Sources include
 import action when the device has no subscriptions yet. Feed failures back off
 from 5 minutes to 6 hours; manual refresh retries immediately. ETag/Last-Modified
 validators keep unchanged feeds on a 304.
+
+**Reddit.** Reddit retired its public RSS feeds in November 2026. Subscribed
+`reddit.com/r/<sub>` sources are read through the public Arctic Shift archive and
+mapped into normal articles; the legacy RSS URL is still used as a fallback while it
+exists. Reddit posts also open in an inline card in the reader.
 
 **Reading.** Card, list, magazine and compact layouts. Wide windows use two panes for
 list/compact; magazine and card use an overlay with previous/next arrows. Article HTML
@@ -182,7 +188,7 @@ server/            shared local feed proxy
 
 ## Known limitations
 
-- State is per device. Use the full JSON backup to move it.
+- State is per device. Use the full ZIP backup to move it.
 - The Spanish catalog is hand-written; native-speaker review is welcome.
 - Automatic refresh runs every 15 minutes while the window is visible, plus on launch.
 - Below 1100 px the article view becomes single-pane and the sidebar becomes a compressed left-side drawer.

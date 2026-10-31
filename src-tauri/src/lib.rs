@@ -91,6 +91,33 @@ async fn save_text_file(name: String, contents: String) -> Result<bool, String> 
     }
 }
 
+/// Save binary data (compressed backups) through the OS save dialog.
+#[tauri::command]
+async fn save_binary_file(name: String, contents: Vec<u8>) -> Result<bool, String> {
+    #[cfg(desktop)]
+    {
+        let Some(handle) = rfd::AsyncFileDialog::new()
+            .set_file_name(&name)
+            .save_file()
+            .await
+        else {
+            return Ok(false);
+        };
+        let path = handle.path().to_path_buf();
+        tauri::async_runtime::spawn_blocking(move || std::fs::write(path, contents))
+            .await
+            .map_err(|err| err.to_string())?
+            .map_err(|err| err.to_string())?;
+        Ok(true)
+    }
+
+    #[cfg(not(desktop))]
+    {
+        let _ = (name, contents);
+        Err("Use the browser download action on this platform.".to_string())
+    }
+}
+
 /// Open an http(s) link in the system browser instead of navigating the app.
 #[tauri::command]
 fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
@@ -152,6 +179,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             fetch::fetch_feed,
             save_text_file,
+            save_binary_file,
             open_external,
             set_close_to_tray,
             is_main_window_active,

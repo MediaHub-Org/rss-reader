@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Feed } from '../../types';
 import { store } from '../../store/store';
 import { useStore } from '../../hooks/useStore';
@@ -7,6 +7,7 @@ import { FolderPickerDialog } from '../FolderPickerDialog';
 import { FeedIcon } from '../FeedIcon';
 import { Icon } from '../Icon';
 import { plural, t } from '../../lib/i18n';
+import { TriStateSelect, useBulkSelection } from './BulkSelection';
 
 interface ManagerProps {
   /** DOM id prefix, so the dialog and Settings can keep stable test ids. */
@@ -16,42 +17,6 @@ interface ManagerProps {
 }
 
 type FolderGroup = { name: string; feeds: Feed[] };
-
-function TriStateSelect({
-  checked,
-  indeterminate,
-  onChange,
-  label,
-  ariaLabel,
-  disabled,
-}: {
-  checked: boolean;
-  indeterminate: boolean;
-  onChange: () => void;
-  label: string;
-  ariaLabel: string;
-  disabled?: boolean;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate;
-  }, [indeterminate]);
-
-  return (
-    <label className="manage-select-all">
-      <input
-        ref={ref}
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={onChange}
-        aria-label={ariaLabel}
-      />
-      <span>{label}</span>
-    </label>
-  );
-}
 
 function groupFeeds(feeds: Feed[], folders: string[]): { folders: FolderGroup[]; ungrouped: Feed[] } {
   const byTitle = (a: Feed, b: Feed) => byName(a.title ?? '', b.title ?? '');
@@ -83,50 +48,17 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
     () => groupFeeds(state.feeds, state.folders),
     [state.feeds, state.folders]
   );
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
-  const allSelected = state.feeds.length > 0 && selected.size === state.feeds.length;
-  const someSelected = selected.size > 0 && !allSelected;
-  const selectionLabel = allSelected
-    ? t('All')
-    : selected.size
-      ? t('{count} selected', { count: selected.size })
-      : t('None');
-
-  const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(state.feeds.map((feed) => feed.id)));
-  };
-
-  useEffect(() => {
-    const valid = new Set(state.feeds.map((feed) => feed.id));
-    setSelected((prev) => {
-      const next = new Set([...prev].filter((id) => valid.has(id)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [state.feeds]);
-
-  const toggleFeed = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleFolder = (feeds: Feed[]) => {
-    const ids = feeds.map((feed) => feed.id);
-    const all = ids.length > 0 && ids.every((id) => selected.has(id));
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (all) next.delete(id);
-        else next.add(id);
-      }
-      return next;
-    });
-  };
+  const {
+    selected,
+    toggle,
+    toggleMany,
+    toggleAll,
+    allSelected,
+    someSelected,
+    label: selectionLabel,
+  } = useBulkSelection(state.feeds.map((feed) => feed.id));
 
   const confirmDelete = () => {
     if (!pendingDelete) return;
@@ -241,7 +173,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
                   key={feed.id}
                   feed={feed}
                   checked={selected.has(feed.id)}
-                  onToggle={() => toggleFeed(feed.id)}
+                  onToggle={() => toggle(feed.id)}
                   onDelete={() => setPendingDelete([feed.id])}
                 />
               ))}
@@ -265,7 +197,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
                     ref={(el) => {
                       if (el) el.indeterminate = someInFolder;
                     }}
-                    onChange={() => toggleFolder(folder.feeds)}
+                    onChange={() => toggleMany(folder.feeds.map((feed) => feed.id))}
                     aria-label={t('Select sources in {name}', { name: folder.name })}
                   />
                   <Icon name="folder" size={15} className="folder-row__icon" />
@@ -283,7 +215,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
                       key={feed.id}
                       feed={feed}
                       checked={selected.has(feed.id)}
-                      onToggle={() => toggleFeed(feed.id)}
+                      onToggle={() => toggle(feed.id)}
                       onDelete={() => setPendingDelete([feed.id])}
                     />
                   ))}
@@ -307,7 +239,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
                         !ungrouped.every((feed) => selected.has(feed.id));
                     }
                   }}
-                  onChange={() => toggleFolder(ungrouped)}
+                  onChange={() => toggleMany(ungrouped.map((feed) => feed.id))}
                   aria-label={t('Select all ungrouped sources')}
                 />
                 <span className="manage-folder__name">{t('Ungrouped')}</span>
@@ -320,7 +252,7 @@ export function SourcesManager({ idPrefix = 'manage', onImport }: ManagerProps) 
                   key={feed.id}
                   feed={feed}
                   checked={selected.has(feed.id)}
-                  onToggle={() => toggleFeed(feed.id)}
+                  onToggle={() => toggle(feed.id)}
                   onDelete={() => setPendingDelete([feed.id])}
                 />
               ))}
@@ -386,41 +318,21 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
     () => groupFeeds(state.feeds, state.folders),
     [state.feeds, state.folders]
   );
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
     names: string[];
     feedCount: number;
   } | null>(null);
   const [newName, setNewName] = useState('');
-  const allSelected = folders.length > 0 && selected.size === folders.length;
-  const someSelected = selected.size > 0 && !allSelected;
-  const selectionLabel = allSelected
-    ? t('All')
-    : selected.size
-      ? t('{count} selected', { count: selected.size })
-      : t('None');
-
-  const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(folders.map((folder) => folder.name)));
-  };
-
-  useEffect(() => {
-    const valid = new Set(folders.map((folder) => folder.name));
-    setSelected((prev) => {
-      const next = new Set([...prev].filter((name) => valid.has(name)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [folders]);
-
-  const toggleGroup = (name: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  };
+  const {
+    selected,
+    clear,
+    toggle,
+    toggleAll,
+    allSelected,
+    someSelected,
+    label: selectionLabel,
+  } = useBulkSelection(folders.map((folder) => folder.name));
 
   const createGroup = () => {
     const result = store.createFolder(newName);
@@ -436,7 +348,7 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
     if (!pendingDelete) return;
     store.removeFolders(pendingDelete.names);
     setPendingDelete(null);
-    setSelected(new Set());
+    clear();
   };
 
   const mergeSelected = (target: string | undefined) => {
@@ -446,7 +358,7 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
       store.notify('info', 'Those groups are already merged.');
       return;
     }
-    setSelected(new Set());
+    clear();
   };
 
   return (
@@ -555,7 +467,7 @@ export function GroupsManager({ idPrefix = 'manage' }: ManagerProps) {
               <input
                 type="checkbox"
                 checked={selected.has(folder.name)}
-                onChange={() => toggleGroup(folder.name)}
+                onChange={() => toggle(folder.name)}
                 aria-label={`Select group ${folder.name}`}
               />
               <Icon name="folder" size={15} className="folder-row__icon" />

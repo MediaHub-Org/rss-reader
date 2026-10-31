@@ -47,6 +47,9 @@ export function AboutPanel({ usage }: { usage: { used: number } }) {
       platform,
       feeds: state.feeds.length,
       folders: state.folders.length,
+      feedErrors: Object.values(state.feedState).filter((feed) => feed.status === 'error').length,
+      activeView: state.ui.activeFeedId,
+      query: state.ui.query,
       cachedArticles: Object.values(state.articles).flat().length,
       readEntries: Object.keys(state.readIds).length,
       starredArticles: Object.keys(state.starredIds).length,
@@ -73,7 +76,7 @@ export function AboutPanel({ usage }: { usage: { used: number } }) {
           {t('A local-first RSS/Atom reader. Subscriptions, read/starred state, rules, preferences and cached articles stay on this device — there is no account, server or telemetry.')}
         </p>
         <p className="settings-note settings-note--tight">
-          {t('Desktop builds use Tauri and the system WebView; the PWA build is installable from the browser. Both share the same interface and JSON backup format.')}
+          {t('Desktop builds use Tauri and the system WebView; the PWA build is installable from the browser. Both share the same interface and portable backup format.')}
         </p>
         <div className="settings-data-actions">
           <a

@@ -12,6 +12,7 @@
  * keyboard navigation.
  */
 import { chromium } from 'playwright';
+import { strFromU8, unzipSync } from 'fflate';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -676,14 +677,21 @@ try {
   check('OPML export is valid XML with outlines', /<opml[\s>]/.test(opml) && (opml.match(/<outline/g) || []).length >= 2, download.suggestedFilename());
   check('OPML export escapes safely', !/<outline[^>]*&(?!amp;|lt;|gt;|quot;|apos;)/.test(opml));
 
-  /* ----------------------- full backup (JSON v2) ------------------------ */
+  /* ---------------------- full backup (ZIP with JSON) ------------------- */
   const [backupDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.click('button:has-text("Export full backup")'),
   ]);
-  const backupPath = path.join(SHOTS, 'full-backup.json');
+  const backupPath = path.join(SHOTS, 'full-backup.zip');
   await backupDownload.saveAs(backupPath);
-  const backup = JSON.parse(await readFile(backupPath, 'utf8'));
+  const zipEntries = unzipSync(new Uint8Array(await readFile(backupPath)));
+  const backup = JSON.parse(strFromU8(zipEntries['rss-reader-backup.json']));
+  check(
+    'Full backup downloads as a ZIP archive',
+    backupDownload.suggestedFilename().endsWith('.zip') &&
+      Boolean(zipEntries['manifest.json']) &&
+      Boolean(zipEntries['README.txt'])
+  );
   const backedUpArticles = Object.values(backup.articles ?? {}).reduce(
     (sum, list) => sum + (Array.isArray(list) ? list.length : 0),
     0

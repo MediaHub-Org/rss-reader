@@ -62,6 +62,23 @@ export async function saveTextFile(filename: string, contents: string): Promise<
   }
 }
 
+/** Native Save dialog for binary data (ZIP backups). */
+export async function saveBinaryFile(
+  filename: string,
+  contents: Uint8Array
+): Promise<SaveOutcome> {
+  try {
+    const saved = await invokeDesktop<boolean>('save_binary_file', {
+      name: filename,
+      contents: Array.from(contents),
+    });
+    return saved ? 'saved' : 'cancelled';
+  } catch (err) {
+    console.error('Could not save the file', err);
+    return 'error';
+  }
+}
+
 /**
  * Keep external navigation outside the app window:
  *  - feed/article links go to the default browser;
