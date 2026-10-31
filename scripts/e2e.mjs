@@ -537,6 +537,14 @@ try {
       !/Services & Integration/.test(navLabels),
     navLabels
   );
+  const refreshControl = (
+    await page.textContent('.settings-panel .setting-row:has-text("Refresh feeds")')
+  )?.replace(/\s+/g, ' ').trim() || '';
+  check(
+    'Preferences expose manual and timed feed refresh',
+    /Manual/.test(refreshControl) && /15 min/.test(refreshControl) && /3 hours/.test(refreshControl),
+    refreshControl
+  );
   const before = await page.getAttribute('html', 'data-theme');
   await page.click(
     `[role="dialog"] .segmented__option:has-text("${before === 'dark' ? 'Light' : 'Dark'}")`

@@ -117,7 +117,8 @@
   .ghost-button,
   .feed-row,
   .tab,
-  .manage-subtab {
+  .manage-subtab,
+  .segmented__option {
     min-height: 2.5rem;
   }
 }

@@ -3271,8 +3271,9 @@ dependencies = [
 
 [[package]]
 name = "rss-reader"
-version = "0.13.13"
+version = "0.13.14"
 dependencies = [
+ "flate2",
  "reqwest 0.12.28",
  "rfd",
  "serde",

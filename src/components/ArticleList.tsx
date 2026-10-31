@@ -142,14 +142,23 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
         : filter === 'unread'
           ? t('There are no unread articles in this view.')
           : t('Refresh your feeds, or check back later for new articles.');
+    const lastUpdated = Math.max(
+      0,
+      ...Object.values(state.feedState).map((feed) => feed.updatedAt ?? 0)
+    );
     return (
       <div className="list">
         <div className="empty-state">
           <Icon name={searching ? 'search' : filterActive ? 'filter' : 'inbox'} size={38} />
           <h2>{heading}</h2>
           <p>{description}</p>
-          {filterActive && !searching && (
-            <div className="empty-state__actions">
+          {lastUpdated > 0 && !searching && (
+            <p className="empty-state__meta">
+              {t('Last updated {time}', { time: formatRelativeTime(lastUpdated) })}
+            </p>
+          )}
+          <div className="empty-state__actions">
+            {filterActive && !searching && (
               <button
                 type="button"
                 className="button button--ghost"
@@ -157,8 +166,18 @@ export function ArticleList({ onAddFeed, onImport }: ArticleListProps) {
               >
                 {t('Show all articles')}
               </button>
-            </div>
-          )}
+            )}
+            {!searching && (
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => void store.refreshAll({ force: true, notify: true })}
+              >
+                <Icon name="refresh" size={15} />
+                <span>{t('Refresh feeds')}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

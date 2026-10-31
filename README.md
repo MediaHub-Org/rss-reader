@@ -71,8 +71,8 @@ simple download-and-install path.
   session) and play podcast audio at 0.75–2× speed.
 - **Local backups** — OPML plus a compressed **ZIP** backup (JSON inside) with subscriptions,
   folders, read state, stars, rules, preferences and every cached article. Plain JSON
-  backups remain importable. Desktop keeps seven daily
-  snapshots.
+  backups remain importable. Desktop keeps seven daily snapshots, gzip-compressed
+  (`.json.gz`) and still readable from older plain-JSON files.
 - **Media** — YouTube, Vimeo, Spotify, SoundCloud, Deezer and Apple Podcasts play inline
   without API keys.
 - **Desktop extras** — tray icon, close-to-tray, background refresh, native
@@ -89,7 +89,10 @@ import action when the device has no subscriptions yet. Feed failures back off
 from 5 minutes to 6 hours; manual refresh retries immediately. ETag/Last-Modified
 validators keep unchanged feeds on a 304.
 
-**Telegram and Reddit.** Subscribed `t.me/<channel>` sources are read from the public channel preview page and converted into articles. Reddit retired its public RSS feeds in November 2026. Subscribed
+**Telegram and Reddit.** Subscribed `t.me/<channel>` sources are read from the public
+channel preview page and converted into articles; up to three older preview pages are
+fetched so a quiet channel still has a useful history. Reddit retired its public RSS
+feeds in November 2026. Subscribed
 `reddit.com/r/<sub>` sources are read through the public Arctic Shift archive and
 mapped into normal articles; the legacy RSS URL is still used as a fallback while it
 exists. Reddit posts also open in an inline card in the reader.

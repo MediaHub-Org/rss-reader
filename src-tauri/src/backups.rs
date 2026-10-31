@@ -4,14 +4,19 @@
 //! module stores it under the app data directory, rotates the last N files and
 //! exposes them to the Backups dialog. Nothing leaves the device.
 
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use serde::Serialize;
 use std::fs;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 
 const PREFIX: &str = "rss-reader-backup-";
-const SUFFIX: &str = ".json";
+const LEGACY_SUFFIX: &str = ".json";
+const SUFFIX: &str = ".json.gz";
 const MAX_BACKUPS: usize = 7;
 
 #[derive(Serialize)]
@@ -45,7 +50,10 @@ fn now_ms() -> u64 {
 
 /// Strict name validation: no traversal, only the files this module creates.
 fn backup_stamp(name: &str) -> Option<u64> {
-    let stamp = name.strip_prefix(PREFIX)?.strip_suffix(SUFFIX)?;
+    let stamp = name
+        .strip_prefix(PREFIX)?
+        .strip_suffix(SUFFIX)
+        .or_else(|| name.strip_prefix(PREFIX)?.strip_suffix(LEGACY_SUFFIX))?;
     if stamp.is_empty() || !stamp.chars().all(|c| c.is_ascii_digit()) {
         return None;
     }
@@ -98,7 +106,12 @@ fn write_to(dir: &Path, contents: &str) -> Result<AutoBackupInfo, String> {
 
     let final_path = dir.join(&name);
     let temp_path = dir.join(format!("{name}.tmp"));
-    fs::write(&temp_path, contents).map_err(|err| err.to_string())?;
+    let file = fs::File::create(&temp_path).map_err(|err| err.to_string())?;
+    let mut encoder = GzEncoder::new(file, Compression::default());
+    encoder
+        .write_all(contents.as_bytes())
+        .map_err(|err| err.to_string())?;
+    encoder.finish().map_err(|err| err.to_string())?;
     fs::rename(&temp_path, &final_path).map_err(|err| {
         let _ = fs::remove_file(&temp_path);
         err.to_string()
@@ -117,13 +130,43 @@ fn write_to(dir: &Path, contents: &str) -> Result<AutoBackupInfo, String> {
 
 fn read_named(app: &AppHandle, name: &str) -> Result<String, String> {
     let stamp = backup_stamp(name).ok_or("Invalid backup name.")?;
-    let path = backup_dir(app)?.join(format!("{PREFIX}{stamp}{SUFFIX}"));
-    fs::read_to_string(path).map_err(|err| err.to_string())
+    let dir = backup_dir(app)?;
+    let compressed = dir.join(format!("{PREFIX}{stamp}{SUFFIX}"));
+    // Prefer the gzip snapshot, but fall back to a legacy plain JSON file saved
+    // by an earlier version. Decode based on the file actually read, so a
+    // legacy name that resolves to the compressed file still works.
+    let is_compressed = compressed.exists();
+    let path = if is_compressed {
+        compressed
+    } else {
+        dir.join(format!("{PREFIX}{stamp}{LEGACY_SUFFIX}"))
+    };
+    let bytes = fs::read(path).map_err(|err| err.to_string())?;
+    decode_backup(bytes, is_compressed)
+}
+
+fn decode_backup(bytes: Vec<u8>, compressed: bool) -> Result<String, String> {
+    if compressed {
+        let mut decoder = GzDecoder::new(bytes.as_slice());
+        let mut text = String::new();
+        decoder
+            .read_to_string(&mut text)
+            .map_err(|err| err.to_string())?;
+        Ok(text)
+    } else {
+        String::from_utf8(bytes).map_err(|err| err.to_string())
+    }
 }
 
 fn delete_named(app: &AppHandle, name: &str) -> Result<(), String> {
     let stamp = backup_stamp(name).ok_or("Invalid backup name.")?;
-    let path = backup_dir(app)?.join(format!("{PREFIX}{stamp}{SUFFIX}"));
+    let dir = backup_dir(app)?;
+    let compressed = dir.join(format!("{PREFIX}{stamp}{SUFFIX}"));
+    let path = if compressed.exists() {
+        compressed
+    } else {
+        dir.join(format!("{PREFIX}{stamp}{LEGACY_SUFFIX}"))
+    };
     fs::remove_file(path).map_err(|err| err.to_string())
 }
 
@@ -182,12 +225,13 @@ mod tests {
 
     #[test]
     fn validates_backup_names() {
+        assert_eq!(backup_stamp("rss-reader-backup-123.json.gz"), Some(123));
         assert_eq!(backup_stamp("rss-reader-backup-123.json"), Some(123));
-        assert_eq!(backup_stamp("rss-reader-backup-001.json"), Some(1));
-        assert_eq!(backup_stamp("../rss-reader-backup-1.json"), None);
+        assert_eq!(backup_stamp("rss-reader-backup-001.json.gz"), Some(1));
+        assert_eq!(backup_stamp("../rss-reader-backup-1.json.gz"), None);
         assert_eq!(backup_stamp("rss-reader-backup-1.tmp"), None);
-        assert_eq!(backup_stamp("rss-reader-backup-.json"), None);
-        assert_eq!(backup_stamp("other-1.json"), None);
+        assert_eq!(backup_stamp("rss-reader-backup-.json.gz"), None);
+        assert_eq!(backup_stamp("other-1.json.gz"), None);
     }
 
     #[test]
@@ -202,6 +246,31 @@ mod tests {
         assert!(items[0].created_at >= second.created_at);
         assert!(items[0].created_at >= first.created_at);
         assert!(items.iter().any(|item| item.name == second.name));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn writes_compressed_snapshots_that_round_trip() {
+        let dir = temp_dir("gzip");
+        let contents = r#"{"version":2,"feeds":[{"title":"A"}]}"#;
+        let info = write_to(&dir, contents).unwrap();
+        assert!(info.name.ends_with(SUFFIX));
+        let bytes = fs::read(dir.join(&info.name)).unwrap();
+        // Gzip magic header, and smaller than the source for repetitive JSON.
+        assert_eq!(&bytes[..2], &[0x1f, 0x8b]);
+        assert_eq!(decode_backup(bytes, true).unwrap(), contents);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn reads_legacy_plain_json_snapshots() {
+        let dir = temp_dir("legacy");
+        let path = dir.join(format!("{PREFIX}777{LEGACY_SUFFIX}"));
+        fs::write(&path, r#"{"version":2}"#).unwrap();
+        let info = info_for(&path).unwrap();
+        assert_eq!(info.created_at, 777);
+        let bytes = fs::read(&path).unwrap();
+        assert_eq!(decode_backup(bytes, false).unwrap(), r#"{"version":2}"#);
         let _ = fs::remove_dir_all(&dir);
     }
 

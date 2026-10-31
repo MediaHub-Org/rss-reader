@@ -245,6 +245,13 @@ export async function fetchFeedDocument(
   throw new FeedFetchError(t('The response is not valid RSS or Atom content.'));
 }
 
+function lowestTelegramPost(html: string): number | null {
+  const ids = [...html.matchAll(/data-post="[^"/]+\/(\d+)"/g)].map((match) =>
+    Number(match[1])
+  );
+  return ids.length ? Math.min(...ids) : null;
+}
+
 export type FeedArticlesResult =
   | {
       parsed: ParseResult;
@@ -288,9 +295,33 @@ export async function fetchFeedArticles(
         };
       }
       const parsed = parseTelegramChannel(page.text, telegramChannel, feedId);
-      if (!parsed.articles.length) throw new Error('The Telegram channel has no posts.');
+      const seen = new Set(parsed.articles.map((article) => article.id));
+      const articles = [...parsed.articles];
+      let before = lowestTelegramPost(page.text);
+      // The preview page shows ~20 posts. Fetch two older pages so a quiet
+      // channel still has a useful history, stopping as soon as the archive
+      // stops returning new posts.
+      for (let pageIndex = 0; pageIndex < 2 && before; pageIndex += 1) {
+        const older = await getText(
+          `https://t.me/s/${telegramChannel}?before=${before}`,
+          undefined,
+          'text/html, application/xhtml+xml'
+        );
+        const next = parseTelegramChannel(older.text, telegramChannel, feedId);
+        let added = 0;
+        for (const article of next.articles) {
+          if (seen.has(article.id)) continue;
+          seen.add(article.id);
+          articles.push(article);
+          added += 1;
+        }
+        if (!added) break;
+        before = lowestTelegramPost(older.text);
+      }
+      if (!articles.length) throw new Error('The Telegram channel has no posts.');
+      articles.sort((a, b) => b.publishedAt - a.publishedAt);
       return {
-        parsed,
+        parsed: { feed: parsed.feed, articles },
         finalUrl: page.finalUrl,
         etag: page.etag,
         lastModified: page.lastModified,
