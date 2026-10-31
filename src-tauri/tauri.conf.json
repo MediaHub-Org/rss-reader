@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RSS Reader",
-  "version": "0.13.6",
+  "version": "0.13.7",
   "identifier": "com.mediahub.rssreader",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -22,6 +22,9 @@
       "nsis"
     ],
     "publisher": "MediaHub",
+    "homepage": "https://github.com/MediaHub-Org/rss-reader",
+    "copyright": "Copyright © 2026 MediaHub",
+    "licenseFile": "../LICENSE",
     "category": "News",
     "shortDescription": "Local-first RSS/Atom reader",
     "longDescription": "A lightweight, local-first RSS/Atom reader with folders, inline media players and a private on-device database.",

@@ -38,6 +38,19 @@ npm run preview      # http://localhost:4173 → Install app
 The installed PWA opens offline but needs the local preview/proxy server for feed
 refreshes. The desktop app fetches natively and needs no Node process at runtime.
 
+## Verify downloads
+
+Each GitHub release includes `SHA256SUMS.txt`. After downloading an asset:
+
+```bash
+sha256sum -c SHA256SUMS.txt
+```
+
+On Windows PowerShell, use `Get-FileHash` and compare the SHA-256 value with the
+matching line. Builds are currently unsigned on Windows/macOS and the Android APK
+uses the development key; see [docs/SIGNING.md](docs/SIGNING.md) for what is needed
+to add Authenticode, Apple notarization or Play Store signing.
+
 ## Updates
 
 **About → Check for updates** queries the latest GitHub release and offers the
@@ -141,7 +154,8 @@ npm run android:build                        # Android APK (needs Android SDK/ND
 ```
 
 CI runs the web suite on Ubuntu and the Rust checks plus Windows installer build on
-Windows. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+Windows. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The release
+process is documented in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## How it works
 
@@ -182,3 +196,7 @@ server/            shared local feed proxy
   server and username are stored locally (the password/token is session-only) and
   excluded from backups.
 - “Load full content” depends on the page structure and on the proxy being reachable.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

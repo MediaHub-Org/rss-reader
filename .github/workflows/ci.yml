@@ -260,6 +260,13 @@ jobs:
       - name: List release assets
         run: ls -lh release-assets
 
+      - name: Generate SHA-256 checksums
+        run: |
+          cd release-assets
+          rm -f SHA256SUMS.txt
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -269,3 +276,51 @@ jobs:
             --title "RSS Reader ${GITHUB_REF_NAME#v}" \
             --generate-notes \
             --latest
+
+      - name: Add download and verification notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          node - <<'NODE'
+          const { execFileSync } = require('node:child_process');
+          const { writeFileSync } = require('node:fs');
+          const tag = process.env.GITHUB_REF_NAME;
+          const version = tag.replace(/^v/, '');
+          const body = execFileSync(
+            'gh',
+            ['release', 'view', tag, '--json', 'body', '--jq', '.body'],
+            { encoding: 'utf8' }
+          ).trim();
+          const extra = [
+            '',
+            '## Downloads',
+            '',
+            '- **Windows**: `RSS.Reader_' + version + '_x64-setup.exe`',
+            '- **macOS (Apple Silicon)**: `RSS.Reader_' + version + '_aarch64.dmg`',
+            '- **Linux**: `RSS.Reader_' + version + '_amd64.AppImage`',
+            '- **Android (arm64)**: `RSS.Reader_' + version + '_android.apk`',
+            '',
+            'Install the new package over the current version. There is no need to uninstall',
+            'first; subscriptions, read state and settings stay on your device.',
+            '',
+            '## Verify the download (optional)',
+            '',
+            'Download `SHA256SUMS.txt` from this release, then run:',
+            '',
+            '```bash',
+            'sha256sum -c SHA256SUMS.txt',
+            '```',
+            '',
+            'On Windows PowerShell:',
+            '',
+            '```powershell',
+            'Get-FileHash .\\RSS.Reader_' + version + '_x64-setup.exe -Algorithm SHA256',
+            '```',
+            '',
+            'Compare the value with the matching line in `SHA256SUMS.txt`.',
+            '',
+          ].join('\n');
+          writeFileSync('release-notes.md', body + '\n' + extra);
+          NODE
+          gh release edit "$GITHUB_REF_NAME" --notes-file release-notes.md
