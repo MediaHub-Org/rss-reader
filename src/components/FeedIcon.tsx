@@ -5,12 +5,14 @@ import { faviconUrl } from '../lib/url';
 interface FeedIconProps {
   feed: Feed;
   className?: string;
+  /** Skip remote favicons (long settings lists) and use the letter badge. */
+  lettersOnly?: boolean;
 }
 
 /** Favicon with a letter-avatar fallback when the icon is missing or fails. */
-export function FeedIcon({ feed, className = '' }: FeedIconProps) {
+export function FeedIcon({ feed, className = '', lettersOnly = false }: FeedIconProps) {
   const [failed, setFailed] = useState(false);
-  const src = failed ? null : feed.iconUrl || faviconUrl(feed);
+  const src = lettersOnly || failed ? null : feed.iconUrl || faviconUrl(feed);
   const letter = (feed.title || '?').trim().charAt(0).toUpperCase();
 
   if (!src) {

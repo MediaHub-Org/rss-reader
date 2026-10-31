@@ -312,7 +312,7 @@ function SourceRow({
           onChange={onToggle}
           aria-label={`Select ${feed.title || feed.url}`}
         />
-        <FeedIcon feed={feed} />
+        <FeedIcon feed={feed} lettersOnly />
         <span className="manage-item__text">
           <span className="manage-item__title">{feed.title || feed.url}</span>
           <span className="manage-item__url">{feed.url}</span>

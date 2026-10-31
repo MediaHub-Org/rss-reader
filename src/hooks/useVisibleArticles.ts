@@ -8,18 +8,35 @@ import { selectArticles } from '../store/store';
  * filter or search option only has to be added once.
  */
 export function useVisibleArticles(state: AppState): Article[] {
+  const { articles, feeds, readIds, starredIds, ui, prefs } = state;
   return useMemo(
     () =>
       selectArticles(state, {
-        feedId: state.ui.activeFeedId,
-        sort: state.ui.sort,
-        query: state.ui.query,
-        filter: state.prefs.articleFilter,
-        caseSensitive: state.prefs.searchCaseSensitive,
-        fullText: state.prefs.searchFullText,
-        regex: state.prefs.searchRegex,
-        searchAll: state.ui.searchAllFeeds,
+        feedId: ui.activeFeedId,
+        sort: ui.sort,
+        query: ui.query,
+        filter: prefs.articleFilter,
+        caseSensitive: prefs.searchCaseSensitive,
+        fullText: prefs.searchFullText,
+        regex: prefs.searchRegex,
+        searchAll: ui.searchAllFeeds,
       }),
-    [state]
+    // Only rebuild the list when something that feeds selectArticles changes.
+    // Toasts, feed status and other state updates no longer re-sort thousands
+    // of articles on every notification.
+    [
+      articles,
+      feeds,
+      readIds,
+      starredIds,
+      ui.activeFeedId,
+      ui.sort,
+      ui.query,
+      ui.searchAllFeeds,
+      prefs.articleFilter,
+      prefs.searchCaseSensitive,
+      prefs.searchFullText,
+      prefs.searchRegex,
+    ]
   );
 }

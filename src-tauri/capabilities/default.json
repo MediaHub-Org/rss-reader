@@ -3,5 +3,9 @@
   "identifier": "default",
   "description": "RSS Reader core capabilities",
   "windows": ["main"],
-  "permissions": ["core:default", "notification:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-theme",
+    "notification:default"
+  ]
 }

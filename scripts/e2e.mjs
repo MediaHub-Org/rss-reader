@@ -1005,6 +1005,15 @@ try {
   /* ------------------- Sources (select all/none) ----------------------- */
   await openSettings('Sources');
   await page.waitForSelector('#settings-feeds');
+  const sourceListOverflow = await page.$eval(
+    '#settings-feeds .manage-list',
+    (el) => getComputedStyle(el).overflowY
+  );
+  check(
+    'Sources list scrolls with the dialog instead of a nested clipped container',
+    sourceListOverflow === 'visible',
+    sourceListOverflow
+  );
   await page.setViewportSize({ width: 1440, height: 640 });
   await page.click('.settings-nav__item:has-text("Preferences")');
   await page.waitForTimeout(200);

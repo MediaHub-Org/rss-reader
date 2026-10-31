@@ -4,6 +4,20 @@ import { store } from '../store/store';
 
 let lastUnread: number | null = null;
 
+/**
+ * Keep the native Windows/Linux title bar in sync with the app theme instead
+ * of leaving a light frame around a dark reader (or vice versa).
+ */
+export async function syncWindowTheme(dark: boolean): Promise<void> {
+  if (!isDesktopApp()) return;
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    await getCurrentWindow().setTheme(dark ? 'dark' : 'light');
+  } catch (err) {
+    console.warn('Could not update the window theme', err);
+  }
+}
+
 export async function setCloseToTray(enabled: boolean): Promise<void> {
   if (!isDesktopApp()) return;
   try {

@@ -11,16 +11,16 @@ interface SidebarHeaderProps {
   onClose: () => void;
 }
 
-/** Brand, search field and search scope/options for the feed sidebar. */
+/** Search field, scope and options for the feed sidebar. */
 export function SidebarHeader({ searchRef, onSearchKey, onClose }: SidebarHeaderProps) {
   const state = useStore();
 
   return (
     <>
+      {/* The app identity lives in the window title and About; the sidebar
+          starts with search instead of a logo row. The close button only
+          exists for the mobile drawer. */}
       <div className="sidebar__header">
-        <span className="brand" title={t('RSS Reader')} aria-label={t('RSS Reader')}>
-          <Icon name="rss" size={18} />
-        </span>
         <button
           type="button"
           className="icon-button sidebar__close"
@@ -37,7 +37,7 @@ export function SidebarHeader({ searchRef, onSearchKey, onClose }: SidebarHeader
           ref={searchRef}
           type="search"
           className="search__input"
-          placeholder={t('Search articles (full text)')}
+          placeholder={t('Search articles')}
           aria-label={t('Search articles')}
           value={state.ui.query}
           onChange={(event) => store.setQuery(event.target.value)}

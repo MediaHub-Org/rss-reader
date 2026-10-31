@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { useVisibleArticles } from '../hooks/useVisibleArticles';
@@ -13,9 +14,13 @@ export function ArticleOverlay() {
 
   const articles = useVisibleArticles(state);
 
-  const article = Object.values(state.articles)
-    .flat()
-    .find((item) => item.id === state.ui.activeArticleId);
+  const article = useMemo(
+    () =>
+      Object.values(state.articles)
+        .flat()
+        .find((item) => item.id === state.ui.activeArticleId),
+    [state.articles, state.ui.activeArticleId]
+  );
   if (!article) return null;
 
   const index = articles.findIndex((item) => item.id === article.id);

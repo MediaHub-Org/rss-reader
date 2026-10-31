@@ -1260,10 +1260,24 @@ export function isDarkTheme(prefs: Preferences): boolean {
 
 /* --------------------------------- selectors ------------------------------- */
 
+/**
+ * Flattening every cached article is O(total articles). The cache keyed by the
+ * `articles` object keeps search, unread badges and view switches cheap when
+ * nothing in the cache changed.
+ */
+let flatArticlesCache: { source: AppState['articles']; list: Article[] } | null = null;
+
+function allArticles(articles: AppState['articles']): Article[] {
+  if (flatArticlesCache?.source === articles) return flatArticlesCache.list;
+  const list = Object.values(articles).flat();
+  flatArticlesCache = { source: articles, list };
+  return list;
+}
+
 export function unreadCount(state: AppState, feedId: string): number {
   const ids =
     feedId === ALL_FEEDS
-      ? Object.values(state.articles).flat()
+      ? allArticles(state.articles)
       : (state.articles[feedId] ?? []);
   return ids.reduce((sum, article) => (state.readIds[article.id] ? sum : sum + 1), 0);
 }
@@ -1290,9 +1304,9 @@ export function selectArticles(
   // the scope button has no effect.
   const source =
     needle && options.searchAll
-      ? Object.values(state.articles).flat()
+      ? allArticles(state.articles)
       : feedId === ALL_FEEDS
-        ? Object.values(state.articles).flat()
+        ? allArticles(state.articles)
         : folderName !== null
           ? state.feeds
               .filter((f) => f.folder === folderName)
@@ -1317,14 +1331,13 @@ export function selectArticles(
     );
   }
 
-  const feedTitles = new Map(state.feeds.map((feed) => [feed.id, feed.title ?? '']));
-
   const sorted = [...list];
   switch (options.sort) {
     case 'date-asc':
       sorted.sort((a, b) => a.publishedAt - b.publishedAt);
       break;
-    case 'feed':
+    case 'feed': {
+      const feedTitles = new Map(state.feeds.map((feed) => [feed.id, feed.title ?? '']));
       sorted.sort((a, b) => {
         const byFeed = (feedTitles.get(a.feedId) ?? '').localeCompare(
           feedTitles.get(b.feedId) ?? ''
@@ -1332,6 +1345,7 @@ export function selectArticles(
         return byFeed !== 0 ? byFeed : b.publishedAt - a.publishedAt;
       });
       break;
+    }
     default:
       sorted.sort((a, b) => b.publishedAt - a.publishedAt);
   }

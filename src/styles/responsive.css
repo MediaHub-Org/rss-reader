@@ -66,6 +66,14 @@
     display: inline-flex;
   }
 
+  .sidebar__header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    padding: env(safe-area-inset-top, 0px) var(--space-2) 0;
+  }
+
   /* The mobile drawer (menu/close above) already shows/hides the sidebar;
      the desktop collapse toggle would be a redundant, inert second control. */
   .topbar .topbar__sidebar-toggle {
@@ -114,12 +122,22 @@
 
   .settings-layout {
     flex-direction: column;
+    width: 100%;
+    min-width: 0;
   }
 
   .settings-nav {
     flex: 0 0 auto;
     flex-direction: row;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     overflow-x: auto;
+  }
+
+  .settings-panel {
+    width: 100%;
+    min-width: 0;
   }
 
   .detail__bar {

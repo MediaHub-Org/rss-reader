@@ -77,28 +77,9 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 }
 
 .sidebar__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  height: calc(var(--topbar-height) + env(safe-area-inset-top, 0px));
-  padding: env(safe-area-inset-top, 0px) var(--space-3) 0 var(--space-4);
-  border-bottom: 0.0625rem solid var(--border);
-  flex: 0 0 auto;
+  display: none;
 }
 
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.01em;
-  color: var(--accent);
-}
-
-.brand span {
-  color: var(--text);
-}
 
 /* Mobile-only affordances stay hidden on desktop */
 .sidebar .sidebar__close,
@@ -478,6 +459,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
+  min-height: var(--topbar-height);
   padding: var(--space-2) var(--space-3);
   border-bottom: 0.0625rem solid var(--border);
 }
@@ -1764,6 +1746,7 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 .dialog__body {
   padding: 0 var(--space-5) var(--space-5);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
@@ -2527,9 +2510,8 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  max-height: var(--manage-list-max-h);
-  overflow-y: auto;
-  padding-right: var(--space-1);
+  /* The dialog body already scrolls. A nested scroll container here made
+     Chromium drop painting for long source lists (272 feeds looked blank). */
 }
 
 .manage-folder {

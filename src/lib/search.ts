@@ -9,6 +9,7 @@ export interface SearchOptions {
 
 const lowerCache = new WeakMap<Article, string>();
 const rawCache = new WeakMap<Article, string>();
+let regexCache: { key: string; pattern: RegExp | null } | null = null;
 
 function stripHtml(html: string): string {
   return html
@@ -61,12 +62,18 @@ export function articleMatches(
   const titleText = [article.title, article.summary, article.author ?? ''].join('\n');
 
   if (options.regex) {
-    try {
-      const pattern = new RegExp(needle, caseSensitive ? '' : 'i');
-      return pattern.test(fullText ? rawSearchableText(article) : titleText);
-    } catch {
-      return false;
+    // articleMatches runs once per article; compile the pattern only when the
+    // query or case-sensitivity changes, not thousands of times per keystroke.
+    const key = `${caseSensitive ? '1' : '0'}\u0000${needle}`;
+    if (!regexCache || regexCache.key !== key) {
+      try {
+        regexCache = { key, pattern: new RegExp(needle, caseSensitive ? '' : 'i') };
+      } catch {
+        regexCache = { key, pattern: null };
+      }
     }
+    if (!regexCache.pattern) return false;
+    return regexCache.pattern.test(fullText ? rawSearchableText(article) : titleText);
   }
 
   if (!fullText) {
