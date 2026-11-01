@@ -464,6 +464,46 @@ try {
   await page.click('.filter-menu .view-menu__item:has-text("All articles")');
   await page.waitForSelector('.article-card');
 
+  /* --------------- opening the reader keeps the dashboard still -------- */
+  await page.evaluate(() => {
+    const list = document.querySelector('.content-area__list');
+    const spacer = document.createElement('div');
+    spacer.dataset.testSpacer = 'true';
+    spacer.style.height = '1400px';
+    list?.append(spacer);
+    const content = document.querySelector('.content-area');
+    if (content) {
+      // Disable smooth scrolling so the fixture position is deterministic.
+      content.style.scrollBehavior = 'auto';
+      content.scrollTop = 460;
+    }
+  });
+  await page.waitForTimeout(100);
+  const dashboardBefore = await page.evaluate(
+    () => document.querySelector('.content-area')?.scrollTop ?? 0
+  );
+  // DOM click so Playwright's own scroll-into-view cannot move the list.
+  await page.evaluate(() => document.querySelectorAll('.article-card')[3]?.click());
+  await page.waitForSelector('.article-overlay__dialog');
+  await page.waitForTimeout(900);
+  const dashboardDuring = await page.evaluate(
+    () => document.querySelector('.content-area')?.scrollTop ?? 0
+  );
+  check(
+    'Opening the reader does not scroll the dashboard behind it',
+    Math.abs(dashboardDuring - dashboardBefore) < 2,
+    `${dashboardBefore} → ${dashboardDuring}`
+  );
+  await closeArticle();
+  await page.evaluate(() => {
+    document.querySelector('[data-test-spacer]')?.remove();
+    const content = document.querySelector('.content-area');
+    if (content) {
+      content.scrollTop = 0;
+      content.style.removeProperty('scroll-behavior');
+    }
+  });
+
   /* ----------------------- card overlay arrows ------------------------- */
   await page.click('.article-card >> nth=0');
   await page.waitForSelector('.article-overlay__dialog');

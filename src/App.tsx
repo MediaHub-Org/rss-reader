@@ -100,13 +100,23 @@ export default function App() {
   );
 
   /* Opening or switching an article starts at the top of the reading pane,
-     even when the pane element itself stays mounted in the split/overlay. */
+     even when the pane element itself stays mounted in the split/overlay.
+     Query each target explicitly: a selector list returns the first match in
+     document order, and `.content-area` precedes the overlay in the DOM -- so
+     the old single query scrolled the dashboard behind the reader. */
   useEffect(() => {
     if (!state.ui.activeArticleId) return;
-    const pane = document.querySelector<HTMLElement>(
-      '.article-overlay__dialog, .content-area__detail, .content-area'
-    );
-    pane?.scrollTo({ top: 0 });
+    const overlay = document.querySelector<HTMLElement>('.article-overlay__dialog');
+    if (overlay) {
+      overlay.scrollTo({ top: 0 });
+      return;
+    }
+    const detail = document.querySelector<HTMLElement>('.content-area__detail');
+    detail?.scrollTo({ top: 0 });
+    // In the narrow split layout the content area itself is the scroller
+    // (the detail pane expands instead of scrolling).
+    const content = document.querySelector<HTMLElement>('.content-area--split');
+    content?.scrollTo({ top: 0 });
   }, [state.ui.activeArticleId]);
 
   /* desktop tray: close-to-tray preference, login item, unread tooltip and
