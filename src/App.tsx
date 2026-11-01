@@ -334,10 +334,12 @@ export default function App() {
               </div>
             )}
           </main>
+
+          {/* The reader overlay belongs to the dashboard pane, so it centers
+              over the content and leaves the sidebar visible and unblurred. */}
+          {cardOverlay && <ArticleOverlay />}
         </div>
       </div>
-
-      {cardOverlay && <ArticleOverlay />}
 
       <AddFeedDialog
         open={addOpen}

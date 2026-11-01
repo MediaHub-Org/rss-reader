@@ -1,6 +1,6 @@
 [package]
 name = "rss-reader"
-version = "0.13.15"
+version = "0.13.16"
 description = "Lightweight local-first RSS/Atom reader"
 authors = ["MediaHub"]
 edition = "2021"

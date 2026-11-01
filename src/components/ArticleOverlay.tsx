@@ -43,28 +43,31 @@ export function ArticleOverlay() {
       size="lg"
       className="article-overlay__dialog"
       backdropClassName="article-overlay__backdrop"
+      backdropChildren={
+        <>
+          <button
+            type="button"
+            className="article-overlay__nav article-overlay__nav--prev"
+            onClick={() => previous && open(previous.id)}
+            disabled={!previous}
+            aria-label={t('Previous article')}
+            title={t('Previous article')}
+          >
+            <Icon name="back" size={20} />
+          </button>
+          <button
+            type="button"
+            className="article-overlay__nav article-overlay__nav--next"
+            onClick={() => next && open(next.id)}
+            disabled={!next}
+            aria-label={t('Next article')}
+            title={t('Next article')}
+          >
+            <Icon name="chevronRight" size={20} />
+          </button>
+        </>
+      }
     >
-      <button
-        type="button"
-        className="article-overlay__nav article-overlay__nav--prev"
-        onClick={() => previous && open(previous.id)}
-        disabled={!previous}
-        aria-label={t('Previous article')}
-        title={t('Previous article')}
-      >
-        <Icon name="back" size={20} />
-      </button>
-      <button
-        type="button"
-        className="article-overlay__nav article-overlay__nav--next"
-        onClick={() => next && open(next.id)}
-        disabled={!next}
-        aria-label={t('Next article')}
-        title={t('Next article')}
-      >
-        <Icon name="chevronRight" size={20} />
-      </button>
-
       <ArticleDetail />
     </Dialog>
   );

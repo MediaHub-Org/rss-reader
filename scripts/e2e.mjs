@@ -187,6 +187,44 @@ try {
     formDialogWidth > 0 && Math.abs(overlayWidth - formDialogWidth) < 1,
     `${Math.round(overlayWidth)}px / ${Math.round(formDialogWidth)}px`
   );
+  const overlayGeometry = await page.evaluate(() => {
+    const box = (selector) => {
+      const el = document.querySelector(selector);
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    };
+    const main = box('.main');
+    const sidebar = box('.sidebar');
+    const backdrop = box('.article-overlay__backdrop');
+    const dialog = box('.article-overlay__dialog');
+    const sidebarHit =
+      sidebar && sidebar.width > 0
+        ? document.elementFromPoint(sidebar.x + sidebar.width / 2, sidebar.y + sidebar.height / 2)
+        : null;
+    return {
+      main,
+      sidebar,
+      backdrop,
+      dialog,
+      sidebarHitInside: Boolean(sidebarHit && sidebarHit.closest('.sidebar')),
+    };
+  });
+  const { main, backdrop, dialog } = overlayGeometry;
+  check(
+    'Reader backdrop covers only the dashboard, not the sidebar',
+    Boolean(main && backdrop) &&
+      Math.abs(backdrop.x - main.x) < 1 &&
+      Math.abs(backdrop.width - main.width) < 1 &&
+      overlayGeometry.sidebarHitInside,
+    JSON.stringify(backdrop)
+  );
+  check(
+    'Reader popup is centered on the dashboard',
+    Boolean(main && dialog) &&
+      Math.abs(dialog.x + dialog.width / 2 - (main.x + main.width / 2)) < 2,
+    JSON.stringify(dialog)
+  );
   const html = await page.innerHTML('.detail .content');
   check('Article content rendered', html.trim().length > 100, `${html.length} chars`);
   check('No <script> injected from feed HTML', !/<script/i.test(html));
@@ -1007,7 +1045,18 @@ try {
     { timeout: 5000 }
   );
   check('Feed removed after pressing Enter in confirmation', true, `${feedsBeforeRemove - 1} feeds left`);
-  await page.waitForTimeout(250);
+  // Persistence is debounced (~400 ms); wait for it instead of guessing.
+  await page
+    .waitForFunction(
+      (ids) => {
+        const state = window.__store.getSnapshot();
+        const stored = JSON.parse(localStorage.getItem('rss-reader:read') || '{}');
+        return ids.every((id) => !state.readIds[id] && !stored[id]);
+      },
+      removedArticleIds,
+      { timeout: 2_000 }
+    )
+    .catch(() => {});
   const staleReadIds = await page.evaluate((ids) => {
     const state = window.__store.getSnapshot();
     const stored = JSON.parse(localStorage.getItem('rss-reader:read') || '{}');

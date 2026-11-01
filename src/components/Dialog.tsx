@@ -22,6 +22,11 @@ interface DialogProps {
   ariaLabel?: string;
   className?: string;
   backdropClassName?: string;
+  /**
+   * Extra nodes placed inside the backdrop but outside the panel (for example
+   * the reader's previous/next arrows). They take part in the focus cycle.
+   */
+  backdropChildren?: ReactNode;
 }
 
 /**
@@ -45,6 +50,7 @@ export function Dialog({
   ariaLabel,
   className = '',
   backdropClassName = '',
+  backdropChildren,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
@@ -94,8 +100,10 @@ export function Dialog({
       }
       if (event.key !== 'Tab' || !panel) return;
 
+      // Include backdrop-level controls (reader arrows) in the cycle.
+      const scope = panel.parentElement ?? panel;
       const items = Array.from(
-        panel.querySelectorAll<HTMLElement>(
+        scope.querySelectorAll<HTMLElement>(
           'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
         )
       ).filter((el) => el.offsetParent !== null);
@@ -177,6 +185,7 @@ export function Dialog({
         )}
         {footer ? <footer className="dialog__footer">{footer}</footer> : null}
       </div>
+      {backdropChildren}
     </div>
   );
 }
