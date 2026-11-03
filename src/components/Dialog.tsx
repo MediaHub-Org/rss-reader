@@ -18,6 +18,14 @@ interface DialogProps {
   suspended?: boolean;
   /** Render the children directly, without the dialog header/body chrome. */
   bare?: boolean;
+  /**
+   * Lock the sidebar/dashboard scroll behind the dialog (default). The
+   * article reader turns this off: it has its own previous/next navigation
+   * precisely so the user can keep browsing without closing it, so freezing
+   * the sidebar and the article list behind it while it is open fought that
+   * instead of helping.
+   */
+  lockBackgroundScroll?: boolean;
   /** Accessible label when `bare` is set (there is no visible title). */
   ariaLabel?: string;
   className?: string;
@@ -47,6 +55,7 @@ export function Dialog({
   size = 'sm',
   suspended = false,
   bare = false,
+  lockBackgroundScroll = true,
   ariaLabel,
   className = '',
   backdropClassName = '',
@@ -122,20 +131,22 @@ export function Dialog({
 
     document.addEventListener('keydown', onKeyDown, true);
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     // Save the app's real scroll containers. Hiding their overflow can move
     // the background by a pixel or two on some WebViews; restoring the exact
     // offsets keeps the list where the user left it.
     const scrollPositions = new Map<HTMLElement, number>();
-    document
-      .querySelectorAll<HTMLElement>('.content-area, .sidebar__scroll')
-      .forEach((element) => scrollPositions.set(element, element.scrollTop));
     // The app scrolls inside .content-area and .sidebar__scroll, not on the
     // body, so locking the body alone left the background scrolling under the
     // dialog. The attribute is what the stylesheet hooks onto; `wasLocked`
     // keeps a stacked dialog from unlocking while an outer one is still open.
     const wasLocked = document.body.dataset.scrollLocked === 'true';
-    document.body.dataset.scrollLocked = 'true';
+    if (lockBackgroundScroll) {
+      document.body.style.overflow = 'hidden';
+      document
+        .querySelectorAll<HTMLElement>('.content-area, .sidebar__scroll')
+        .forEach((element) => scrollPositions.set(element, element.scrollTop));
+      document.body.dataset.scrollLocked = 'true';
+    }
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
@@ -143,7 +154,10 @@ export function Dialog({
       scrollPositions.forEach((top, element) => {
         element.scrollTop = top;
       });
-      if (!wasLocked) delete document.body.dataset.scrollLocked;
+      // Only an instance that actually locked may unlock -- otherwise a
+      // non-locking dialog (the article reader) closing while a real, locking
+      // one is still stacked on top of it would rip the lock out from under it.
+      if (lockBackgroundScroll && !wasLocked) delete document.body.dataset.scrollLocked;
       restoreTo.current?.focus?.({ preventScroll: true });
     };
   }, [open]);
