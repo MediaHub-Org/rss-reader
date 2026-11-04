@@ -31,7 +31,7 @@ android {
     // release falls back to the debug key, which installs but is not a release
     // signature anyone should distribute.
     val releaseStore = file(System.getenv("RSS_KEYSTORE") ?: "release.keystore")
-    val releaseProperties = java.util.Properties()
+    val releaseProperties = Properties()
     val keystoreProperties = file("keystore.properties")
     if (keystoreProperties.exists()) {
         keystoreProperties.inputStream().use { stream -> releaseProperties.load(stream) }
