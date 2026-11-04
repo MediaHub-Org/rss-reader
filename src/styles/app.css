@@ -2984,6 +2984,12 @@ kbd {
 /* Two-pane reading on wide screens. The list stays mounted so switching
    articles preserves its scroll position; narrow layouts fall back to the
    single-pane list ⇄ detail flow. */
+.content-area {
+  /* Positioning context for the reader overlay, so its backdrop stops at the
+     top bar instead of covering the whole dashboard. */
+  position: relative;
+}
+
 .content-area--split {
   display: grid;
   grid-template-columns: clamp(21rem, 30vw, 34rem) minmax(0, 1fr);
@@ -3457,8 +3463,8 @@ kbd {
 
 /* --------------------------- article overlay ---------------------------- */
 .article-overlay__backdrop {
-  /* Inherit the fixed backdrop look, but stay inside .main: the reader is
-     centered on the dashboard and its blur never reaches the sidebar. */
+  /* Inside the content area: the blur covers the article list behind the card,
+     never the sidebar and never the top bar, both of which stay sharp. */
   position: absolute;
   inset: 0;
   background: color-mix(in srgb, #07090e 42%, transparent);
@@ -3475,7 +3481,11 @@ kbd {
      Percentages resolve against the dashboard pane, not the whole window. */
   width: min(48rem, calc(100% - 10rem));
   max-width: min(48rem, calc(100% - 10rem));
-  max-height: 92dvh;
+  /* Same box as every other popup, and the same box for every article: the
+     reader used to grow and shrink with the length of the piece, so the card
+     jumped between a two-paragraph note and a long read. */
+  height: min(86dvh, var(--dialog-max-h));
+  max-height: min(86dvh, var(--dialog-max-h));
   padding: 0;
   overflow-y: auto;
   overscroll-behavior: contain;

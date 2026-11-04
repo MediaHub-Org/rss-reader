@@ -343,11 +343,12 @@ export default function App() {
                 <ArticleDetail />
               </div>
             )}
-          </main>
 
-          {/* The reader overlay belongs to the dashboard pane, so it centers
-              over the content and leaves the sidebar visible and unblurred. */}
-          {cardOverlay && <ArticleOverlay />}
+            {/* The reader overlay lives inside the content area, not next to the
+                top bar: opening an article blurs the list behind it and leaves
+                the header (search, view, tools) sharp and usable. */}
+            {cardOverlay && <ArticleOverlay />}
+          </main>
         </div>
       </div>
 
