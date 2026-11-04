@@ -25,12 +25,36 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    // Release signing. The keystore is never in the repo: CI writes it from a
+    // secret before building, and `keystore.properties` (gitignored) or the
+    // RSS_KEYSTORE_* environment variables carry the passwords. Without them the
+    // release falls back to the debug key, which installs but is not a release
+    // signature anyone should distribute.
+    val releaseStore = file(System.getenv("RSS_KEYSTORE") ?: "release.keystore")
+    val releaseProperties = java.util.Properties().apply {
+        val file = file("keystore.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    fun signingValue(key: String, env: String, fallback: String? = null): String? =
+        releaseProperties.getProperty(key) ?: System.getenv(env) ?: fallback
+
     signingConfigs {
         getByName("debug") {
             storeFile = file("rss-reader-debug.keystore")
             storePassword = "rssreaderdebug"
             keyAlias = "rssreaderdebug"
             keyPassword = "rssreaderdebug"
+        }
+        create("release") {
+            if (releaseStore.exists()) {
+                storeFile = releaseStore
+                storePassword = signingValue("storePassword", "RSS_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "RSS_KEY_ALIAS", "rss-reader")
+                keyPassword = signingValue(
+                    "keyPassword", "RSS_KEY_PASSWORD",
+                    signingValue("storePassword", "RSS_KEYSTORE_PASSWORD"),
+                )
+            }
         }
     }
     buildTypes {
@@ -47,7 +71,9 @@ android {
             }
         }
         getByName("release") {
-            signingConfig = signingConfigs.getByName("debug")
+            // Signed with the release key when one is present; the debug key is
+            // only a fallback so a local `assemble` still works.
+            signingConfig = signingConfigs.getByName(if (releaseStore.exists()) "release" else "debug")
             optimization {
                enable = true
             }

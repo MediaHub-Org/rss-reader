@@ -18,3 +18,7 @@ keystore.properties
 
 /.tauri
 /tauri.settings.gradle
+
+# Release signing material: the keystore and its passwords never enter git.
+keystore.properties
+app/release.keystore
