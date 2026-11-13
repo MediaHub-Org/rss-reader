@@ -8,6 +8,7 @@ import { copyText } from '../lib/clipboard';
 import { thumbnailUrl, watchUrl } from '../lib/youtube';
 import { detectEmbed, detectEmbedInHtml, type MediaEmbed } from '../lib/embeds';
 import { cachedFullContent, fetchFullContent } from '../lib/fullContent';
+import { isTauriApp, openExternalUrl } from '../lib/desktop';
 import { t } from '../lib/i18n';
 import { Icon } from './Icon';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
@@ -286,20 +287,24 @@ export function ArticleDetail() {
               onClick={() => void toggleFullContent()}
               disabled={loadingFullContent}
               aria-pressed={showFullContent}
-              aria-label={t(showFullContent ? 'Show feed content' : 'Load full article content')}
+              aria-label={
+                showFullContent
+                  ? t('Show the text the feed provides')
+                  : t('Read the full article from its page')
+              }
               title={
                 showFullContent
-                  ? t('Show the feed\'s own content')
-                  : t('Fetch and extract the original article text')
+                  ? t('Back to the feed\'s own content')
+                  : t('Fetches the article page and keeps the readable text')
               }
             >
-              <Icon name="book" size={16} />
+              <Icon name="article" size={16} />
               <span>
                 {loadingFullContent
                   ? t('Loading…')
                   : showFullContent
-                    ? t('Full content')
-                    : t('Load full content')}
+                    ? t('Feed text')
+                    : t('Full article')}
               </span>
             </button>
           )}
@@ -310,7 +315,14 @@ export function ArticleDetail() {
               href={article.link}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={t('Open original article in a new tab')}
+              // On the desktop app the link leaves the app for the default browser; in the
+              // browser/PWA a new tab is already the external surface.
+              onClick={(event) => {
+                if (!isTauriApp()) return;
+                event.preventDefault();
+                void openExternalUrl(article.link as string);
+              }}
+              aria-label={t('Open the original article in the browser')}
             >
               <Icon name="external" size={16} />
               <span>{t('Original')}</span>

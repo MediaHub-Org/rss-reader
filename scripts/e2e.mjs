@@ -1646,20 +1646,20 @@ try {
   check('Copy link copies the article URL', copyOk);
 
   await page
-    .locator('.detail__actions button[aria-label="Load full article content"]')
+    .locator('.detail__actions button[aria-label="Read the full article from its page"]')
     .dispatchEvent('click');
   await page.waitForFunction(
     () => /Original full article/.test(document.querySelector('.detail .content')?.textContent || ''),
     undefined,
     { timeout: 15_000 }
   );
-  check('Load full content replaces the feed excerpt', true);
+  check('Full article replaces the feed excerpt', true);
   check(
-    'Full content is marked active',
-    (await page.getAttribute('.detail__actions button[aria-label="Show feed content"]', 'aria-pressed')) === 'true'
+    'Full article is marked active',
+    (await page.getAttribute('.detail__actions button[aria-label="Show the text the feed provides"]', 'aria-pressed')) === 'true'
   );
   await page
-    .locator('.detail__actions button[aria-label="Show feed content"]')
+    .locator('.detail__actions button[aria-label="Show the text the feed provides"]')
     .dispatchEvent('click');
   await page.waitForFunction(
     () => !/Original full article/.test(document.querySelector('.detail .content')?.textContent || '')
