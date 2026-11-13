@@ -133,6 +133,33 @@ fn set_close_to_tray(state: tauri::State<DesktopState>, enabled: bool) {
     state.close_to_tray.store(enabled, Ordering::Relaxed);
 }
 
+/// Reveal the first frame only after the frontend has applied saved preferences.
+#[tauri::command]
+fn complete_startup(app: tauri::AppHandle, dark: bool) -> Result<(), String> {
+    #[cfg(desktop)]
+    if let Some(window) = app.get_webview_window("main") {
+        let color = if dark {
+            tauri::window::Color(14, 16, 20, 255)
+        } else {
+            tauri::window::Color(246, 247, 249, 255)
+        };
+        window
+            .set_background_color(Some(color))
+            .map_err(|err| err.to_string())?;
+        window
+            .set_theme(Some(if dark {
+                tauri::Theme::Dark
+            } else {
+                tauri::Theme::Light
+            }))
+            .map_err(|err| err.to_string())?;
+        window.show().map_err(|err| err.to_string())?;
+    }
+    #[cfg(not(desktop))]
+    let _ = (app, dark);
+    Ok(())
+}
+
 #[tauri::command]
 fn is_main_window_active(app: tauri::AppHandle) -> bool {
     #[cfg(desktop)]
@@ -184,6 +211,7 @@ pub fn run() {
             set_close_to_tray,
             is_main_window_active,
             update_tray_unread,
+            complete_startup,
             backups::list_auto_backups,
             backups::create_auto_backup,
             backups::read_auto_backup,
@@ -204,6 +232,7 @@ pub fn run() {
                     .min_inner_size(900.0, 600.0)
                     .center()
                     .resizable(true)
+                    .visible(false)
                     // Match the app surface while the WebView is still blank,
                     // so opening the window never flashes pure white.
                     .background_color(tauri::window::Color(246, 247, 249, 255))

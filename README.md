@@ -150,6 +150,7 @@ npm run preview        # serve dist/ with the local feed proxy
 npm run test:unit      # Vitest
 npm run test:e2e       # Playwright smoke suite (needs npm run dev running)
 npm run test:e2e -- --headed # Watch the smoke suite in a visible browser
+node scripts/verify-startup.mjs # Visible theme/startup checks (needs production preview on :4173)
 npm run test:pwa       # installability + offline check (needs npm run preview)
 npm run check          # typecheck + unit tests + Rust fmt/clippy/tests
 

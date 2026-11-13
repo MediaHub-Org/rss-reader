@@ -11,7 +11,7 @@
  * Registered by src/main.tsx in production builds only.
  */
 const VERSION = 'rss-reader-shell-__BUILD_VERSION__';
-const SHELL = ['./', './index.html'];
+const SHELL = ['./', './index.html', './theme-init.js'];
 
 /**
  * The first page load happens *before* the service worker controls it, so its

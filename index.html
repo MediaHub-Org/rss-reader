@@ -3,14 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Lightweight local-first RSS/Atom reader" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7f9" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1014" />
-    <title>RSS Reader</title>
     <style>
       /* Paint the correct surface before the bundled stylesheet arrives.
          Without this the empty document flashes white for a frame. */
@@ -22,6 +14,12 @@
         background: #0e1014;
         color-scheme: dark;
       }
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme='light']) {
+          background: #0e1014;
+          color-scheme: dark;
+        }
+      }
       body,
       #root {
         margin: 0;
@@ -29,21 +27,16 @@
         background: inherit;
       }
     </style>
-    <script>
-      // Applied before first paint to avoid a light/dark flash.
-      try {
-        var pref = JSON.parse(localStorage.getItem('rss-reader:prefs') || '{}');
-        var theme = pref.theme || 'system';
-        var dark =
-          theme === 'dark' ||
-          (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-        if (pref.density) document.documentElement.dataset.density = pref.density;
-        if (pref.fontSize) document.documentElement.dataset.fontSize = pref.fontSize;
-      } catch (e) {
-        document.documentElement.dataset.theme = 'light';
-      }
-    </script>
+    <!-- Blocking, same-origin script also works with the desktop CSP. -->
+    <script src="/theme-init.js"></script>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Lightweight local-first RSS/Atom reader" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7f9" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1014" />
+    <title>RSS Reader</title>
   </head>
   <body>
     <div id="root"></div>

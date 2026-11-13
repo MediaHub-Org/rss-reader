@@ -4,6 +4,9 @@
  *   node scripts/verify-pwa.mjs
  */
 import { chromium } from 'playwright';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4173';
 const results = [];
@@ -12,9 +15,14 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
-const browser = await chromium.launch();
-const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-const page = await context.newPage();
+// Chromium refuses installation in incognito contexts. Use a temporary real
+// profile so installability and offline storage match an ordinary app launch.
+const profile = await mkdtemp(path.join(tmpdir(), 'rss-reader-pwa-'));
+const context = await chromium.launchPersistentContext(profile, {
+  headless: !process.argv.includes('--headed'),
+  viewport: { width: 1280, height: 800 },
+});
+const page = context.pages()[0] || await context.newPage();
 
 try {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
@@ -120,7 +128,10 @@ try {
   check('Verification completed without throwing', false, String(error).slice(0, 300));
   await page.screenshot({ path: 'test-artifacts/99-pwa-failure.png' }).catch(() => {});
 } finally {
-  await browser.close();
+  await context.close();
+  if (path.dirname(profile) === path.resolve(tmpdir()) && path.basename(profile).startsWith('rss-reader-pwa-')) {
+    await rm(profile, { recursive: true, force: true });
+  }
 }
 
 const failed = results.filter((r) => !r.ok);

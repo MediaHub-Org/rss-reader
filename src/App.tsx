@@ -6,7 +6,7 @@ import { useVisibleArticles } from './hooks/useVisibleArticles';
 import { useViewHistory } from './hooks/useViewHistory';
 import { leaveArticle } from './lib/viewHistory';
 import { isTauriApp } from './lib/desktop';
-import { syncDesktopSettings, syncWindowTheme, updateTrayUnread } from './lib/desktopSettings';
+import { completeStartup, syncDesktopSettings, syncWindowTheme, updateTrayUnread } from './lib/desktopSettings';
 import { listenForTrayRefresh } from './lib/trayEvents';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -121,6 +121,11 @@ export default function App() {
 
   /* desktop tray: close-to-tray preference, login item, unread tooltip and
      the tray's "Refresh feeds" action */
+  useEffect(() => {
+    if (!state.hydrated) return;
+    void completeStartup(isDarkTheme(store.getSnapshot().prefs));
+  }, [state.hydrated]);
+
   useEffect(() => {
     if (!state.hydrated) return;
     void syncWindowTheme(isDarkTheme(state.prefs));

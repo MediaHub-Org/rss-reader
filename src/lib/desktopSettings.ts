@@ -4,6 +4,15 @@ import { store } from '../store/store';
 
 let lastUnread: number | null = null;
 
+export async function completeStartup(dark: boolean): Promise<void> {
+  if (!isDesktopApp()) return;
+  try {
+    await invokeDesktop('complete_startup', { dark });
+  } catch (err) {
+    console.error('Could not show the app window', err);
+  }
+}
+
 /**
  * Keep the native Windows/Linux title bar in sync with the app theme instead
  * of leaving a light frame around a dark reader (or vice versa).
