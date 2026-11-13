@@ -51,6 +51,11 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Search and settings layout
+        env:
+          BASE_URL: http://127.0.0.1:5173
+        run: node scripts/verify-layout.mjs --headless
+
       - name: Start preview server
         run: |
           npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/vite-preview.log 2>&1 &
@@ -65,6 +70,11 @@ jobs:
         env:
           BASE_URL: http://127.0.0.1:4173
         run: npm run test:pwa
+
+      - name: Startup theme before first paint
+        env:
+          BASE_URL: http://127.0.0.1:4173
+        run: node scripts/verify-startup.mjs --headless
 
   desktop:
     name: Desktop (Rust checks + installer)

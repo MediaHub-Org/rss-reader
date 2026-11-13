@@ -100,7 +100,7 @@ try {
     // Open the app's own cache, by name: caches.keys() can also list caches created by
     // something else in the profile (an extension, another service worker), and taking
     // the first one checked the wrong cache and failed for the wrong reason.
-    const name = names.find((n) => n.startsWith('rss-reader-shell-')) ?? names[0];
+    const name = names.find((n) => n.startsWith('rss-reader-shell-'));
     if (!name) return { name: null, paths: [] };
     const cache = await caches.open(name);
     return { name, paths: (await cache.keys()).map((r) => new URL(r.url).pathname) };
@@ -111,6 +111,9 @@ try {
     `${shellCached.name}: ${shellCached.paths.join(', ')}`
   );
   check('Feed proxy excluded from the cache', !shellCached.paths.some((p) => p.endsWith('/proxy')));
+  check('Theme startup and lazy Settings bundle precached',
+    shellCached.paths.some((p) => p.endsWith('/theme-init.js')) &&
+      shellCached.paths.some((p) => /\/assets\/SettingsDialog-[^/]+\.js$/.test(p)));
 
   /* -------------------------------- offline ---------------------------- */
   await page.waitForTimeout(800); // let the first controlled load settle
@@ -121,6 +124,12 @@ try {
 
   const offlineHtml = await page.innerHTML('#main-content');
   check('Shell CSS/JS served from cache offline', /class="(?:list|empty-state)/.test(offlineHtml));
+
+  await page.locator('.topbar__tools button[aria-label="Settings"]').click();
+  await page.waitForSelector('.settings-dialog');
+  await page.locator('.settings-nav').getByRole('button', { name: 'About', exact: true }).click();
+  check('Settings opens for the first time offline',
+    await page.locator('.settings-panel').getByRole('button', { name: 'Copy diagnostics', exact: true }).isVisible());
 
   await page.screenshot({ path: 'test-artifacts/06-offline.png' });
   await context.setOffline(false);

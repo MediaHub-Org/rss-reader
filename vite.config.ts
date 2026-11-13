@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import type { ServerResponse } from 'node:http';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { proxyFeedRequest } from './server/proxy-lib.mjs';
@@ -22,7 +22,11 @@ function serviceWorkerVersion(): Plugin {
     closeBundle() {
       const file = localPath('./dist/sw.js');
       const version = `${pkg.version}-${Date.now()}`;
-      writeFileSync(file, readFileSync(file, 'utf8').replace('__BUILD_VERSION__', version));
+      const assets = readdirSync(localPath('./dist/assets'))
+        .map((name) => `./assets/${name}`);
+      writeFileSync(file, readFileSync(file, 'utf8')
+        .replace('__BUILD_VERSION__', version)
+        .replace('/* __PRECACHE_ASSETS__ */ []', JSON.stringify(assets)));
     },
   };
 }

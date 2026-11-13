@@ -12,6 +12,7 @@
  */
 const VERSION = 'rss-reader-shell-__BUILD_VERSION__';
 const SHELL = ['./', './index.html', './theme-init.js'];
+const BUILD_ASSETS = /* __PRECACHE_ASSETS__ */ [];
 
 /**
  * The first page load happens *before* the service worker controls it, so its
@@ -20,19 +21,19 @@ const SHELL = ['./', './index.html', './theme-init.js'];
  * a blank page.
  */
 async function collectShellAssets(cache) {
-  const html = await (await fetch('./index.html')).text();
+  const document = await fetch('./index.html', { cache: 'reload' });
+  if (!document.ok) throw new Error('Could not cache the app shell');
+  const html = await document.text();
   const assets = [...html.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g)]
     .map((match) => new URL(match[1], self.location.href).href);
 
-  const urls = [...SHELL, ...assets];
+  // Include lazy bundles, so Settings/Import can open for the first time offline.
+  const urls = [...new Set([...SHELL, ...assets, ...BUILD_ASSETS])];
   await Promise.all(
     urls.map(async (url) => {
-      try {
-        const response = await fetch(url, { cache: 'reload' });
-        if (response.ok) await cache.put(url, response);
-      } catch {
-        // A missing optional asset must never break installation.
-      }
+      const response = await fetch(url, { cache: 'reload' });
+      if (!response.ok) throw new Error(`Could not cache ${url}`);
+      await cache.put(url, response);
     })
   );
 }
@@ -50,7 +51,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== VERSION).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys
+        .filter((key) => key.startsWith('rss-reader-shell-') && key !== VERSION)
+        .map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
