@@ -1875,6 +1875,19 @@ body[data-scroll-locked='true'] .sidebar__scroll {
 
 /* -------------------------------- Settings -------------------------------- */
 
+.settings-dialog {
+  height: min(86dvh, var(--dialog-max-h));
+}
+
+.settings-dialog .dialog__header {
+  flex-shrink: 0;
+}
+
+.settings-dialog .dialog__body {
+  flex: 1;
+  min-height: 0;
+}
+
 .settings-layout {
   display: flex;
   gap: var(--space-4);
@@ -3048,8 +3061,9 @@ kbd {
    search field rather than hidden in a global menu. */
 .search-options-root {
   position: absolute;
-  right: 0.375rem;
+  right: calc(var(--space-3) + 0.25rem);
   top: 50%;
+  display: flex;
   /* `transform` makes this a stacking context, so it needs its own z-index;
      otherwise the popover paints behind the later .sidebar__scroll sibling
      and clicks land on the feed list instead. Kept below --z-dialog (50) so a
@@ -3062,8 +3076,8 @@ kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.625rem;
+  height: 1.625rem;
   padding: 0;
   border: 0.0625rem solid transparent;
   border-radius: var(--radius-sm);
