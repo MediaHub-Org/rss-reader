@@ -88,12 +88,21 @@ try {
   check('Page controlled by the service worker', swState.controlled, swState.scope || '');
 
   const shellCached = await page.evaluate(async () => {
-    const keys = await caches.keys();
-    const cache = await caches.open(keys[0]);
-    return (await cache.keys()).map((r) => new URL(r.url).pathname);
+    const names = await caches.keys();
+    // Open the app's own cache, by name: caches.keys() can also list caches created by
+    // something else in the profile (an extension, another service worker), and taking
+    // the first one checked the wrong cache and failed for the wrong reason.
+    const name = names.find((n) => n.startsWith('rss-reader-shell-')) ?? names[0];
+    if (!name) return { name: null, paths: [] };
+    const cache = await caches.open(name);
+    return { name, paths: (await cache.keys()).map((r) => new URL(r.url).pathname) };
   });
-  check('App shell precached', shellCached.some((p) => p === '/' || p.endsWith('index.html')), shellCached.join(', '));
-  check('Feed proxy excluded from the cache', !shellCached.some((p) => p.endsWith('/proxy')));
+  check(
+    'App shell precached',
+    shellCached.paths.some((p) => p === '/' || p.endsWith('index.html')),
+    `${shellCached.name}: ${shellCached.paths.join(', ')}`
+  );
+  check('Feed proxy excluded from the cache', !shellCached.paths.some((p) => p.endsWith('/proxy')));
 
   /* -------------------------------- offline ---------------------------- */
   await page.waitForTimeout(800); // let the first controlled load settle
