@@ -30,8 +30,6 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  /* Contains the reader overlay so it centers over the dashboard and not
-     over the sidebar. */
   position: relative;
 }
 
@@ -2985,8 +2983,6 @@ kbd {
    articles preserves its scroll position; narrow layouts fall back to the
    single-pane list ⇄ detail flow. */
 .content-area {
-  /* Positioning context for the reader overlay, so its backdrop stops at the
-     top bar instead of covering the whole dashboard. */
   position: relative;
 }
 
@@ -3463,9 +3459,8 @@ kbd {
 
 /* --------------------------- article overlay ---------------------------- */
 .article-overlay__backdrop {
-  /* Inside the content area: the blur covers the article list behind the card,
-     never the sidebar and never the top bar, both of which stay sharp. */
-  position: absolute;
+  /* Cover the entire dashboard, including the sidebar and top bar. */
+  position: fixed;
   inset: 0;
   background: color-mix(in srgb, #07090e 42%, transparent);
   backdrop-filter: blur(14px) saturate(115%);
@@ -3478,7 +3473,7 @@ kbd {
   position: relative;
   /* Same modal width as every other popup, with room reserved so the side
      arrows sit outside the panel instead of clipping the reader surface.
-     Percentages resolve against the dashboard pane, not the whole window. */
+     Percentages resolve against the whole window. */
   width: min(48rem, calc(100% - 10rem));
   max-width: min(48rem, calc(100% - 10rem));
   /* Same box as every other popup, and the same box for every article: the
@@ -3501,13 +3496,13 @@ kbd {
 
 .article-overlay__dialog .detail {
   max-width: 100%;
+  flex-shrink: 0;
   height: auto;
   padding: 0 clamp(var(--space-5), 4vw, var(--space-7)) var(--space-7);
 }
 
 .article-overlay__nav {
-  /* Direct child of the dashboard backdrop, so percentages center on the
-     content pane while the sidebar keeps its space. */
+  /* Center the navigation alongside the popup in the viewport. */
   position: absolute;
   top: 50%;
   z-index: 3;

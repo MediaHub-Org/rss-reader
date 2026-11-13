@@ -194,7 +194,7 @@ try {
       const rect = el.getBoundingClientRect();
       return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     };
-    const main = box('.main');
+    const main = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
     const sidebar = box('.sidebar');
     const backdrop = box('.article-overlay__backdrop');
     const dialog = box('.article-overlay__dialog');
@@ -207,24 +207,42 @@ try {
       sidebar,
       backdrop,
       dialog,
-      sidebarHitInside: Boolean(sidebarHit && sidebarHit.closest('.sidebar')),
+      sidebarCovered: Boolean(sidebarHit && sidebarHit.closest('.article-overlay__backdrop')),
+      blurred: getComputedStyle(document.querySelector('.article-overlay__backdrop')).backdropFilter.includes('blur('),
+      locked: document.body.dataset.scrollLocked === 'true' &&
+        ['.content-area', '.sidebar__scroll'].every((selector) =>
+          getComputedStyle(document.querySelector(selector)).overflowY === 'hidden'),
     };
   });
   const { main, backdrop, dialog } = overlayGeometry;
   check(
-    'Reader backdrop covers only the dashboard, not the sidebar',
+    'Reader backdrop covers and blurs the entire dashboard',
     Boolean(main && backdrop) &&
       Math.abs(backdrop.x - main.x) < 1 &&
       Math.abs(backdrop.width - main.width) < 1 &&
-      overlayGeometry.sidebarHitInside,
+      Math.abs(backdrop.height - main.height) < 1 &&
+      overlayGeometry.sidebarCovered && overlayGeometry.blurred,
     JSON.stringify(backdrop)
   );
   check(
-    'Reader popup is centered on the dashboard',
+    'Reader popup is centered in the viewport',
     Boolean(main && dialog) &&
       Math.abs(dialog.x + dialog.width / 2 - (main.x + main.width / 2)) < 2,
     JSON.stringify(dialog)
   );
+  check('Reader locks dashboard scrolling', overlayGeometry.locked);
+  const readerScrolls = await page.locator('.article-overlay__dialog').evaluate((el) => {
+    const content = el.querySelector('.content');
+    const filler = document.createElement('div');
+    filler.style.height = '2000px';
+    content.append(filler);
+    el.scrollTop = 150;
+    const scrolled = el.scrollTop > 0;
+    filler.remove();
+    el.scrollTop = 0;
+    return scrolled;
+  });
+  check('Long articles remain scrollable inside the popup', readerScrolls);
   const html = await page.innerHTML('.detail .content');
   check('Article content rendered', html.trim().length > 100, `${html.length} chars`);
   check('No <script> injected from feed HTML', !/<script/i.test(html));
@@ -253,6 +271,9 @@ try {
 
   /* read state — opening the article already marked it read */
   await closeArticle();
+  check('Closing the reader restores dashboard scrolling',
+    await page.evaluate(() => !document.body.dataset.scrollLocked &&
+      getComputedStyle(document.querySelector('.content-area')).overflowY === 'auto'));
   await page.waitForSelector('.article-grid');
   const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');
   check('Read state reflected in list', /is-read/.test(firstRowRead || ''), firstRowRead);

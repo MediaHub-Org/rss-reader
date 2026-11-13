@@ -39,7 +39,6 @@ export function ArticleOverlay() {
       onClose={leaveArticle}
       title=""
       bare
-      lockBackgroundScroll={false}
       ariaLabel={cleanTitle(article.title)}
       size="lg"
       className="article-overlay__dialog"

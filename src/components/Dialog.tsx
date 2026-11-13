@@ -19,11 +19,7 @@ interface DialogProps {
   /** Render the children directly, without the dialog header/body chrome. */
   bare?: boolean;
   /**
-   * Lock the sidebar/dashboard scroll behind the dialog (default). The
-   * article reader turns this off: it has its own previous/next navigation
-   * precisely so the user can keep browsing without closing it, so freezing
-   * the sidebar and the article list behind it while it is open fought that
-   * instead of helping.
+   * Lock the sidebar/dashboard scroll behind the dialog (default).
    */
   lockBackgroundScroll?: boolean;
   /** Accessible label when `bare` is set (there is no visible title). */

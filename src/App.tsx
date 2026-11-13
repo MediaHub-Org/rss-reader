@@ -344,13 +344,11 @@ export default function App() {
               </div>
             )}
 
-            {/* The reader overlay lives inside the content area, not next to the
-                top bar: opening an article blurs the list behind it and leaves
-                the header (search, view, tools) sharp and usable. */}
-            {cardOverlay && <ArticleOverlay />}
           </main>
         </div>
       </div>
+
+      {cardOverlay && <ArticleOverlay />}
 
       <AddFeedDialog
         open={addOpen}
