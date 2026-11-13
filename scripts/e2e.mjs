@@ -1,7 +1,7 @@
 /**
  * End-to-end smoke test against the running dev server.
  *   1. start the app:  npm run dev
- *   2. run:            node scripts/e2e.mjs
+ *   2. run visibly:    node scripts/e2e.mjs --headed
  *
  * Feeds come from `public/fixtures/` (same origin), so the run is hermetic:
  * no proxy hop, no third-party uptime, no rate limits.
@@ -33,7 +33,7 @@ const check = (name, condition, detail = '') => {
   console.log(`${condition ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ headless: !process.argv.includes('--headed') });
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   locale: 'en-US',
@@ -1514,7 +1514,9 @@ try {
   await page.click('.sidebar__toolbar button[aria-label="New feed"]');
   await page.fill('[role="dialog"] input.input', fixture('media.xml'));
   await page.click('[role="dialog"] .dialog__footer .button--primary');
-  await page.waitForSelector('.article-card', { timeout: 30_000 });
+  // Existing cards remain mounted during subscription; wait for the actual
+  // result before trying to select the new feed behind the dialog.
+  await page.waitForSelector('[role="dialog"]', { state: 'detached', timeout: 30_000 });
   await page.click('.sidebar .feed-row:has-text("Media Fixture")');
   await page.waitForSelector('.article-card');
 

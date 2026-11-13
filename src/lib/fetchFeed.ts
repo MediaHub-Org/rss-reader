@@ -108,12 +108,33 @@ async function getText(
 
   for (const attempt of attempts) {
     try {
+      // Validators belong to the feed origin, not to a proxy's response.
+      const headers: Record<string, string> = { Accept: accept };
+      if (attempt.via === 'direct') {
+        if (validators?.etag) headers['If-None-Match'] = validators.etag;
+        if (validators?.lastModified) headers['If-Modified-Since'] = validators.lastModified;
+      }
       const response = await fetch(attempt.target, {
         method: 'GET',
         redirect: 'follow',
-        headers: { Accept: accept },
+        headers,
         signal: AbortSignal.timeout(20_000),
       });
+
+      const etag = attempt.via === 'direct' ? response.headers.get('ETag') ?? undefined : undefined;
+      const lastModified = attempt.via === 'direct'
+        ? response.headers.get('Last-Modified') ?? undefined
+        : undefined;
+      if (attempt.via === 'direct' && response.status === 304) {
+        return {
+          text: '',
+          via: attempt.via,
+          finalUrl: response.url || url,
+          notModified: true,
+          etag: etag ?? validators?.etag,
+          lastModified: lastModified ?? validators?.lastModified,
+        };
+      }
 
       if (!response.ok) {
         const detail = await safeMessage(response);
@@ -129,7 +150,7 @@ async function getText(
         errors.push(`${attempt.via}: empty response`);
         continue;
       }
-      return { text, via: attempt.via, finalUrl: response.url || url };
+      return { text, via: attempt.via, finalUrl: response.url || url, etag, lastModified };
     } catch (err) {
       if (err instanceof FeedFetchError) throw err;
       const message =
