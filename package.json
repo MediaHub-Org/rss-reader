@@ -29,7 +29,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-autostart": "^2.7.0",
-    "@tauri-apps/plugin-notification": "^2.8.0",
+    "@tauri-apps/plugin-notification": "^2.8.1",
     "dompurify": "^3.2.4",
     "events": "^3.3.0",
     "fflate": "^0.8.3",
