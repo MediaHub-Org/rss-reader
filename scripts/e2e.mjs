@@ -423,9 +423,9 @@ try {
   await page.click('.article-card >> nth=0');
   await page.waitForSelector('.detail');
   check(
-    'List view keeps the list and article side by side',
-    (await page.locator('.content-area--split .article-grid').count()) === 1 &&
-      (await page.locator('.content-area--split .detail').count()) === 1
+    'List view opens the article as an overlay over the list',
+    (await page.locator('.article-overlay__backdrop .detail').count()) === 1 &&
+      (await page.locator('.content-area--split').count()) === 0
   );
   const listSeparator = await page.$eval(
     '.article-grid--list .article-grid__item',

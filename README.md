@@ -61,8 +61,8 @@ simple download-and-install path.
 
 ## Highlights
 
-- **Four layouts** — cards, list, magazine and compact. List keeps the article pane
-  beside the rows; magazine and card open the reader as a blurred popup.
+- **Four layouts** — cards, list, magazine and compact. Every layout opens the
+  reader as a popup over a blurred dashboard.
 - **Filters and search** — all/unread/starred, plus case-sensitive, full-text and
   regular-expression options attached to the search field.
 - **Stars and rules** — keep articles, or automatically mark/star new arrivals with
@@ -97,8 +97,7 @@ feeds in November 2026. Subscribed
 mapped into normal articles; the legacy RSS URL is still used as a fallback while it
 exists. Reddit posts also open in an inline card in the reader.
 
-**Reading.** Card, list, magazine and compact layouts. Automatic feed refresh is off by default; choose 15 min, 30 min, 1 hour or 3 hours in Preferences, or refresh manually whenever you want. Wide windows use two panes for
-list/compact; magazine and card use an overlay with previous/next arrows. Article HTML
+**Reading.** Card, list, magazine and compact layouts. Automatic feed refresh is off by default; choose 15 min, 30 min, 1 hour or 3 hours in Preferences, or refresh manually whenever you want. Every layout opens the article in an overlay over a blurred background, with previous/next arrows. Article HTML
 is sanitized, relative URLs are resolved, and external links open safely in a new tab.
 Mark as read works per article, all visible, or older than 1/3/7 days.
 

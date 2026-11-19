@@ -290,11 +290,8 @@ export default function App() {
     if (tab) setManageTab(tab);
     setSettingsOpen(true);
   };
-  /* Card and magazine views open the reader as an overlay; list and compact
-     keep the wide two-pane layout. */
-  const cardOverlay =
-    Boolean(state.ui.activeArticleId) &&
-    (state.prefs.viewMode === 'card' || state.prefs.viewMode === 'magazine');
+  /* Every view opens the reader as an overlay over a blurred dashboard. */
+  const cardOverlay = Boolean(state.ui.activeArticleId);
 
   return (
     <div
