@@ -4,6 +4,13 @@ Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 
 ## 2026-11-19
 
+- **0.13.21 released** (`0af09cd`, tag `v0.13.21`): Windows x64, macOS arm64,
+  Linux AppImage and Android arm64, plus `SHA256SUMS.txt`; CI green on the tag
+  and the Windows installer hash verified against the checksum file. Bumped the
+  five version spots (the four in `docs/RELEASING.md` plus the root version in
+  `package-lock.json`). Local `test:pwa` fails only on this Windows machine at
+  the offline reload (`ERR_FAILED`); `sw.js` and `main.tsx` are unchanged since
+  v0.13.20 and the same test passes in CI.
 - Reader overlay committed (`c7ecd10`): every layout opens the article over a
   blurred dashboard, not only card and magazine. README and the list-view e2e
   expectation follow the change. Verified with typecheck, 97 unit and 165 e2e.

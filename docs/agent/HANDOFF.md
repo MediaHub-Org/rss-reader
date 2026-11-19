@@ -5,7 +5,8 @@ Updated: 2026-11-19. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## State
 
-- **0.13.20** is the current release; `main` is the working branch.
+- **0.13.21** released on 2026-11-19 (Windows x64, macOS arm64, Linux
+  AppImage, Android arm64, plus `SHA256SUMS.txt`); `main` is the working branch.
 - **Reader overlay in every view.** Card, list, magazine and compact all open the
   article as a popup over a blurred dashboard (`ArticleOverlay`), with
   previous/next arrows and close-on-backdrop. Committed as `c7ecd10`; the README
@@ -28,13 +29,20 @@ Updated: 2026-11-19. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## Checks
 
-Last verified on 2026-11-19, before the docs commit:
+Last verified on 2026-11-19:
 
 - `npm run typecheck` OK.
 - `npm run test:unit`: 97 passed (21 files).
-- `npm run test:e2e`: 173 passed against `http://127.0.0.1:5173`.
+- `npm run test:e2e`: 173 passed against `http://127.0.0.1:5173` (one cold-start
+  run timed out once; reruns pass).
 - `npm run build` OK.
 - `npm run check:desktop`: fmt, clippy (`-D warnings`) and 13 Rust tests OK.
+- Release `v0.13.21`: CI green on the tag (web plus the four desktop builds),
+  release published with four assets and `SHA256SUMS.txt`; the downloaded
+  Windows installer hash matches. The local `test:pwa` offline reload fails on
+  this Windows machine (`ERR_FAILED` after `setOffline`), the same test passes in
+  CI; `public/sw.js` and `src/main.tsx` are unchanged since v0.13.20, so it is
+  environmental, not a regression.
 
 ## Next
 
