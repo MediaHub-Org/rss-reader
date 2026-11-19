@@ -171,6 +171,18 @@ export function AboutPanel({ usage }: { usage: { used: number } }) {
           </div>
           <div>
             <dt>
+              <kbd>s</kbd>
+            </dt>
+            <dd>{t('Toggle star')}</dd>
+          </div>
+          <div>
+            <dt>
+              <kbd>1</kbd>–<kbd>4</kbd>
+            </dt>
+            <dd>{t('Switch between the four article views')}</dd>
+          </div>
+          <div>
+            <dt>
               <kbd>r</kbd>
             </dt>
             <dd>{t('Refresh all sources')}</dd>
@@ -192,6 +204,12 @@ export function AboutPanel({ usage }: { usage: { used: number } }) {
               <kbd>Esc</kbd>
             </dt>
             <dd>{t('Close article, drawer or dialog')}</dd>
+          </div>
+          <div>
+            <dt>
+              <kbd>?</kbd>
+            </dt>
+            <dd>{t('Show these shortcuts')}</dd>
           </div>
         </dl>
       </section>

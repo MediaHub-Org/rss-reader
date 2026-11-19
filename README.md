@@ -99,7 +99,9 @@ exists. Reddit posts also open in an inline card in the reader.
 
 **Reading.** Card, list, magazine and compact layouts. Automatic feed refresh is off by default; choose 15 min, 30 min, 1 hour or 3 hours in Preferences, or refresh manually whenever you want. Every layout opens the article in an overlay over a blurred background, with previous/next arrows. Article HTML
 is sanitized, relative URLs are resolved, and external links open safely in a new tab.
-Mark as read works per article, all visible, or older than 1/3/7 days.
+Mark as read works per article, all visible, or older than 1/3/7 days. Keyboard: `j`/`k`
+or the arrows move through articles, `m` toggles read, `s` stars, `1`-`4` switch layouts
+and `?` opens the full shortcut list.
 
 **Language.** The interface ships in English and Spanish with a `system` default. Every
 label, dialog, toast and error message goes through the same tiny catalog, so new strings

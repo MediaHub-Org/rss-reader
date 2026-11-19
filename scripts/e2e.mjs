@@ -41,7 +41,7 @@ const context = await browser.newContext({
 await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
 const page = await context.newPage();
 
-/** The split layout keeps the grid mounted; use the app flag to know the view. */
+/** Every view opens the reader as an overlay; use the app flag to know the view. */
 const waitForList = () =>
   page.waitForFunction(
     () => document.querySelector('.app')?.getAttribute('data-article-open') === 'false',
@@ -55,14 +55,9 @@ const waitForDetail = () =>
     { timeout: 5_000 }
   );
 
-/** Close the article like a user: backdrop click for overlays, Escape in split view. */
+/** Close the article like a user: click the blurred backdrop behind it. */
 const closeArticle = async () => {
-  const overlay = page.locator('.article-overlay__backdrop');
-  if (await overlay.count()) {
-    await overlay.click({ position: { x: 4, y: 4 } }).catch(() => {});
-  } else {
-    await page.keyboard.press('Escape');
-  }
+  await page.locator('.article-overlay__backdrop').click({ position: { x: 4, y: 4 } }).catch(() => {});
 
   const closed = await page
     .waitForFunction(
@@ -549,6 +544,75 @@ try {
   );
   check('Card overlay previous arrow returns', true);
   await closeArticle();
+
+  /* --------------- keyboard shortcuts + reader a11y -------------------- */
+  await page.click('.article-card >> nth=0');
+  await page.waitForSelector('.article-overlay__dialog');
+  check(
+    'Reader arrows expose their keyboard shortcuts',
+    (await page.getAttribute('.article-overlay__nav--prev', 'aria-keyshortcuts')) === 'ArrowLeft' &&
+      (await page.getAttribute('.article-overlay__nav--next', 'aria-keyshortcuts')) === 'ArrowRight'
+  );
+  const announcement =
+    (await page.textContent('.article-overlay__dialog [role="status"]'))?.trim() || '';
+  check(
+    'Reader announces the article position to screen readers',
+    /Article \d+ of \d+: \S/.test(announcement),
+    announcement
+  );
+  const starButton = '.detail__actions .ghost-button[aria-pressed]';
+  const starredBefore = await page.getAttribute(starButton, 'aria-pressed');
+  await page.keyboard.press('s');
+  await page.waitForFunction(
+    (before) =>
+      document.querySelector('.detail__actions .ghost-button[aria-pressed]')?.getAttribute('aria-pressed') !==
+      before,
+    starredBefore,
+    { timeout: 5_000 }
+  );
+  const starredAfter = await page.getAttribute(starButton, 'aria-pressed');
+  check('s toggles the star on the open article', starredAfter !== starredBefore, `${starredBefore} → ${starredAfter}`);
+  await page.keyboard.press('s');
+  await page.waitForFunction(
+    (before) =>
+      document.querySelector('.detail__actions .ghost-button[aria-pressed]')?.getAttribute('aria-pressed') ===
+      before,
+    starredBefore
+  );
+  check('s restores the previous star state', true);
+  await closeArticle();
+  await page.evaluate(() => document.activeElement?.blur?.());
+
+  await page.keyboard.press('3');
+  await page.waitForSelector('.article-grid--list');
+  check('3 switches to the list view', true);
+  await page.keyboard.press('1');
+  await page.waitForSelector('.article-grid--card');
+  check('1 switches back to the card view', true);
+  await page.click('.search__input');
+  await page.keyboard.press('2');
+  const viewLabelWhileTyping = await page.getAttribute('.topbar__view', 'aria-label');
+  check(
+    'View shortcuts stay quiet while typing in search',
+    /Card view/.test(viewLabelWhileTyping || ''),
+    viewLabelWhileTyping || ''
+  );
+  await page.fill('.search__input', '');
+  await page.evaluate(() => document.activeElement?.blur?.());
+
+  await page.keyboard.press('?');
+  await page.waitForSelector('.settings-dialog');
+  const shortcutSection = (
+    await page.textContent('.settings-panel')
+  )?.replace(/\s+/g, ' ') || '';
+  check(
+    '? opens the keyboard shortcut reference',
+    /Keyboard shortcuts/i.test(shortcutSection) &&
+      /Toggle star/i.test(shortcutSection) &&
+      /four article views/i.test(shortcutSection)
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 
   /* -------------------------- search options --------------------------- */
   await page.fill('.search__input', 'xylophonemarker');

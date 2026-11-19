@@ -9,7 +9,7 @@ import { Icon } from './Icon';
 import { t } from '../lib/i18n';
 import { cleanTitle } from '../lib/format';
 
-/** Card-view reader: blurred backdrop, previous/next arrows and close. */
+/** Reader overlay: blurred backdrop, previous/next arrows and close. */
 export function ArticleOverlay() {
   const state = useStore();
 
@@ -27,6 +27,7 @@ export function ArticleOverlay() {
   const index = articles.findIndex((item) => item.id === article.id);
   const previous = index > 0 ? articles[index - 1] : null;
   const next = index >= 0 && index < articles.length - 1 ? articles[index + 1] : null;
+  const position = index >= 0 ? index + 1 : 0;
 
   const open = (id: string) => {
     if (!state.readIds[id]) store.toggleRead(id);
@@ -51,6 +52,7 @@ export function ArticleOverlay() {
             onClick={() => previous && open(previous.id)}
             disabled={!previous}
             aria-label={t('Previous article')}
+            aria-keyshortcuts="ArrowLeft"
             title={t('Previous article')}
           >
             <Icon name="back" size={20} />
@@ -61,6 +63,7 @@ export function ArticleOverlay() {
             onClick={() => next && open(next.id)}
             disabled={!next}
             aria-label={t('Next article')}
+            aria-keyshortcuts="ArrowRight"
             title={t('Next article')}
           >
             <Icon name="chevronRight" size={20} />
@@ -68,6 +71,13 @@ export function ArticleOverlay() {
         </>
       }
     >
+      <p className="sr-only" role="status" aria-live="polite">
+        {t('Article {index} of {total}: {title}', {
+          index: position,
+          total: articles.length,
+          title: cleanTitle(article.title),
+        })}
+      </p>
       <ArticleDetail />
     </Dialog>
   );

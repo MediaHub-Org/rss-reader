@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import type { Feed } from './types';
+import type { ArticleView, Feed } from './types';
 import { isDarkTheme, store, unreadCount } from './store/store';
 import { useStore } from './hooks/useStore';
 import { useVisibleArticles } from './hooks/useVisibleArticles';
@@ -11,7 +11,6 @@ import { listenForTrayRefresh } from './lib/trayEvents';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { ArticleList } from './components/ArticleList';
-import { ArticleDetail } from './components/ArticleDetail';
 import { ArticleOverlay } from './components/ArticleOverlay';
 import { AddFeedDialog } from './components/AddFeedDialog';
 import type { SettingsSection } from './components/SettingsDialog';
@@ -31,6 +30,9 @@ const DataDialog = lazy(() =>
 const BackupsDialog = lazy(() =>
   import('./components/BackupsDialog').then((module) => ({ default: module.BackupsDialog }))
 );
+
+/** Keyboard order for 1-4, matching the View menu. */
+const SHORTCUT_VIEWS: ArticleView[] = ['card', 'compact', 'list', 'magazine'];
 
 export default function App() {
   const state = useStore();
@@ -99,24 +101,11 @@ export default function App() {
     [state]
   );
 
-  /* Opening or switching an article starts at the top of the reading pane,
-     even when the pane element itself stays mounted in the split/overlay.
-     Query each target explicitly: a selector list returns the first match in
-     document order, and `.content-area` precedes the overlay in the DOM -- so
-     the old single query scrolled the dashboard behind the reader. */
+  /* Opening or switching an article starts at the top of the reader. The
+     dashboard keeps its own scroll position behind the blurred backdrop. */
   useEffect(() => {
     if (!state.ui.activeArticleId) return;
-    const overlay = document.querySelector<HTMLElement>('.article-overlay__dialog');
-    if (overlay) {
-      overlay.scrollTo({ top: 0 });
-      return;
-    }
-    const detail = document.querySelector<HTMLElement>('.content-area__detail');
-    detail?.scrollTo({ top: 0 });
-    // In the narrow split layout the content area itself is the scroller
-    // (the detail pane expands instead of scrolling).
-    const content = document.querySelector<HTMLElement>('.content-area--split');
-    content?.scrollTo({ top: 0 });
+    document.querySelector<HTMLElement>('.article-overlay__dialog')?.scrollTo({ top: 0 });
   }, [state.ui.activeArticleId]);
 
   /* desktop tray: close-to-tray preference, login item, unread tooltip and
@@ -185,7 +174,7 @@ export default function App() {
       if (dialogs.length && !overlayOnly) return;
       if (
         overlayOnly &&
-        !['j', 'k', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'm'].includes(event.key)
+        !['j', 'k', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'm', 's'].includes(event.key)
       ) {
         return;
       }
@@ -254,6 +243,24 @@ export default function App() {
           if (activeId) store.toggleRead(activeId);
           break;
         }
+        case 's': {
+          if (activeId) store.toggleStar(activeId);
+          break;
+        }
+        case '1':
+        case '2':
+        case '3':
+        case '4': {
+          event.preventDefault();
+          store.setPreferences({ viewMode: SHORTCUT_VIEWS[Number(event.key) - 1] });
+          break;
+        }
+        case '?': {
+          event.preventDefault();
+          setSettingsSection('about');
+          setSettingsOpen(true);
+          break;
+        }
         case 'r': {
           event.preventDefault();
           void store.refreshAll({ force: true });
@@ -290,8 +297,6 @@ export default function App() {
     if (tab) setManageTab(tab);
     setSettingsOpen(true);
   };
-  /* Every view opens the reader as an overlay over a blurred dashboard. */
-  const cardOverlay = Boolean(state.ui.activeArticleId);
 
   return (
     <div
@@ -330,27 +335,15 @@ export default function App() {
             onSettings={() => openSettings('preferences')}
           />
 
-          <main
-            className={`content-area ${
-              state.ui.activeArticleId && !cardOverlay ? 'content-area--split' : ''
-            }`}
-            id="main-content"
-            tabIndex={-1}
-          >
+          <main className="content-area" id="main-content" tabIndex={-1}>
             <div className="content-area__list">
               <ArticleList onAddFeed={() => setAddOpen(true)} onImport={() => setDataOpen(true)} />
             </div>
-            {state.ui.activeArticleId && !cardOverlay && (
-              <div className="content-area__detail">
-                <ArticleDetail />
-              </div>
-            )}
-
           </main>
         </div>
       </div>
 
-      {cardOverlay && <ArticleOverlay />}
+      {state.ui.activeArticleId && <ArticleOverlay />}
 
       <AddFeedDialog
         open={addOpen}

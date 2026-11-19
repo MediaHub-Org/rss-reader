@@ -2992,69 +2992,10 @@ kbd {
   flex-wrap: wrap;
 }
 
-/* Two-pane reading on wide screens. The list stays mounted so switching
-   articles preserves its scroll position; narrow layouts fall back to the
-   single-pane list ⇄ detail flow. */
+/* Every view opens the reader as an overlay over the blurred dashboard, so
+   the content area is a single scroller: the list. */
 .content-area {
   position: relative;
-}
-
-.content-area--split {
-  display: grid;
-  grid-template-columns: clamp(21rem, 30vw, 34rem) minmax(0, 1fr);
-  overflow: hidden;
-}
-
-.content-area--split .content-area__list,
-.content-area--split .content-area__detail {
-  min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.content-area--split .content-area__list {
-  border-right: 0.0625rem solid var(--border);
-}
-
-.content-area--split .content-area__detail {
-  padding-bottom: var(--space-6);
-}
-
-@media (max-width: 1099px) {
-  .content-area--split {
-    display: block;
-    overflow-y: auto;
-  }
-
-  .content-area--split .content-area__list {
-    display: none;
-  }
-
-  .content-area--split .content-area__detail {
-    overflow: visible;
-  }
-}
-
-/* The narrow list column is one card wide; avoid a 2px overflow scrollbar
-   caused by the default grid minimum plus padding. */
-.content-area--split .content-area__list {
-  overflow-x: hidden;
-}
-
-.content-area--split .list {
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
-}
-
-.content-area--split .list--list,
-.content-area--split .list--compact {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.content-area--split .article-grid {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 /* Search options (Aa): case sensitivity + full-text toggle, attached to the
@@ -3218,15 +3159,9 @@ kbd {
 
 /* ------------------------------- view modes ----------------------------- */
 
-/* List: compact rows, horizontal separators, hover, no card chrome. Wide
-   windows keep the article detail side by side via .content-area--split. */
+/* List: compact rows, horizontal separators, hover, no card chrome. */
 .list--list {
   padding: 0 0 var(--space-6);
-}
-
-.content-area--split .list.list--list {
-  padding-left: 0;
-  padding-right: 0;
 }
 
 .article-grid--list {
