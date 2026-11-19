@@ -3283,7 +3283,7 @@ dependencies = [
 
 [[package]]
 name = "rss-reader"
-version = "0.13.20"
+version = "0.13.21"
 dependencies = [
  "flate2",
  "reqwest 0.12.28",
