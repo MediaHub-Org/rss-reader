@@ -5,6 +5,11 @@ Updated: 2026-11-19. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## State
 
+- **Reading position per article.** The reader remembers where each article was
+  left (`src/lib/readingPosition.ts`: localStorage, debounced, 300-entry cap) and
+  restores it on open, clamped to the current height. The dashboard keeps its own
+  scroll behind the backdrop. The old "always open at the top" effect in `App.tsx`
+  is gone.
 - **0.13.21** released on 2026-11-19 (Windows x64, macOS arm64, Linux
   AppImage, Android arm64, plus `SHA256SUMS.txt`); `main` is the working branch.
 - **Reader overlay in every view.** Card, list, magazine and compact all open the
@@ -36,11 +41,11 @@ Updated: 2026-11-19. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## Checks
 
-Last verified on 2026-11-22 (centring change) and 2026-11-19 (release):
+Last verified on 2026-11-22 (reading position) and 2026-11-19 (release):
 
 - `npm run typecheck` OK.
-- `npm run test:unit`: 97 passed (21 files).
-- `npm run test:e2e`: 173 passed against `http://localhost:5173` (one cold-start
+- `npm run test:unit`: 104 passed (22 files).
+- `npm run test:e2e`: 175 passed against `http://localhost:5173` (one cold-start
   run timed out once; reruns pass).
 - `npm run build` OK.
 - `npm run check:desktop`: fmt, clippy (`-D warnings`) and 13 Rust tests OK.
@@ -54,9 +59,10 @@ Last verified on 2026-11-22 (centring change) and 2026-11-19 (release):
 ## Next
 
 - Nothing is uncommitted or half-done.
-- The owner has not chosen the next improvement yet. Candidates discussed:
-  per-article reading position, real two-way sync with a provider (the Services
-  selector exists but sync is not implemented), PWA refresh through the proxy.
+- The owner chose **per-article reading position**, and it is in (see State). The
+  next improvement is not chosen yet; candidates discussed: real two-way sync with
+  a provider (the Services selector exists but sync is not implemented) and PWA
+  refresh through the proxy.
 - Release only when asked: bump `package.json`, `src-tauri/tauri.conf.json`,
   `src-tauri/Cargo.toml` and the `rss-reader` entry in `src-tauri/Cargo.lock`,
   then tag `vX.Y.Z` (see `docs/RELEASING.md`).

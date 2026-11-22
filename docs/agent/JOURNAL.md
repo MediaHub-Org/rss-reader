@@ -4,6 +4,17 @@ Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 
 ## 2026-11-22
 
+- **Reading position per article.** The owner picked it from the three candidates.
+  `src/lib/readingPosition.ts` keeps `rss-reader:positions` in localStorage:
+  `{ y, at }` per article id, capped at 300 entries in least-recently-written
+  order, written on a 250 ms timer and flushed when the reader closes. The overlay
+  restores the offset on open and clamps it to `scrollHeight - clientHeight`, so a
+  narrower window or an article opened last time with full content does not jump.
+  The "open at the top" effect in `App.tsx` is gone.
+- Unit tests cover rounding, the negative/NaN guard, the cap, corrupt JSON and the
+  clamp; e2e scrolls with a temporary filler, asserts the stored offset for the
+  active id, and asserts reopening lands on `min(220, max)`.
+- `typecheck`, 104 unit and 175 e2e pass.
 - **Reader centres over the news column.** `--article-overlay-shift` on
   `.article-overlay__backdrop` (sidebar width on desktop, `0` for the drawer
   below 68.75rem and for a collapsed sidebar); the arrows offset by half of it.

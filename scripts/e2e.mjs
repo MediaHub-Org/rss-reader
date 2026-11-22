@@ -279,6 +279,50 @@ try {
   const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');
   check('Read state reflected in list', /is-read/.test(firstRowRead || ''), firstRowRead);
 
+  /* --------------------- reading position per article ------------------ */
+  await page.click('.article-card >> nth=0');
+  await page.waitForSelector('.detail .content');
+  await page.waitForTimeout(150);
+  const rememberedId = await page.evaluate(() => window.__store.getSnapshot().ui.activeArticleId);
+  const scrolledTo = await page.evaluate(() => {
+    const dialog = document.querySelector('.article-overlay__dialog');
+    const content = dialog.querySelector('.content');
+    const filler = document.createElement('div');
+    filler.style.height = '1800px';
+    content.append(filler);
+    dialog.scrollTop = 220;
+    return dialog.scrollTop;
+  });
+  await page.waitForTimeout(500);
+  const storedPosition = await page.evaluate((id) => {
+    try {
+      const all = JSON.parse(localStorage.getItem('rss-reader:positions') || '{}');
+      return all[id]?.y ?? null;
+    } catch {
+      return null;
+    }
+  }, rememberedId);
+  check(
+    'Reader remembers where an article was left',
+    scrolledTo === 220 && storedPosition === 220,
+    `${rememberedId} → ${storedPosition}`
+  );
+  await closeArticle();
+  await page.click('.article-card >> nth=0');
+  await page.waitForSelector('.detail .content');
+  await page.waitForTimeout(250);
+  const restoredPosition = await page.evaluate(() => {
+    const dialog = document.querySelector('.article-overlay__dialog');
+    const max = Math.max(0, dialog.scrollHeight - dialog.clientHeight);
+    return { top: dialog.scrollTop, max };
+  });
+  check(
+    'Reopening an article restores that position within the current height',
+    restoredPosition.top === Math.min(220, restoredPosition.max),
+    JSON.stringify(restoredPosition)
+  );
+  await closeArticle();
+
   /* card context menu (app actions, no browser menu) */
   await page.locator('.article-card').first().click({ button: 'right' });
   await page.waitForSelector('.context-menu');

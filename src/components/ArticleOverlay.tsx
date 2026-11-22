@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { store } from '../store/store';
 import { useStore } from '../hooks/useStore';
 import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { leaveArticle } from '../lib/viewHistory';
+import { flushPositions, positionFor, rememberPosition, clampPosition } from '../lib/readingPosition';
 import { ArticleDetail } from './ArticleDetail';
 import { Dialog } from './Dialog';
 import { Icon } from './Icon';
@@ -22,6 +23,33 @@ export function ArticleOverlay() {
         .find((item) => item.id === state.ui.activeArticleId),
     [state.articles, state.ui.activeArticleId]
   );
+
+  /**
+   * The reader keeps its own scroll container (the dialog). Remember where the
+   * article was left and restore it on open; the dashboard behind the backdrop
+   * keeps its own position untouched.
+   */
+  const contentRef = useRef<HTMLDivElement>(null);
+  const articleId = article?.id ?? null;
+  useEffect(() => {
+    if (!articleId) return;
+    const scroller = contentRef.current?.closest<HTMLElement>('.article-overlay__dialog');
+    if (!scroller) return;
+
+    const target = positionFor(articleId);
+    const frame = requestAnimationFrame(() => {
+      const max = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      scroller.scrollTop = clampPosition(target, max);
+    });
+    const onScroll = () => rememberPosition(articleId, scroller.scrollTop);
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      scroller.removeEventListener('scroll', onScroll);
+      flushPositions();
+    };
+  }, [articleId]);
+
   if (!article) return null;
 
   const index = articles.findIndex((item) => item.id === article.id);
@@ -78,7 +106,9 @@ export function ArticleOverlay() {
           title: cleanTitle(article.title),
         })}
       </p>
-      <ArticleDetail />
+      <div ref={contentRef}>
+        <ArticleDetail />
+      </div>
     </Dialog>
   );
 }

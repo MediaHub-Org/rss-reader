@@ -101,12 +101,9 @@ export default function App() {
     [state]
   );
 
-  /* Opening or switching an article starts at the top of the reader. The
-     dashboard keeps its own scroll position behind the blurred backdrop. */
-  useEffect(() => {
-    if (!state.ui.activeArticleId) return;
-    document.querySelector<HTMLElement>('.article-overlay__dialog')?.scrollTo({ top: 0 });
-  }, [state.ui.activeArticleId]);
+  /* The reader restores each article's own scroll position when the overlay
+     opens (ArticleOverlay); the dashboard keeps its own scroll behind the
+     blurred backdrop. */
 
   /* desktop tray: close-to-tray preference, login item, unread tooltip and
      the tray's "Refresh feeds" action */
