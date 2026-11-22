@@ -2,6 +2,16 @@
 
 Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 
+## 2026-11-22
+
+- **Reader centres over the news column.** `--article-overlay-shift` on
+  `.article-overlay__backdrop` (sidebar width on desktop, `0` for the drawer
+  below 68.75rem and for a collapsed sidebar); the arrows offset by half of it.
+  The backdrop still covers the sidebar, so the blur and the click-to-close area
+  are unchanged. The viewport-centred e2e check became a content-area check that
+  also proves the panel is more than 50px off the window centre. Typecheck, 97
+  unit and 173 e2e pass.
+
 ## 2026-11-19
 
 - **0.13.21 released** (`0af09cd`, tag `v0.13.21`): Windows x64, macOS arm64,

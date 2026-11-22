@@ -191,6 +191,7 @@ try {
     };
     const main = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
     const sidebar = box('.sidebar');
+    const content = box('.content-area');
     const backdrop = box('.article-overlay__backdrop');
     const dialog = box('.article-overlay__dialog');
     const sidebarHit =
@@ -200,6 +201,7 @@ try {
     return {
       main,
       sidebar,
+      content,
       backdrop,
       dialog,
       sidebarCovered: Boolean(sidebarHit && sidebarHit.closest('.article-overlay__backdrop')),
@@ -209,7 +211,7 @@ try {
           getComputedStyle(document.querySelector(selector)).overflowY === 'hidden'),
     };
   });
-  const { main, backdrop, dialog } = overlayGeometry;
+  const { main, content, backdrop, dialog } = overlayGeometry;
   check(
     'Reader backdrop covers and blurs the entire dashboard',
     Boolean(main && backdrop) &&
@@ -219,11 +221,15 @@ try {
       overlayGeometry.sidebarCovered && overlayGeometry.blurred,
     JSON.stringify(backdrop)
   );
+  /* The reader centres over the news column, not the window: with the sidebar
+     in layout the two centres are more than 100px apart, so this cannot pass
+     by accident. The sidebar itself must still be covered (assertion above). */
   check(
-    'Reader popup is centered in the viewport',
-    Boolean(main && dialog) &&
-      Math.abs(dialog.x + dialog.width / 2 - (main.x + main.width / 2)) < 2,
-    JSON.stringify(dialog)
+    'Reader popup is centered over the news column, not the window',
+    Boolean(content && dialog) &&
+      Math.abs(dialog.x + dialog.width / 2 - (content.x + content.width / 2)) < 2 &&
+      Math.abs(dialog.x + dialog.width / 2 - (main.x + main.width / 2)) > 50,
+    JSON.stringify({ dialog, content })
   );
   check('Reader locks dashboard scrolling', overlayGeometry.locked);
   const readerScrolls = await page.locator('.article-overlay__dialog').evaluate((el) => {

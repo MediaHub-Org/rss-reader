@@ -11,6 +11,13 @@ Updated: 2026-11-19. History in [`JOURNAL.md`](JOURNAL.md), conventions in
   article as a popup over a blurred dashboard (`ArticleOverlay`), with
   previous/next arrows and close-on-backdrop. Committed as `c7ecd10`; the README
   and `scripts/e2e.mjs` were updated with it.
+- **Reader panel centres over the news column.** The backdrop still covers the
+  whole dashboard, sidebar included, but the panel and its arrows centre on the
+  content column: `--article-overlay-shift` is the sidebar width on desktop, `0`
+  below 68.75rem (drawer) and `0` when the sidebar is collapsed. The arrows add
+  or subtract half the shift because their percentages resolve against the
+  backdrop's padding box. e2e asserts the panel centre against `.content-area`
+  and that it is more than 50px off the window centre.
 - **Keyboard.** `j`/`k` or `↓`/`↑` move through articles, `←`/`→` previous/next,
   `Enter`/`o` open, `m` read/unread, `s` star, `r` refresh, `/` search, `a` add
   source, `1`–`4` card/compact/list/magazine, `?` opens the shortcut reference
@@ -29,11 +36,11 @@ Updated: 2026-11-19. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## Checks
 
-Last verified on 2026-11-19:
+Last verified on 2026-11-22 (centring change) and 2026-11-19 (release):
 
 - `npm run typecheck` OK.
 - `npm run test:unit`: 97 passed (21 files).
-- `npm run test:e2e`: 173 passed against `http://127.0.0.1:5173` (one cold-start
+- `npm run test:e2e`: 173 passed against `http://localhost:5173` (one cold-start
   run timed out once; reruns pass).
 - `npm run build` OK.
 - `npm run check:desktop`: fmt, clippy (`-D warnings`) and 13 Rust tests OK.
