@@ -5,15 +5,18 @@ Updated: 2026-11-23. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## State
 
-- **PWA local server — branch `feat/pwa-local-server` (not merged, not pushed).**
+- **PWA local server — merged into local `main` (`3f88fa5`, not pushed); login
+  task "RSS Reader app server" installed and running on this machine
+  (2026-11-23, node `C:\nvm4w\nodejs\node.exe`).**
   The installed PWA refreshes through `server/app-server.mjs` (`npm run serve`,
   `npm start`): `dist/` + `/proxy` on `http://localhost:4173`, loopback only;
   Host allow-list (421), `/proxy` only for the app itself (403 for foreign/opaque
   origins, cross/same-site loads and navigations), proxied HTML/SVG served as
   text with nosniff + sandbox CSP, 503 instead of a crash while `dist/` is being
   rebuilt. The public proxies are gone from `src/lib/fetchFeed.ts`. Windows login
-  task scripts in `scripts/windows/` (see its README); the task is **not
-  installed**. Spec and plan in `docs/superpowers/`.
+  task scripts in `scripts/windows/` (see its README). Spec and plan in
+  `docs/superpowers/`. After pulling or editing, run `npm run build`: the task
+  serves whatever is in `dist/`.
 - **Deferred minors from the final review:** misleading "server not running"
   when the PWA is opened at `127.0.0.1` with `VITE_PROXY_URL` → `proxy.mjs`;
   `npm start` hides the child's `EADDRINUSE` behind a 30 s generic message;
@@ -87,11 +90,10 @@ Last verified on 2026-11-22 (reading position) and 2026-11-19 (release):
 - The owner chose **per-article reading position**, and it is in (see State). On
   2026-11-23 the owner decided the reader stays **local only**: no sync provider and
   no paid service. The selector and credentials are gone; do not reintroduce them.
-  PWA refresh without preview/third parties is done on `feat/pwa-local-server`.
-  Next: owner decides on merging it into `main` and on installing the login
-  task (`pwsh -NoProfile -File scripts\windows\install-autostart.ps1 -StartNow`
-  after `npm run build`); then log out/in, open the PWA, refresh and confirm in
-  DevTools → Network that no request goes to a third party.
+  PWA refresh without preview/third parties is merged and the login task is
+  installed. Owner check left: log out/in, open the PWA, refresh and confirm in
+  DevTools → Network that no request goes to a third party. Push of `main`
+  (7 commits ahead) waits for the owner.
 - Release only when asked: bump `package.json`, `src-tauri/tauri.conf.json`,
   `src-tauri/Cargo.toml` and the `rss-reader` entry in `src-tauri/Cargo.lock`,
   then tag `vX.Y.Z` (see `docs/RELEASING.md`).
