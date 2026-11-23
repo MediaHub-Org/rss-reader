@@ -13,7 +13,9 @@ import http from 'node:http';
 import { proxyFeedRequest } from './proxy-lib.mjs';
 
 const PORT = Number(process.env.PROXY_PORT || 8788);
-const ALLOW_ORIGIN = process.env.PROXY_ORIGIN || '*';
+// Only the app's own origin may call this proxy; never '*', or any website
+// could use it as an open proxy from this machine.
+const ALLOW_ORIGIN = process.env.PROXY_ORIGIN || 'http://localhost:4173';
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', ALLOW_ORIGIN);
@@ -41,6 +43,6 @@ const server = http.createServer(async (req, res) => {
   res.end(result.body);
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`Feed proxy listening on http://localhost:${PORT}/proxy?url=...`);
 });

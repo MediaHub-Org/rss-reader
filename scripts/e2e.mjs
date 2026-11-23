@@ -856,6 +856,11 @@ try {
       /no server/i.test(servicesText),
     servicesText.slice(0, 120)
   );
+  check(
+    'Services says feeds never go through a third party',
+    /no third-party proxy/i.test(servicesText),
+    servicesText.slice(-200)
+  );
   const syncControls = await page
     .locator('.settings-sync-select, .settings-sync-fields')
     .count();

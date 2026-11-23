@@ -22,7 +22,7 @@ generated `tauri.properties` by hand.
 npm run check
 npm run test:e2e     # needs npm run dev on :5173
 npm run build
-npm run test:pwa     # needs npm run preview on :4173
+npm run test:pwa     # needs npm run serve on :4173
 ```
 
 `npm run check` runs TypeScript, Vitest, Rust fmt/clippy and the Rust tests.

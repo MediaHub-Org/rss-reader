@@ -1,6 +1,6 @@
 /**
  * Verifies the app is installable as a PWA and works offline.
- *   npm run build && npm run preview   (port 4173)
+ *   npm run build && npm run serve   (port 4173)
  *   node scripts/verify-pwa.mjs
  */
 import { chromium } from 'playwright';

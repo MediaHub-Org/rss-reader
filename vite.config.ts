@@ -12,8 +12,8 @@ const pkg = JSON.parse(readFileSync(localPath('./package.json'), 'utf8')) as { v
  * Dev-time CORS proxy mounted directly into the Vite dev/preview server, so
  * `npm run dev` works with no second process to start.
  *
- * The identical handler ships standalone as `npm run proxy` for anyone serving
- * the built bundle from a plain static host.
+ * The same handler serves the installed PWA from server/app-server.mjs
+ * (`npm run serve`) and ships standalone as `npm run proxy`.
  */
 /** Give every production build a unique service-worker cache name. */
 function serviceWorkerVersion(): Plugin {

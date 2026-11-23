@@ -1,4 +1,4 @@
-/** Run against a production preview: BASE_URL=http://localhost:4173 node scripts/verify-startup.mjs */
+/** Run against the local app server (npm run serve): BASE_URL=http://localhost:4173 node scripts/verify-startup.mjs */
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';

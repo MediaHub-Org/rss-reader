@@ -9,7 +9,9 @@ cached articles stay in `localStorage`/IndexedDB on the device.
 
 - `npm run typecheck` and `npm run test:unit` (Vitest, jsdom) run anywhere.
 - `npm run test:e2e` needs the dev server on `:5173` (`BASE_URL` overrides).
-- `npm run test:pwa` needs `npm run preview` on `:4173`.
+- `npm run test:pwa` needs `npm run serve` (the local app server) on `:4173`.
+- The installed PWA is served by `server/app-server.mjs` (loopback only, same
+  origin as `/proxy`). The web build has no third-party proxy; do not add one.
 - `npm run check` = typecheck + unit + `check:desktop` (Rust fmt, clippy, tests).
 - `npm run build` writes `dist/`; the folder is generated, never edit it by hand.
 - Desktop: `npm run desktop:dev`, `desktop:build`; Android: `npm run tauri --

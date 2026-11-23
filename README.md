@@ -32,11 +32,15 @@ a Play Store / stable signing key is not configured yet.
 ```bash
 npm install
 npm run build
-npm run preview      # http://localhost:4173 → Install app
+npm start            # http://localhost:4173 → Install app
 ```
 
-The installed PWA opens offline but needs the local preview/proxy server for feed
-refreshes. The desktop app fetches natively and needs no Node process at runtime.
+The installed PWA opens offline. Feed refreshes go through the app's own local
+server (`server/app-server.mjs`): it serves the app and `/proxy` on
+`localhost:4173`, listens on this machine only and never uses a third-party proxy.
+`npm start` launches it; to have it running from login on Windows, install the
+autostart task (see [`scripts/windows/README.md`](scripts/windows/README.md)). The
+desktop app fetches natively and needs no Node process at runtime.
 
 ## Verify downloads
 
@@ -145,14 +149,14 @@ npm start              # build if stale, serve :4173 and open the app
 npm run dev            # http://localhost:5173 with hot reload
 
 npm run build          # production bundle in dist/
-npm run preview        # serve dist/ with the local feed proxy
+npm run serve          # serve dist/ + /proxy on localhost:4173 (loopback only)
 
 npm run test:unit      # Vitest
 npm run test:e2e       # Playwright smoke suite (needs npm run dev running)
 npm run test:e2e -- --headed # Watch the smoke suite in a visible browser
 node scripts/verify-layout.mjs # Visible search/settings layout checks (needs dev server on :5173)
-node scripts/verify-startup.mjs # Visible theme/startup checks (needs production preview on :4173)
-npm run test:pwa       # installability + offline check (needs npm run preview)
+node scripts/verify-startup.mjs # Visible theme/startup checks (needs npm run serve on :4173)
+npm run test:pwa       # installability + offline check (needs npm run serve)
 npm run check          # typecheck + unit tests + Rust fmt/clippy/tests
 
 npm run desktop:dev    # Tauri dev window
@@ -173,9 +177,10 @@ process is documented in [docs/RELEASING.md](docs/RELEASING.md).
 
 - **Storage:** `localStorage` for preferences, subscriptions, read/starred IDs and rules;
   IndexedDB for cached articles, with a quota guard that evicts cache before state.
-- **Fetching:** the web build tries a direct fetch, then the local `/proxy` (or
-  `VITE_PROXY_URL`), then public proxies as a last resort. The desktop build makes one
-  native Rust request with validators and retry backoff.
+- **Fetching:** the web build tries a direct fetch, then the app's own local `/proxy`
+  (or `VITE_PROXY_URL`). There is no third-party proxy: feed URLs only reach the feed's
+  own origin. The desktop build makes one native Rust request with validators and
+  retry backoff.
 - **Security:** feed HTML crosses a DOMPurify allow-list boundary with relative-URL
   resolution and forced safe external links. The proxy and desktop fetcher enforce
   HTTPS-first, block private/loopback hosts and cap responses.
@@ -189,7 +194,7 @@ src/components/    UI, settings managers and dialogs
 src/lib/           fetching, parsing, sanitization, backups, rules, storage
 src/store/         framework-agnostic app store and selectors
 src-tauri/         Tauri shell, native fetch, tray and snapshots
-server/            shared local feed proxy
+server/            local app server and the shared feed proxy
 ```
 
 ## Known limitations

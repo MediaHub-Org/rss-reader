@@ -2,8 +2,9 @@
  * One-command launcher: `npm start`
  *
  * 1. If the app is already served on :4173, just open it.
- * 2. Otherwise rebuild when the sources are newer than dist/, start
- *    `vite preview` in the background, wait for the port, then open the app.
+ * 2. Otherwise rebuild when the sources are newer than dist/, start the
+ *    local app server (server/app-server.mjs) in the background, wait for
+ *    the port, then open the app.
  *
  * The server outlives this process so the installed PWA can talk to it; the
  * window that started it can close immediately. Pass --no-open to skip
@@ -62,10 +63,11 @@ function build() {
 }
 
 function startServer() {
-  const child = spawn(process.execPath, [VITE, 'preview'], {
+  const child = spawn(process.execPath, [join(ROOT, 'server', 'app-server.mjs')], {
     cwd: ROOT,
     detached: true,
     stdio: 'ignore',
+    windowsHide: true,
   });
   child.on('error', (error) => {
     console.error(`Could not start the app server: ${error.message}`);
@@ -121,7 +123,7 @@ if (!alreadyRunning) {
   const deadline = Date.now() + 30_000;
   while (!(await isUp())) {
     if (Date.now() > deadline) {
-      console.error(`The app did not come up on ${BASE}. Check "npm run preview".`);
+      console.error(`The app did not come up on ${BASE}. Check "npm run serve".`);
       process.exit(1);
     }
     await sleep(300);

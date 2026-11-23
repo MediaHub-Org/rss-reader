@@ -226,6 +226,10 @@ const es: Record<string, string> = {
   'Show API key': 'Mostrar clave de API',
   'Sync service': 'Servicio de sincronización',
   'Local only (no sync)': 'Solo local (sin sincronización)',
+  'The desktop app fetches feeds natively with ETag/Last-Modified validators and retry backoff.':
+    'La app de escritorio obtiene los feeds de forma nativa, con validadores ETag/Last-Modified y reintentos espaciados.',
+  'The installed web/PWA build fetches feeds through its own local server on this device (localhost:4173), which starts at login once the autostart task is installed. No third-party proxy is used; cached articles stay readable offline.':
+    'La PWA instalada obtiene los feeds a través de su propio servidor local en este equipo (localhost:4173), que arranca al iniciar sesión cuando la tarea de autoarranque está instalada. No se usa ningún proxy de terceros; los artículos guardados se pueden leer sin conexión.',
   'The local app server is not running. Start it with npm start, or install the autostart task (scripts/windows/install-autostart.ps1).':
     'El servidor local de la app no está en marcha. Arráncalo con npm start o instala la tarea de autoarranque (scripts/windows/install-autostart.ps1).',
   'YouTube Data API': 'YouTube Data API',

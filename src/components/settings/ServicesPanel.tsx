@@ -50,8 +50,8 @@ export function ServicesPanel() {
         <h2 className="settings-section__title">{t('Feed fetching')}</h2>
         <p className="settings-note settings-note--tight">
           {desktop
-            ? 'The desktop app fetches feeds natively with ETag/Last-Modified validators and retry backoff.'
-            : 'The installed web/PWA build uses the local feed proxy at /proxy. Feed fetching needs that local server; reading cached articles works offline.'}
+            ? t('The desktop app fetches feeds natively with ETag/Last-Modified validators and retry backoff.')
+            : t('The installed web/PWA build fetches feeds through its own local server on this device (localhost:4173), which starts at login once the autostart task is installed. No third-party proxy is used; cached articles stay readable offline.')}
         </p>
       </section>
     </>

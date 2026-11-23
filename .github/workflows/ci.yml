@@ -56,14 +56,14 @@ jobs:
           BASE_URL: http://127.0.0.1:5173
         run: node scripts/verify-layout.mjs --headless
 
-      - name: Start preview server
+      - name: Start app server
         run: |
-          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/vite-preview.log 2>&1 &
+          PORT=4173 node server/app-server.mjs > /tmp/app-server.log 2>&1 &
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:4173 >/dev/null; then exit 0; fi
             sleep 1
           done
-          cat /tmp/vite-preview.log
+          cat /tmp/app-server.log
           exit 1
 
       - name: PWA installability + offline
