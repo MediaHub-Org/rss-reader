@@ -120,6 +120,46 @@ describe('origin guards', () => {
   });
 });
 
+describe('proxy responses cannot run as pages', () => {
+  const path = '/proxy?url=https%3A%2F%2Fexample.com%2Fx.html';
+
+  it('rejects navigations to /proxy', async () => {
+    expect((await get(path, { 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'navigate' })).status).toBe(403);
+    expect((await get(path, { 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Dest': 'document' })).status).toBe(403);
+    expect((await get(path, { 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Dest': 'iframe' })).status).toBe(403);
+    expect(proxy).not.toHaveBeenCalled();
+  });
+
+  it('never serves upstream HTML as HTML', async () => {
+    proxy.mockResolvedValueOnce({ status: 200, contentType: 'text/html', body: '<script>alert(1)</script>' });
+    const res = await get(path, { 'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty' });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/^text\/plain/);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['content-security-policy']).toMatch(/sandbox/);
+  });
+});
+
+describe('missing or unreadable files', () => {
+  it('answers 503 without crashing when index.html is gone', async () => {
+    const emptyRoot = mkdtempSync(join(tmpdir(), 'app-server-empty-'));
+    const s = http.createServer();
+    await new Promise<void>((resolve) => s.listen(0, '127.0.0.1', resolve));
+    const p = (s.address() as AddressInfo).port;
+    s.on('request', createAppHandler({ root: emptyRoot, port: p, proxy }));
+    const saved = port;
+    port = p;
+    try {
+      expect((await get('/some/route')).status).toBe(503);
+      expect((await get('/')).status).toBe(503);
+    } finally {
+      port = saved;
+      await new Promise((r) => s.close(r));
+      rmSync(emptyRoot, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('startAppServer', () => {
   it('listens on loopback only', async () => {
     const servers = await startAppServer({ root, port: 0 });

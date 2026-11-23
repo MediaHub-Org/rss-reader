@@ -18,7 +18,9 @@ import http from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pipeline } from 'node:stream';
 import { proxyFeedRequest } from './proxy-lib.mjs';
+import { isAllowedHost, loopbackOrigins, proxyCallerAllowed, proxyResponseHeaders } from './guards.mjs';
 
 export const DEFAULT_PORT = 4173;
 const LOOPBACK = ['127.0.0.1', '::1'];
@@ -38,9 +40,6 @@ const MIME = {
   '.txt': 'text/plain; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8',
 };
-
-const allowedHosts = (port) => new Set([`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`]);
-const allowedOrigins = (port) => new Set([...allowedHosts(port)].map((host) => `http://${host}`));
 
 function send(res, status, body, type = 'text/plain; charset=utf-8') {
   res.statusCode = status;
@@ -86,7 +85,13 @@ function serveFile(req, res, file) {
     res.end();
     return;
   }
-  createReadStream(file).pipe(res);
+  // A file can vanish between stat and open (e.g. during `npm run build`);
+  // that must fail this one response, never the whole server.
+  pipeline(createReadStream(file), res, (err) => {
+    if (!err) return;
+    if (!res.headersSent) send(res, 503, 'The app is being rebuilt. Try again in a moment.');
+    else res.destroy();
+  });
 }
 
 /**
@@ -95,12 +100,11 @@ function serveFile(req, res, file) {
  */
 export function createAppHandler({ root, port, proxy = proxyFeedRequest }) {
   const rootDir = resolve(root);
-  const hosts = allowedHosts(port);
-  const origins = allowedOrigins(port);
+  const origins = loopbackOrigins(port);
 
   return async (req, res) => {
     try {
-      if (!hosts.has(String(req.headers.host || '').toLowerCase())) {
+      if (!isAllowedHost(req.headers.host, port)) {
         send(res, 421, 'Unknown host.');
         return;
       }
@@ -113,16 +117,15 @@ export function createAppHandler({ root, port, proxy = proxyFeedRequest }) {
       const url = new URL(req.url || '/', `http://localhost:${port}`);
 
       if (url.pathname === '/proxy') {
-        const site = String(req.headers['sec-fetch-site'] || '');
-        const origin = req.headers.origin;
-        if (site === 'cross-site' || site === 'same-site' || (origin && !origins.has(origin))) {
+        if (!proxyCallerAllowed(req.headers, origins)) {
           send(res, 403, 'The feed proxy only answers this app.');
           return;
         }
         const result = await proxy(url.searchParams.get('url'), PROXY_TIMEOUT_MS);
         res.statusCode = result.status;
-        res.setHeader('Content-Type', result.contentType);
-        res.setHeader('Cache-Control', 'no-store');
+        for (const [name, value] of Object.entries(proxyResponseHeaders(result.contentType))) {
+          res.setHeader(name, value);
+        }
         res.end(req.method === 'HEAD' ? undefined : result.body);
         return;
       }
@@ -140,8 +143,13 @@ export function createAppHandler({ root, port, proxy = proxyFeedRequest }) {
         send(res, 404, 'Not found.');
         return;
       }
-      // App route: hand back the shell.
-      serveFile(req, res, join(rootDir, 'index.html'));
+      // App route: hand back the shell, unless a rebuild has emptied dist/.
+      const shell = join(rootDir, 'index.html');
+      if (!isFile(shell)) {
+        send(res, 503, 'The app is being rebuilt. Try again in a moment.');
+        return;
+      }
+      serveFile(req, res, shell);
     } catch (err) {
       if (!res.headersSent) send(res, 500, 'Internal error.');
       else res.destroy(err instanceof Error ? err : undefined);

@@ -11,6 +11,7 @@
  */
 import http from 'node:http';
 import { proxyFeedRequest } from './proxy-lib.mjs';
+import { isAllowedHost, proxyCallerAllowed, proxyResponseHeaders } from './guards.mjs';
 
 const PORT = Number(process.env.PROXY_PORT || 8788);
 // Only the app's own origin may call this proxy; never '*', or any website
@@ -28,18 +29,31 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const deny = (status, message) => {
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.end(message);
+  };
+  if (!isAllowedHost(req.headers.host, PORT)) {
+    deny(421, 'Unknown host.');
+    return;
+  }
+
   const url = new URL(req.url || '/', `http://localhost:${PORT}`);
   if (url.pathname !== '/proxy') {
-    res.statusCode = 404;
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.end('RSS reader proxy. Use /proxy?url=<encoded feed url>');
+    deny(404, 'RSS reader proxy. Use /proxy?url=<encoded feed url>');
+    return;
+  }
+  if (!proxyCallerAllowed(req.headers, new Set([ALLOW_ORIGIN]))) {
+    deny(403, 'The feed proxy only answers the RSS Reader app.');
     return;
   }
 
   const result = await proxyFeedRequest(url.searchParams.get('url'), 15_000);
   res.statusCode = result.status;
-  res.setHeader('Content-Type', result.contentType);
-  res.setHeader('Cache-Control', 'no-store');
+  for (const [name, value] of Object.entries(proxyResponseHeaders(result.contentType))) {
+    res.setHeader(name, value);
+  }
   res.end(result.body);
 });
 
