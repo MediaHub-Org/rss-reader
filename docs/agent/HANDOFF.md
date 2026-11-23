@@ -5,7 +5,7 @@ Updated: 2026-11-23. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## State
 
-- **PWA local server — merged into local `main` (`3f88fa5`, not pushed); login
+- **PWA local server — in `main`, pushed as `3164127` on 2026-11-23; login
   task "RSS Reader app server" installed and running on this machine
   (2026-11-23, node `C:\nvm4w\nodejs\node.exe`).**
   The installed PWA refreshes through `server/app-server.mjs` (`npm run serve`,
@@ -92,8 +92,7 @@ Last verified on 2026-11-22 (reading position) and 2026-11-19 (release):
   no paid service. The selector and credentials are gone; do not reintroduce them.
   PWA refresh without preview/third parties is merged and the login task is
   installed. Owner check left: log out/in, open the PWA, refresh and confirm in
-  DevTools → Network that no request goes to a third party. Push of `main`
-  (7 commits ahead) waits for the owner.
+  DevTools → Network that no request goes to a third party.
 - Release only when asked: bump `package.json`, `src-tauri/tauri.conf.json`,
   `src-tauri/Cargo.toml` and the `rss-reader` entry in `src-tauri/Cargo.lock`,
   then tag `vX.Y.Z` (see `docs/RELEASING.md`).
