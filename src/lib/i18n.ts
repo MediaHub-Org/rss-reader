@@ -444,6 +444,7 @@ const es: Record<string, string> = {
   'Import or export OPML, or move everything — subscriptions, groups, read/starred state, rules, preferences and cached articles — with a full ZIP backup.': 'Importa o exporta OPML, o traslada todo —suscripciones, grupos, estado de lectura/destacados, reglas, preferencias y artículos en caché— con una copia ZIP completa.',
   'ZIP backup also carries read/starred status, rules, preferences and every cached article, so this device can be rebuilt elsewhere (the YouTube API key is not included).': 'La copia ZIP también incluye el estado de lectura/destacados, reglas, preferencias y todos los artículos en caché, así que este dispositivo se puede reconstruir en otro sitio (la clave de la API de YouTube no se incluye).',
   'Choose an external reader service or stay local. Connection details are stored on this device only and are never included in backups.': 'Elige un servicio de lectura externo o mantente en local. Los datos de conexión se guardan solo en este dispositivo y nunca se incluyen en las copias.',
+  'This reader has no account, no sync service and no server. Subscriptions, read/starred state and cached articles stay on this device. Use OPML or a full backup to move them.': 'Este lector no tiene cuenta, ni servicio de sincronización, ni servidor. Las suscripciones, el estado de lectura/destacados y los artículos en caché se quedan en este dispositivo. Usa OPML o una copia completa para moverlos.',
   'Clear': 'Limpiar',
   'Close': 'Cerrar',
   'Close player': 'Cerrar reproductor',

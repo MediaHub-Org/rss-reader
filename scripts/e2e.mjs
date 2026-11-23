@@ -846,31 +846,36 @@ try {
   check('Reading font persisted across reload', persistedFont === 'serif', persistedFont || '');
   await page.screenshot({ path: path.join(SHOTS, '02-dark-compact.png') });
 
-  /* --------------------------- sync service ---------------------------- */
+  /* ----------------------------- local only ----------------------------- */
   await openSettings('Services');
-  await page.click('.settings-sync-select .dropdown__trigger');
-  await page.waitForSelector('.dropdown__menu');
-  const syncOptions = (await page.textContent('.dropdown__menu'))?.replace(/\s+/g, ' ') || '';
+  const servicesText = (await page.textContent('[role="dialog"]'))?.replace(/\s+/g, ' ') || '';
   check(
-    'Services offers Fever, Feedbin, Inoreader, Miniflux and Nextcloud',
-    ['Fever API', 'Feedbin', 'Inoreader', 'Miniflux', 'Nextcloud News API'].every((label) =>
-      syncOptions.includes(label)
-    ),
-    syncOptions.slice(0, 100)
+    'Services states that the reader is local-only',
+    /local only/i.test(servicesText) &&
+      /no account/i.test(servicesText) &&
+      /no server/i.test(servicesText),
+    servicesText.slice(0, 120)
   );
-  await page.click('.dropdown__option:has-text("Miniflux")');
-  const syncFields = await page.locator('.settings-sync-fields input').count();
-  check('Choosing a service reveals its connection fields', syncFields === 3, `${syncFields} fields`);
-  await page.fill('.settings-sync-fields input[type="url"]', 'https://miniflux.example.com/v1/');
-  await page.keyboard.press('Escape');
-  await page.waitForSelector('[role="dialog"]', { state: 'detached' });
-  await openSettings('Services');
-  const savedService = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('rss-reader:prefs') || '{}').syncService
+  const syncControls = await page
+    .locator('.settings-sync-select, .settings-sync-fields')
+    .count();
+  check(
+    'Services no longer offers sync providers or credentials',
+    syncControls === 0,
+    `${syncControls} legacy controls`
   );
-  check('Sync service choice is stored locally', savedService === 'miniflux', savedService || '');
-  await page.click('.settings-sync-select .dropdown__trigger');
-  await page.click('.dropdown__option:has-text("Local only")');
+  const storedPrefs = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('rss-reader:prefs') || '{}')
+  );
+  check(
+    'No sync provider or credentials are stored',
+    !('syncService' in storedPrefs) &&
+      !('syncServer' in storedPrefs) &&
+      !('syncUsername' in storedPrefs),
+    Object.keys(storedPrefs)
+      .filter((key) => key.startsWith('sync'))
+      .join(', ')
+  );
   await page.keyboard.press('Escape');
   await page.waitForSelector('[role="dialog"]', { state: 'detached' });
 

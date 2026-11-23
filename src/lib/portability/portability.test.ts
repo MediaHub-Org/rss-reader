@@ -127,9 +127,6 @@ describe('full JSON backup', () => {
     theme: 'dark',
     sidebarWidth: 420,
     youtubeApiKey: 'secret-key',
-    syncService: 'miniflux',
-    syncServer: 'https://miniflux.example/v1/',
-    syncUsername: 'reader',
   };
   const feeds = [
     feed({ title: 'Alpha', folder: 'News' }),
@@ -154,9 +151,9 @@ describe('full JSON backup', () => {
     expect(data.starredIds).toEqual(['f1-a1']);
     expect(data.preferences.youtubeApiKey).toBeUndefined();
     expect(data.preferences.prefsVersion).toBeUndefined();
+    expect(data.preferences.syncService).toBeUndefined();
     expect(data.preferences.syncServer).toBeUndefined();
     expect(data.preferences.syncUsername).toBeUndefined();
-    expect(data.preferences.syncService).toBe('miniflux');
     expect(data.preferences.theme).toBe('dark');
     expect(data.folders).toEqual(['Empty', 'News']);
     expect(data.rules).toEqual([rule()]);
@@ -181,7 +178,19 @@ describe('full JSON backup', () => {
     expect(parsed.starredIds).toEqual({ 'f1-a1': true });
     expect(parsed.rules).toEqual([rule()]);
     expect(parsed.preferences?.theme).toBe('dark');
-    expect(parsed.preferences?.syncService).toBe('miniflux');
+  });
+
+  it('ignores legacy sync fields in an old backup', () => {
+    const raw = JSON.parse(
+      exportFullBackup(feeds, { 'f1-a1': true }, ['Empty'], prefs, articles)
+    );
+    raw.preferences.syncService = 'miniflux';
+    raw.preferences.syncServer = 'https://miniflux.example/v1/';
+    raw.preferences.syncUsername = 'reader';
+    const parsed = parseJsonBackup(JSON.stringify(raw));
+    expect(parsed.preferences && 'syncService' in parsed.preferences).toBe(false);
+    expect(parsed.preferences && 'syncServer' in parsed.preferences).toBe(false);
+    expect(parsed.preferences && 'syncUsername' in parsed.preferences).toBe(false);
   });
 
   it('still accepts the v1 backup shape', () => {

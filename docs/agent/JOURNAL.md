@@ -2,6 +2,16 @@
 
 Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 
+## 2026-11-23
+
+- **Local-only decision.** The owner chose to stay local permanently: no sync
+  provider and no paid service. Removed the provider selector, the server/username
+  fields and the session password from Services; removed `SyncService` and the
+  `sync*` preferences; `loadPreferences` and backup parsing drop legacy sync fields.
+  Services now explains that OPML or a full backup is the way to move data.
+- 105 unit tests pass, including a legacy-backup test; e2e replaced the selector
+  checks with local-only assertions. Typecheck and build pass.
+
 ## 2026-11-22
 
 - **Reading position per article.** The owner picked it from the three candidates.

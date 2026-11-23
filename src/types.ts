@@ -6,14 +6,6 @@ export type FontSize = 'small' | 'medium' | 'large';
 export type ReaderFont = 'sans' | 'serif' | 'mono';
 export type LanguagePreference = 'system' | 'en' | 'es';
 export type RefreshInterval = 'manual' | '15' | '30' | '60' | '180';
-export type SyncService =
-  | 'local'
-  | 'fever'
-  | 'feedbin'
-  | 'inoreader'
-  | 'miniflux'
-  | 'nextcloud'
-  | 'newsblur';
 export type SortMode = 'date-desc' | 'date-asc' | 'feed';
 export type ArticleView = 'card' | 'list' | 'magazine' | 'compact';
 export type ArticleFilter = 'all' | 'unread' | 'starred';
@@ -40,10 +32,6 @@ export interface Preferences {
   language: LanguagePreference;
   /** Automatic refresh cadence. Manual means only explicit refresh actions. */
   refreshInterval: RefreshInterval;
-  /** External sync provider. Local-only remains the default. */
-  syncService: SyncService;
-  syncServer: string;
-  syncUsername: string;
   /**
    * Play media inline in the reader — YouTube, Vimeo, Spotify, SoundCloud,
    * Deezer, Apple Podcasts/Music. When off, links open in a new tab instead.
@@ -96,9 +84,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   readerFont: 'sans',
   language: 'system',
   refreshInterval: 'manual',
-  syncService: 'local',
-  syncServer: '',
-  syncUsername: '',
   embedMedia: true,
   viewMode: 'card',
   articleFilter: 'all',

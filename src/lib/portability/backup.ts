@@ -40,13 +40,7 @@ export function exportFullBackup(
   starredIds: Record<string, true> = {},
   rules: ArticleRule[] = []
 ): string {
-  const {
-    youtubeApiKey: _omitted,
-    prefsVersion: _version,
-    syncServer: _server,
-    syncUsername: _username,
-    ...portablePrefs
-  } = prefs;
+  const { youtubeApiKey: _omitted, prefsVersion: _version, ...portablePrefs } = prefs;
 
   return JSON.stringify({
     app: 'rss-reader',
@@ -87,19 +81,6 @@ function parseBackupPreferences(raw: unknown): Partial<Preferences> | undefined 
   }
   if (isOneOf(raw.refreshInterval, ['manual', '15', '30', '60', '180'] as const)) {
     out.refreshInterval = raw.refreshInterval;
-  }
-  if (
-    isOneOf(raw.syncService, [
-      'local',
-      'fever',
-      'feedbin',
-      'inoreader',
-      'miniflux',
-      'nextcloud',
-      'newsblur',
-    ] as const)
-  ) {
-    out.syncService = raw.syncService;
   }
   if (typeof raw.embedMedia === 'boolean') out.embedMedia = raw.embedMedia;
   if (isOneOf(raw.viewMode, ['card', 'list', 'magazine', 'compact'] as const)) {

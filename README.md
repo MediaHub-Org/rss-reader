@@ -110,10 +110,9 @@ fall back to English instead of breaking the UI.
 **Settings.** Six sections: **Preferences**, **Manage**, **Rules**, **Services**,
 **Data** and **About**. Theme, density, reading typeface (sans, serif, mono) and font
 size live in Preferences. Manage holds the Sources and Groups tabs. Data owns
-import/export, backups and the local cache. Services includes a sync-provider selector
-(Fever, Feedbin, Inoreader, Miniflux, Nextcloud News, NewsBlur) and the optional YouTube
-API key. Server and username are stored locally; the password/token is session-only.
-Two-way sync remains future work — use OPML or a full backup today.
+import/export, backups and the local cache. Services explains the local-only design
+and holds the optional YouTube API key. There is no account, sync provider or server;
+use OPML or a full backup to move subscriptions and state.
 The feed context menu can edit a source's name, group and feed link in one dialog;
 changing the link resets that source's cached articles and read state.
 
@@ -205,9 +204,8 @@ server/            shared local feed proxy
   daily snapshots remain desktop-only.
 - The Android APK is arm64 debug-signed with a committed keystore so updates install over
   earlier builds; Play Store signing is not configured.
-- Services has a sync-provider selector, but two-way sync is not implemented yet; the
-  server and username are stored locally (the password/token is session-only) and
-  excluded from backups.
+- The reader is local-only by design: no account, sync provider or server. Subscriptions
+  and reading state move with OPML or a full backup.
 - “Load full content” depends on the page structure and on the proxy being reachable.
 
 ## License
