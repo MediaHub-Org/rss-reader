@@ -4,6 +4,18 @@ Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 
 ## 2026-11-23
 
+- **PWA without preview or third-party proxies** (branch `feat/pwa-local-server`,
+  `473c122..c5a7fb7`, not merged). New `server/app-server.mjs` serves `dist/` and
+  `/proxy` on `localhost:4173` (same origin as before, so installed-PWA data is
+  kept), loopback only, with Host and caller guards shared with `proxy.mjs` via
+  `server/guards.mjs`; proxied HTML/SVG is downgraded to text with nosniff and a
+  sandbox CSP. allorigins/corsproxy.io/r.jina.ai removed from `fetchFeed.ts`;
+  a stopped server now says so. `npm start` and CI use the app server.
+  `scripts/windows/install-autostart.ps1`/`uninstall-autostart.ps1` add/remove a
+  per-user login task (`conhost --headless`); **not installed** on this machine.
+  Final Opus review: 3 Important fixed with failing-first tests; 8 minors deferred
+  (listed in HANDOFF). Unit 128/128, e2e 176/176, test:pwa 15/16 (known local
+  offline-reload failure).
 - **Local-only decision.** The owner chose to stay local permanently: no sync
   provider and no paid service. Removed the provider selector, the server/username
   fields and the session password from Services; removed `SyncService` and the
