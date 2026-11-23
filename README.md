@@ -39,7 +39,8 @@ The installed PWA opens offline. Feed refreshes go through the app's own local
 server (`server/app-server.mjs`): it serves the app and `/proxy` on
 `localhost:4173`, listens on this machine only and never uses a third-party proxy.
 `npm start` launches it; to have it running from login on Windows, install the
-autostart task (see [`scripts/windows/README.md`](scripts/windows/README.md)). The
+autostart task (see [`scripts/windows/README.md`](scripts/windows/README.md)); on
+macOS or Linux, run `npm run serve` from a login item or a systemd user unit. The
 desktop app fetches natively and needs no Node process at runtime.
 
 ## Verify downloads
