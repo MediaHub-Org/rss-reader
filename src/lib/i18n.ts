@@ -226,6 +226,8 @@ const es: Record<string, string> = {
   'Show API key': 'Mostrar clave de API',
   'Sync service': 'Servicio de sincronización',
   'Local only (no sync)': 'Solo local (sin sincronización)',
+  'The local app server is not running. Start it with npm start, or install the autostart task (scripts/windows/install-autostart.ps1).':
+    'El servidor local de la app no está en marcha. Arráncalo con npm start o instala la tarea de autoarranque (scripts/windows/install-autostart.ps1).',
   'YouTube Data API': 'YouTube Data API',
   'Subscriptions & data': 'Suscripciones y datos',
   'Subscriptions & OPML': 'Suscripciones y OPML',

@@ -1,13 +1,14 @@
 /**
- * Feed retrieval with a layered CORS strategy, as decided:
+ * Feed retrieval for the web build, local only:
  *
  *   1. direct browser fetch (works for CORS-enabled origins)
- *   2. local proxy   — /proxy on the dev server, or PROXY_URL env
- *   3. public proxy  — third-party fallback, used last because it depends on
- *                      someone else's uptime
+ *   2. local proxy   — /proxy on this app's own server (server/app-server.mjs,
+ *                      or the Vite dev server), or VITE_PROXY_URL
  *
- * Every hop is HTTPS-only and every failure is reported with a readable message
- * so the UI can explain *why* a feed is unavailable.
+ * There is deliberately no third-party proxy: feed URLs never leave this
+ * device except to the feed's own origin. The desktop build fetches natively.
+ * Every failure is reported with a readable message so the UI can explain
+ * *why* a feed is unavailable.
  */
 import { looksLikeFeed, parseFeedXml, type ParseResult } from './feedParser';
 import { t } from './i18n';
@@ -19,13 +20,9 @@ import { invokeDesktop, isTauriApp } from './desktop';
 export const PROXY_URL: string | undefined =
   (import.meta.env.VITE_PROXY_URL as string | undefined) || undefined;
 
-const PUBLIC_PROXIES = [
-  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  (url: string) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-  (url: string) => `https://r.jina.ai/${url}`, // last resort: returns extracted text
-];
+export type Via = 'native' | 'direct' | 'local-proxy';
 
-export type Via = 'native' | 'direct' | 'local-proxy' | 'public-proxy';
+const LOCAL_SERVER_DOWN = 'The local app server is not running. Start it with npm start, or install the autostart task (scripts/windows/install-autostart.ps1).';
 
 export interface FeedValidators {
   etag?: string;
@@ -101,7 +98,6 @@ async function getText(
   const attempts: Array<{ via: Via; target: string; init?: RequestInit }> = [
     { via: 'direct', target: url },
     { via: 'local-proxy', target: `${PROXY_URL || '/proxy'}?url=${encodeURIComponent(url)}` },
-    ...PUBLIC_PROXIES.map((build) => ({ via: 'public-proxy' as Via, target: build(url) })),
   ];
 
   const errors: string[] = [];
@@ -137,6 +133,11 @@ async function getText(
       }
 
       if (!response.ok) {
+        // Our proxy reports upstream errors as 502, so a 404 here means the page
+        // was served by something without /proxy (a plain static host).
+        if (attempt.via === 'local-proxy' && response.status === 404) {
+          throw new FeedFetchError(t(LOCAL_SERVER_DOWN));
+        }
         const detail = await safeMessage(response);
         errors.push(`${attempt.via}: ${response.status}${detail ? ` — ${detail}` : ''}`);
         if (response.status === 404 || response.status === 410) {
@@ -153,6 +154,9 @@ async function getText(
       return { text, via: attempt.via, finalUrl: response.url || url, etag, lastModified };
     } catch (err) {
       if (err instanceof FeedFetchError) throw err;
+      if (attempt.via === 'local-proxy' && err instanceof TypeError) {
+        throw new FeedFetchError(t(LOCAL_SERVER_DOWN));
+      }
       const message =
         err instanceof DOMException && err.name === 'TimeoutError'
           ? 'request timed out'

@@ -57,3 +57,26 @@ describe('browser feed cache validation', () => {
     });
   });
 });
+
+describe('no third-party proxies', () => {
+  it('never contacts a public proxy', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue(new Response('bad gateway', { status: 502 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchFeedDocument(url)).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [target] of fetchMock.mock.calls) {
+      expect(String(target)).not.toMatch(/allorigins|corsproxy|jina/);
+    }
+  });
+
+  it('explains a stopped local server', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchFeedDocument(url)).rejects.toThrow(/local app server is not running/i);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
