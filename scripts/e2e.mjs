@@ -55,9 +55,9 @@ const waitForDetail = () =>
     { timeout: 5_000 }
   );
 
-/** Close the article like a user: click the blurred backdrop behind it. */
+/** Close the article like a user: Escape (the reader is a dialog, not a click-away). */
 const closeArticle = async () => {
-  await page.locator('.article-overlay__backdrop').click({ position: { x: 4, y: 4 } }).catch(() => {});
+  await page.keyboard.press('Escape').catch(() => {});
 
   const closed = await page
     .waitForFunction(
@@ -69,9 +69,8 @@ const closeArticle = async () => {
     .catch(() => false);
   if (closed) return;
 
-  // Headless compositors occasionally miss the outside click; close through
-  // the same store path so subsequent checks do not depend on a stale layer.
-  await page.keyboard.press('Escape').catch(() => {});
+  // Headless compositors occasionally miss the key event; close through the
+  // same store path so subsequent checks do not depend on a stale layer.
   await page.evaluate(() => window.__store.setActiveArticle(null));
   await waitForList();
 };
@@ -189,49 +188,87 @@ try {
       const rect = el.getBoundingClientRect();
       return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
     };
-    const main = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
+    const windowBox = { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight };
     const sidebar = box('.sidebar');
+    const topbar = box('.topbar');
     const content = box('.content-area');
     const backdrop = box('.article-overlay__backdrop');
     const dialog = box('.article-overlay__dialog');
-    const sidebarHit =
-      sidebar && sidebar.width > 0
-        ? document.elementFromPoint(sidebar.x + sidebar.width / 2, sidebar.y + sidebar.height / 2)
+    const hit = (target) =>
+      target
+        ? document.elementFromPoint(target.x + target.width / 2, target.y + target.height / 2)
         : null;
+    const sidebarHit = hit(sidebar);
+    const topbarHit = hit(topbar);
+    const blur = getComputedStyle(document.querySelector('.article-overlay__backdrop')).backdropFilter;
     return {
-      main,
+      window: windowBox,
       sidebar,
+      topbar,
       content,
       backdrop,
       dialog,
-      sidebarCovered: Boolean(sidebarHit && sidebarHit.closest('.article-overlay__backdrop')),
-      blurred: getComputedStyle(document.querySelector('.article-overlay__backdrop')).backdropFilter.includes('blur('),
-      locked: document.body.dataset.scrollLocked === 'true' &&
-        ['.content-area', '.sidebar__scroll'].every((selector) =>
-          getComputedStyle(document.querySelector(selector)).overflowY === 'hidden'),
+      sidebarReachable: Boolean(sidebarHit && sidebarHit.closest('.sidebar')),
+      topbarReachable: Boolean(topbarHit && topbarHit.closest('.topbar')),
+      blur,
+      contentLocked:
+        document.body.dataset.scrollLocked === 'content' &&
+        getComputedStyle(document.querySelector('.content-area')).overflowY === 'hidden',
+      sidebarUnlocked:
+        getComputedStyle(document.querySelector('.sidebar__scroll')).overflowY === 'auto',
+      modalAttr: document.querySelector('.article-overlay__dialog').getAttribute('aria-modal'),
+      labelledBy: document.querySelector('.article-overlay__dialog').getAttribute('aria-labelledby'),
+      focusedId: document.activeElement?.id ?? '',
+      listInert: Boolean(document.querySelector('.content-area__list')?.inert),
     };
   });
-  const { main, content, backdrop, dialog } = overlayGeometry;
+  const { content, backdrop, dialog } = overlayGeometry;
   check(
-    'Reader backdrop covers and blurs the entire dashboard',
-    Boolean(main && backdrop) &&
-      Math.abs(backdrop.x - main.x) < 1 &&
-      Math.abs(backdrop.width - main.width) < 1 &&
-      Math.abs(backdrop.height - main.height) < 1 &&
-      overlayGeometry.sidebarCovered && overlayGeometry.blurred,
+    'Reader backdrop covers and blurs only the news column',
+    Boolean(content && backdrop) &&
+      Math.abs(backdrop.x - content.x) < 1 &&
+      Math.abs(backdrop.y - content.y) < 1 &&
+      Math.abs(backdrop.width - content.width) < 1 &&
+      Math.abs(backdrop.height - content.height) < 1 &&
+      Math.abs(backdrop.x - overlayGeometry.window.x) > 1,
     JSON.stringify(backdrop)
   );
+  check(
+    'Sidebar and top bar stay reachable while reading',
+    overlayGeometry.sidebarReachable && overlayGeometry.topbarReachable
+  );
+  check(
+    'Reader blurs harder than the old 14px',
+    /blur\(\s*(\d+(?:\.\d+)?)px/.test(overlayGeometry.blur) &&
+      Number(overlayGeometry.blur.match(/blur\(\s*(\d+(?:\.\d+)?)px/)[1]) > 14,
+    overlayGeometry.blur
+  );
   /* The reader centres over the news column, not the window: with the sidebar
-     in layout the two centres are more than 100px apart, so this cannot pass
-     by accident. The sidebar itself must still be covered (assertion above). */
+     in layout the two centres are more than 50px apart, so this cannot pass
+     by accident. */
   check(
     'Reader popup is centered over the news column, not the window',
     Boolean(content && dialog) &&
       Math.abs(dialog.x + dialog.width / 2 - (content.x + content.width / 2)) < 2 &&
-      Math.abs(dialog.x + dialog.width / 2 - (main.x + main.width / 2)) > 50,
+      Math.abs(dialog.x + dialog.width / 2 - (overlayGeometry.window.x + overlayGeometry.window.width / 2)) > 50,
     JSON.stringify({ dialog, content })
   );
-  check('Reader locks dashboard scrolling', overlayGeometry.locked);
+  check(
+    'Non-modal reader locks only the news column',
+    overlayGeometry.contentLocked && overlayGeometry.sidebarUnlocked,
+    JSON.stringify({
+      contentLocked: overlayGeometry.contentLocked,
+      sidebarUnlocked: overlayGeometry.sidebarUnlocked,
+    })
+  );
+  check(
+    'Reader is non-modal and labelled by the article title',
+    overlayGeometry.modalAttr === null &&
+      overlayGeometry.labelledBy === 'article-reader-title' &&
+      overlayGeometry.focusedId === 'article-reader-title' &&
+      overlayGeometry.listInert,
+    JSON.stringify({ modal: overlayGeometry.modalAttr, labelled: overlayGeometry.labelledBy, focus: overlayGeometry.focusedId, inert: overlayGeometry.listInert })
+  );
   const readerScrolls = await page.locator('.article-overlay__dialog').evaluate((el) => {
     const content = el.querySelector('.content');
     const filler = document.createElement('div');
@@ -270,10 +307,21 @@ try {
 
   await page.screenshot({ path: path.join(SHOTS, '01-detail-light.png'), fullPage: false });
 
-  /* read state — opening the article already marked it read */
-  await closeArticle();
+  /* navigating from the sidebar while reading closes the reader */
+  await page.locator('.sidebar__scroll .feed-row').first().click();
+  const closedBySidebar = await page
+    .waitForFunction(
+      () => document.querySelector('.app')?.getAttribute('data-article-open') === 'false',
+      undefined,
+      { timeout: 2_000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  check('Sidebar navigation closes the reader', closedBySidebar);
+  if (!closedBySidebar) await closeArticle();
   check('Closing the reader restores dashboard scrolling',
     await page.evaluate(() => !document.body.dataset.scrollLocked &&
+      !document.querySelector('.content-area__list').inert &&
       getComputedStyle(document.querySelector('.content-area')).overflowY === 'auto'));
   await page.waitForSelector('.article-grid');
   const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');

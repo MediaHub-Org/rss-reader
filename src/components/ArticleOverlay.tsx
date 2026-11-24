@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { store } from '../store/store';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useStore } from '../hooks/useStore';
 import { useVisibleArticles } from '../hooks/useVisibleArticles';
 import { leaveArticle } from '../lib/viewHistory';
@@ -10,9 +12,72 @@ import { Icon } from './Icon';
 import { t } from '../lib/i18n';
 import { cleanTitle } from '../lib/format';
 
-/** Reader overlay: blurred backdrop, previous/next arrows and close. */
+/** Reader overlay: blurred backdrop over the news column, previous/next arrows and close. */
+type BackdropFrame = { left: number; top: number; width: number; height: number };
+
+/** Box of the news column: the reader neither covers nor blurs the sidebar. */
+function readContentFrame(): BackdropFrame | null {
+  const element = document.querySelector('.content-area');
+  if (!element) return null;
+  const rect = element.getBoundingClientRect();
+  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+}
+
 export function ArticleOverlay() {
   const state = useStore();
+
+  /**
+   * On narrow layouts the sidebar is an off-canvas drawer, so the reader keeps
+   * the modal behaviour (trap, aria-modal, everything locked). On desktop it is
+   * non-modal: the sidebar and the top bar stay crisp, reachable and usable.
+   */
+  const modal = useMediaQuery('(max-width: 68.75rem)');
+
+  const [frame, setFrame] = useState<BackdropFrame | null>(() => readContentFrame());
+
+  useLayoutEffect(() => {
+    if (modal) return;
+    const sync = () => setFrame(readContentFrame());
+    sync();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sync);
+    const content = document.querySelector('.content-area');
+    const sidebar = document.querySelector('.sidebar');
+    if (observer) {
+      if (content) observer.observe(content);
+      if (sidebar) observer.observe(sidebar);
+    }
+    window.addEventListener('resize', sync);
+    return () => {
+      window.removeEventListener('resize', sync);
+      observer?.disconnect();
+    };
+  }, [modal]);
+
+  const backdropStyle: CSSProperties | undefined =
+    !modal && frame
+      ? {
+          left: frame.left,
+          top: frame.top,
+          width: frame.width,
+          height: frame.height,
+          right: 'auto',
+          bottom: 'auto',
+        }
+      : undefined;
+
+  /**
+   * The blurred grid behind the reader is decoration, not a second page: it
+   * must leave the tab order and the accessibility tree. The sidebar and the
+   * top bar are outside `.content-area`, so they stay usable.
+   */
+  useEffect(() => {
+    const list = document.querySelector<HTMLElement>('.content-area__list');
+    if (!list) return;
+    list.inert = true;
+    return () => {
+      list.inert = false;
+    };
+  }, []);
 
   const articles = useVisibleArticles(state);
 
@@ -68,10 +133,12 @@ export function ArticleOverlay() {
       onClose={leaveArticle}
       title=""
       bare
-      ariaLabel={cleanTitle(article.title)}
+      modal={modal}
+      ariaLabelledBy="article-reader-title"
       size="lg"
       className="article-overlay__dialog"
       backdropClassName="article-overlay__backdrop"
+      backdropStyle={backdropStyle}
       backdropChildren={
         <>
           <button

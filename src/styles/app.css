@@ -42,9 +42,11 @@
 }
 
 /* Dialogs lock the real scrollers. The body never scrolls here: .app is
-   height:100dvh with overflow:hidden, so body.overflow alone did nothing. */
+   height:100dvh with overflow:hidden, so body.overflow alone did nothing.
+   The non-modal reader only locks the news column: the sidebar stays usable. */
 body[data-scroll-locked='true'] .content-area,
-body[data-scroll-locked='true'] .sidebar__scroll {
+body[data-scroll-locked='true'] .sidebar__scroll,
+body[data-scroll-locked='content'] .content-area {
   overflow: hidden;
 }
 
@@ -3408,31 +3410,18 @@ kbd {
 
 /* --------------------------- article overlay ---------------------------- */
 .article-overlay__backdrop {
-  /* Cover the entire dashboard, including the sidebar and top bar. */
+  /* Desktop: the reader covers and blurs only the news column, so the sidebar
+     and the top bar stay crisp, visible and usable. ArticleOverlay measures
+     .content-area and sets left/top/width/height inline; the modal variant
+     (narrow layouts, where the sidebar is an off-canvas drawer) keeps the
+     full-window `inset: 0`. */
   position: fixed;
   inset: 0;
-  /* The panel and its arrows centre over the news column, not the whole
-     window: the backdrop still covers the sidebar, but the sidebar is not part
-     of the centring box. The shift is the sidebar's width while it takes
-     layout space, and zero when it does not: it is an off-canvas drawer on
-     narrow layouts and it collapses to zero width on desktop. */
-  --article-overlay-shift: var(--sidebar-width);
-  background: color-mix(in srgb, #07090e 42%, transparent);
-  backdrop-filter: blur(14px) saturate(115%);
-  -webkit-backdrop-filter: blur(14px) saturate(115%);
+  background: color-mix(in srgb, #07090e 46%, transparent);
+  backdrop-filter: blur(22px) saturate(110%);
+  -webkit-backdrop-filter: blur(22px) saturate(110%);
   padding: clamp(0.5rem, 3vh, 2rem);
-  padding-left: calc(clamp(0.5rem, 3vh, 2rem) + var(--article-overlay-shift));
   overscroll-behavior: contain;
-}
-
-@media (max-width: 68.75rem) {
-  .article-overlay__backdrop {
-    --article-overlay-shift: 0rem;
-  }
-}
-
-.app[data-sidebar-collapsed='true'] .article-overlay__backdrop {
-  --article-overlay-shift: 0rem;
 }
 
 .article-overlay__dialog {
@@ -3503,14 +3492,13 @@ kbd {
 }
 
 .article-overlay__nav--prev {
-  /* Half the shift in the other direction: percentages resolve against the
-     backdrop's padding box (the whole window), so the arrow pair follows the
-     panel over the news column instead of the window centre. */
-  left: max(1.25rem, calc(50% - 24rem - 3.75rem + (var(--article-overlay-shift) / 2)));
+  /* The backdrop box is the news column, so percentages already resolve
+     against it: no sidebar shift to compensate. */
+  left: max(1.25rem, calc(50% - 24rem - 3.75rem));
 }
 
 .article-overlay__nav--next {
-  right: max(1.25rem, calc(50% - 24rem - 3.75rem - (var(--article-overlay-shift) / 2)));
+  right: max(1.25rem, calc(50% - 24rem - 3.75rem));
 }
 
 @media (max-width: 720px) {

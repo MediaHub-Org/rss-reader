@@ -334,7 +334,9 @@ export function ArticleDetail() {
       <div className="detail__scroll">
         <header className="detail__header">
           {feed && <p className="detail__feed">{feed.title}</p>}
-          <h2 className="detail__title">{cleanTitle(article.title)}</h2>
+          <h2 className="detail__title" id="article-reader-title" tabIndex={-1} data-autofocus>
+            {cleanTitle(article.title)}
+          </h2>
           <p className="detail__meta">
             {article.author && <span>{article.author}</span>}
             <time dateTime={new Date(article.publishedAt).toISOString()}>

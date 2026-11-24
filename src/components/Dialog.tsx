@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useId, useRef } from 'react';
 import { t } from '../lib/i18n';
 
@@ -22,8 +22,18 @@ interface DialogProps {
    * Lock the sidebar/dashboard scroll behind the dialog (default).
    */
   lockBackgroundScroll?: boolean;
+  /**
+   * Modal semantics (default). A non-modal dialog keeps Escape, focus on open
+   * and focus restore, but leaves the sidebar reachable: no `aria-modal`, no
+   * Tab trap, and only the content column gets its scroll locked.
+   */
+  modal?: boolean;
+  /** Inline box for the backdrop (the reader scopes it to the news column). */
+  backdropStyle?: CSSProperties;
   /** Accessible label when `bare` is set (there is no visible title). */
   ariaLabel?: string;
+  /** Id of the visible heading that labels a bare dialog. */
+  ariaLabelledBy?: string;
   className?: string;
   backdropClassName?: string;
   /**
@@ -52,9 +62,12 @@ export function Dialog({
   suspended = false,
   bare = false,
   lockBackgroundScroll = true,
+  modal = true,
   ariaLabel,
+  ariaLabelledBy,
   className = '',
   backdropClassName = '',
+  backdropStyle,
   backdropChildren,
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -103,7 +116,7 @@ export function Dialog({
         onCloseRef.current();
         return;
       }
-      if (event.key !== 'Tab' || !panel) return;
+      if (event.key !== 'Tab' || !panel || !modal) return;
 
       // Include backdrop-level controls (reader arrows) in the cycle.
       const scope = panel.parentElement ?? panel;
@@ -131,17 +144,24 @@ export function Dialog({
     // the background by a pixel or two on some WebViews; restoring the exact
     // offsets keeps the list where the user left it.
     const scrollPositions = new Map<HTMLElement, number>();
-    // The app scrolls inside .content-area and .sidebar__scroll, not on the
-    // body, so locking the body alone left the background scrolling under the
-    // dialog. The attribute is what the stylesheet hooks onto; `wasLocked`
-    // keeps a stacked dialog from unlocking while an outer one is still open.
-    const wasLocked = document.body.dataset.scrollLocked === 'true';
-    if (lockBackgroundScroll) {
+    // A modal dialog locks the content column and the sidebar. The non-modal
+    // reader leaves the sidebar scrollable and navigable, so only the content
+    // column is locked. Restoring the previous value keeps a modal dialog
+    // stacked on the reader from unlocking what the reader set.
+    const lockMode: 'true' | 'content' | null = !lockBackgroundScroll
+      ? null
+      : modal
+        ? 'true'
+        : 'content';
+    const previousLock = document.body.dataset.scrollLocked;
+    if (lockMode) {
       document.body.style.overflow = 'hidden';
+      const selectors =
+        lockMode === 'true' ? '.content-area, .sidebar__scroll' : '.content-area';
       document
-        .querySelectorAll<HTMLElement>('.content-area, .sidebar__scroll')
+        .querySelectorAll<HTMLElement>(selectors)
         .forEach((element) => scrollPositions.set(element, element.scrollTop));
-      document.body.dataset.scrollLocked = 'true';
+      document.body.dataset.scrollLocked = lockMode;
     }
 
     return () => {
@@ -150,10 +170,10 @@ export function Dialog({
       scrollPositions.forEach((top, element) => {
         element.scrollTop = top;
       });
-      // Only an instance that actually locked may unlock -- otherwise a
-      // non-locking dialog (the article reader) closing while a real, locking
-      // one is still stacked on top of it would rip the lock out from under it.
-      if (lockBackgroundScroll && !wasLocked) delete document.body.dataset.scrollLocked;
+      if (lockMode) {
+        if (previousLock === undefined) delete document.body.dataset.scrollLocked;
+        else document.body.dataset.scrollLocked = previousLock;
+      }
       restoreTo.current?.focus?.({ preventScroll: true });
     };
   }, [open]);
@@ -163,6 +183,7 @@ export function Dialog({
   return (
     <div
       className={`dialog-backdrop ${backdropClassName}`.trim()}
+      style={backdropStyle}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -170,9 +191,9 @@ export function Dialog({
       <div
         className={`dialog dialog--${size} ${bare ? 'dialog--bare' : ''} ${className}`.trim()}
         role="dialog"
-        aria-modal="true"
-        aria-labelledby={bare ? undefined : titleId}
-        aria-label={bare ? ariaLabel : undefined}
+        aria-modal={modal ? 'true' : undefined}
+        aria-labelledby={bare ? ariaLabelledBy : titleId}
+        aria-label={bare && !ariaLabelledBy ? ariaLabel : undefined}
         ref={panelRef}
         tabIndex={-1}
       >
