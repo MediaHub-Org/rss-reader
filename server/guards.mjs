@@ -47,6 +47,6 @@ export function proxyResponseHeaders(contentType) {
     'Content-Type': EXECUTABLE_TYPES.test(contentType) ? 'text/plain; charset=utf-8' : contentType,
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
-    'Content-Security-Policy': "sandbox; default-src 'none'",
+    'Content-Security-Policy': "sandbox; default-src 'none'; frame-ancestors 'none'",
   };
 }

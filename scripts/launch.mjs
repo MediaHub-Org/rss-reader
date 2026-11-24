@@ -12,6 +12,7 @@
  */
 import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
+import { createConnection } from 'node:net';
 import { join, resolve } from 'node:path';
 
 const PORT = 4173;
@@ -62,6 +63,18 @@ function build() {
   execFileSync(process.execPath, [VITE, 'build'], { cwd: ROOT, stdio: 'inherit' });
 }
 
+/** Is something holding the port, even if it is not answering HTTP? */
+function portInUse(port) {
+  return new Promise((resolveProbe) => {
+    const socket = createConnection({ port, host: '127.0.0.1' });
+    socket.once('connect', () => {
+      socket.destroy();
+      resolveProbe(true);
+    });
+    socket.once('error', () => resolveProbe(false));
+  });
+}
+
 function startServer() {
   const child = spawn(process.execPath, [join(ROOT, 'server', 'app-server.mjs')], {
     cwd: ROOT,
@@ -69,12 +82,20 @@ function startServer() {
     stdio: 'ignore',
     windowsHide: true,
   });
+  // `stdio: 'ignore'` keeps the server independent of this window, so its
+  // EADDRINUSE message cannot be read from here. Watching the exit at least
+  // turns the 30 s generic timeout into an immediate, accurate failure.
+  let exitCode = null;
+  child.on('exit', (code) => {
+    exitCode = code ?? 0;
+  });
   child.on('error', (error) => {
     console.error(`Could not start the app server: ${error.message}`);
     process.exit(1);
   });
   child.unref();
   console.log(`Starting the app server on ${BASE} (pid ${child.pid})…`);
+  return { hasExited: () => exitCode !== null };
 }
 
 /** Open the app with whatever the host provides. */
@@ -114,14 +135,26 @@ async function openApp() {
 const alreadyRunning = await isUp();
 
 if (!alreadyRunning) {
+  if (await portInUse(PORT)) {
+    console.error(
+      `Port ${PORT} is already in use by another process (an old app server, "vite preview" or the scheduled task). Close it and run "npm start" again.`
+    );
+    process.exit(1);
+  }
   const distIndex = join(ROOT, 'dist', 'index.html');
   if (!existsSync(distIndex) || statSync(distIndex).mtimeMs < newestSourceMtime()) {
     build();
   }
-  startServer();
+  const server = startServer();
 
   const deadline = Date.now() + 30_000;
   while (!(await isUp())) {
+    if (server.hasExited()) {
+      console.error(
+        `The app server exited before serving ${BASE}. Port ${PORT} may be taken by another process; run "npm run serve" to see the error.`
+      );
+      process.exit(1);
+    }
     if (Date.now() > deadline) {
       console.error(`The app did not come up on ${BASE}. Check "npm run serve".`);
       process.exit(1);

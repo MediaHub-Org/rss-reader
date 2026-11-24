@@ -139,7 +139,8 @@ export function createAppHandler({ root, port, proxy = proxyFeedRequest }) {
         serveFile(req, res, target);
         return;
       }
-      if (target.startsWith(join(rootDir, 'assets')) || extname(target)) {
+      const assetsDir = join(rootDir, 'assets');
+      if (target.startsWith(assetsDir + sep) || extname(target)) {
         send(res, 404, 'Not found.');
         return;
       }

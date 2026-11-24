@@ -8,6 +8,9 @@
  * Kept as plain ESM JavaScript so both bundler and plain Node can import it.
  */
 
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+
 const DEFAULT_TIMEOUT_MS = 12_000;
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — feeds are text, anything larger is abuse
 const MAX_REDIRECTS = 5;
@@ -15,18 +18,74 @@ const MAX_REDIRECTS = 5;
 /** Hostnames that must never be reached through the proxy (SSRF guard). */
 const BLOCKED_HOSTS = new Set(['localhost', 'localhost.localdomain', '0.0.0.0', '::1']);
 
+/** Drop the brackets of an IPv6 literal: `[::1]` -> `::1`. */
+function unbracket(hostname) {
+  return String(hostname).toLowerCase().replace(/^\[|\]$/g, '');
+}
+
+function isPrivateIpv4(host) {
+  const parts = host.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
+    return true;
+  }
+  const [a, b] = parts;
+  if (a === 0 || a === 10 || a === 127) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT 100.64/10
+  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking 198.18/15
+  if (a >= 224) return true; // multicast and reserved
+  return false;
+}
+
+/**
+ * IPv6 is only reachable when it is global unicast (2000::/3). That rejects
+ * `::1`, link-local, ULA and the IPv4-mapped forms (`::ffff:127.0.0.1`,
+ * `0:0:0:0:0:ffff:7f00:1`) that used to slip past the dotted-quad check.
+ */
+function isPrivateIpv6(host) {
+  const first = parseInt(host.split(':')[0] || '0', 16);
+  return !(first >= 0x2000 && first <= 0x3fff);
+}
+
+function isPrivateAddress(address) {
+  const family = isIP(address);
+  if (family === 4) return isPrivateIpv4(address);
+  if (family === 6) return isPrivateIpv6(address);
+  return true;
+}
+
 function isPrivateHost(hostname) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  const host = unbracket(hostname);
+  if (!host) return true;
   if (BLOCKED_HOSTS.has(host)) return true;
   if (host.endsWith('.local') || host.endsWith('.internal')) return true;
-  if (/^(127\.|10\.|192\.168\.|169\.254\.|0\.|224\.|240\.)/.test(host)) return true;
-  // 172.16.0.0 – 172.31.255.255
-  const m = /^172\.(\d+)\./.exec(host);
-  if (m) {
-    const second = Number(m[1]);
-    if (second >= 16 && second <= 31) return true;
-  }
+  if (isIP(host)) return isPrivateAddress(host);
   return false;
+}
+
+/**
+ * Resolve a feed hostname and refuse it when any answer points inside the
+ * machine or the LAN. `validateFeedUrl` can only judge the literal, so a name
+ * such as `localtest.me` (127.0.0.1) used to reach loopback.
+ */
+async function assertPublicTarget(url) {
+  const host = unbracket(url.hostname);
+  if (isPrivateHost(host)) {
+    throw new Error('That host is not reachable from the proxy.');
+  }
+  if (isIP(host)) return;
+  let addresses;
+  try {
+    addresses = await lookup(host, { all: true, verbatim: true });
+  } catch {
+    throw new Error('That host does not resolve.');
+  }
+  if (!addresses.length) throw new Error('That host does not resolve.');
+  if (addresses.some((entry) => isPrivateAddress(entry.address))) {
+    throw new Error('That host is not reachable from the proxy.');
+  }
 }
 
 /**
@@ -73,6 +132,7 @@ async function readBody(response) {
 }
 
 async function fetchOnce(url, { method = 'GET', timeoutMs, redirects = 0 }) {
+  await assertPublicTarget(new URL(url));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {

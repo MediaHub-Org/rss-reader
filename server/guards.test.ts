@@ -44,6 +44,7 @@ describe('proxyResponseHeaders', () => {
     expect(headers['Content-Type']).toMatch(/^text\/plain/);
     expect(headers['X-Content-Type-Options']).toBe('nosniff');
     expect(headers['Content-Security-Policy']).toMatch(/sandbox/);
+    expect(headers['Content-Security-Policy']).toMatch(/frame-ancestors 'none'/);
     expect(headers['Cache-Control']).toBe('no-store');
   });
 

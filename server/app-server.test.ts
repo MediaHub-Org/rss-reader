@@ -67,6 +67,9 @@ describe('static files', () => {
     expect(route.status).toBe(200);
     expect(route.body).toContain('shell');
     expect((await get('/assets/missing.js')).status).toBe(404);
+    // `/assetsfoo` is an app route, not a file inside assets/: the prefix check
+    // needs the trailing separator.
+    expect((await get('/assetsfoo')).status).toBe(200);
   });
 
   it('caches hashed assets', async () => {

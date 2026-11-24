@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { proxyFeedRequest } from './server/proxy-lib.mjs';
+import { proxyResponseHeaders } from './server/guards.mjs';
 
 const localPath = (relative: string) => fileURLToPath(new URL(relative, import.meta.url));
 const pkg = JSON.parse(readFileSync(localPath('./package.json'), 'utf8')) as { version: string };
@@ -39,7 +40,11 @@ function feedProxy(): Plugin {
 
     const result = await proxyFeedRequest(searchParams.get('url'), 12_000);
     res.statusCode = result.status;
-    res.setHeader('Content-Type', result.contentType);
+    // Same headers as the shipped app server: a proxied HTML/SVG body must
+    // never execute on the app origin, not even in the dev/preview server.
+    for (const [name, value] of Object.entries(proxyResponseHeaders(result.contentType))) {
+      res.setHeader(name, value);
+    }
     res.setHeader('Cache-Control', 'no-store');
     res.end(result.body);
     return true;

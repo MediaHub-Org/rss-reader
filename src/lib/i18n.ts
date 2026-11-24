@@ -352,6 +352,7 @@ const es: Record<string, string> = {
   'Context menu': 'Menú contextual',
   'Could not apply that backup.': 'No se pudo aplicar esa copia.',
   'Could not fetch this feed ({message}).': 'No se pudo obtener esta fuente ({message}).',
+  'Could not reach the feed proxy at {url}.': 'No se pudo contactar con el proxy de fuentes en {url}.',
   'Could not parse the feed: {message}': 'No se pudo analizar la fuente: {message}',
   'Could not save the export file.': 'No se pudo guardar el archivo exportado.',
   'Delete folder?': '¿Eliminar carpeta?',

@@ -133,9 +133,10 @@ async function getText(
       }
 
       if (!response.ok) {
-        // Our proxy reports upstream errors as 502, so a 404 here means the page
-        // was served by something without /proxy (a plain static host).
-        if (attempt.via === 'local-proxy' && response.status === 404) {
+        // Our own app server reports "no /proxy here" as a 404. With an
+        // absolute VITE_PROXY_URL that 404 belongs to the standalone proxy, so
+        // blaming "the app server is not running" would be wrong.
+        if (attempt.via === 'local-proxy' && response.status === 404 && !PROXY_URL) {
           throw new FeedFetchError(t(LOCAL_SERVER_DOWN));
         }
         const detail = await safeMessage(response);
@@ -155,7 +156,11 @@ async function getText(
     } catch (err) {
       if (err instanceof FeedFetchError) throw err;
       if (attempt.via === 'local-proxy' && err instanceof TypeError) {
-        throw new FeedFetchError(t(LOCAL_SERVER_DOWN));
+        throw new FeedFetchError(
+          PROXY_URL
+            ? t('Could not reach the feed proxy at {url}.', { url: PROXY_URL })
+            : t(LOCAL_SERVER_DOWN)
+        );
       }
       const message =
         err instanceof DOMException && err.name === 'TimeoutError'
@@ -168,7 +173,9 @@ async function getText(
   }
 
   throw new FeedFetchError(
-    `Could not fetch this feed (${errors[errors.length - 1] || 'no route succeeded'}).`,
+    t('Could not fetch this feed ({message}).', {
+      message: errors[errors.length - 1] || 'no route succeeded',
+    }),
     0
   );
 }
