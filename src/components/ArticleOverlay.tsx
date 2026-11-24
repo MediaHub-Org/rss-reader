@@ -67,15 +67,16 @@ export function ArticleOverlay() {
 
   /**
    * The blurred grid behind the reader is decoration, not a second page: it
-   * must leave the tab order and the accessibility tree. The sidebar and the
-   * top bar are outside `.content-area`, so they stay usable.
+   * must leave the tab order and the accessibility tree. `.content-area` is a
+   * stable node (the list inside it may re-render), and the reader itself is
+   * rendered at the app root, so the sidebar and top bar stay usable.
    */
   useEffect(() => {
-    const list = document.querySelector<HTMLElement>('.content-area__list');
-    if (!list) return;
-    list.inert = true;
+    const content = document.querySelector<HTMLElement>('.content-area');
+    if (!content) return;
+    content.inert = true;
     return () => {
-      list.inert = false;
+      content.inert = false;
     };
   }, []);
 

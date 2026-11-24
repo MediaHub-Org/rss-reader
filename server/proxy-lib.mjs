@@ -45,8 +45,12 @@ function isPrivateIpv4(host) {
  * `0:0:0:0:0:ffff:7f00:1`) that used to slip past the dotted-quad check.
  */
 function isPrivateIpv6(host) {
-  const first = parseInt(host.split(':')[0] || '0', 16);
-  return !(first >= 0x2000 && first <= 0x3fff);
+  const [firstGroup = '0', secondGroup = ''] = host.split(':');
+  const first = parseInt(firstGroup, 16);
+  if (!(first >= 0x2000 && first <= 0x3fff)) return true;
+  if (first === 0x2002) return true; // 6to4 embeds an IPv4 address
+  if (first === 0x2001 && secondGroup === '0') return true; // Teredo 2001::/32
+  return false;
 }
 
 function isPrivateAddress(address) {
@@ -138,7 +142,9 @@ async function fetchOnce(url, { method = 'GET', timeoutMs, redirects = 0 }) {
   try {
     const response = await fetch(url, {
       method,
-      redirect: 'follow',
+      // Redirects are validated hop by hop below. `follow` would let fetch
+      // chase a public feed into 127.0.0.1 or the LAN without any check.
+      redirect: 'manual',
       signal: controller.signal,
       headers: {
         'User-Agent':

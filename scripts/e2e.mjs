@@ -219,7 +219,7 @@ try {
       modalAttr: document.querySelector('.article-overlay__dialog').getAttribute('aria-modal'),
       labelledBy: document.querySelector('.article-overlay__dialog').getAttribute('aria-labelledby'),
       focusedId: document.activeElement?.id ?? '',
-      listInert: Boolean(document.querySelector('.content-area__list')?.inert),
+      listInert: Boolean(document.querySelector('.content-area')?.inert),
     };
   });
   const { content, backdrop, dialog } = overlayGeometry;
@@ -321,7 +321,7 @@ try {
   if (!closedBySidebar) await closeArticle();
   check('Closing the reader restores dashboard scrolling',
     await page.evaluate(() => !document.body.dataset.scrollLocked &&
-      !document.querySelector('.content-area__list').inert &&
+      !document.querySelector('.content-area').inert &&
       getComputedStyle(document.querySelector('.content-area')).overflowY === 'auto'));
   await page.waitForSelector('.article-grid');
   const firstRowRead = await page.getAttribute('.article-card >> nth=0', 'class');
