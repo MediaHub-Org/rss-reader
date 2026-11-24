@@ -39,7 +39,10 @@ Updated: 2026-11-24. History in [`JOURNAL.md`](JOURNAL.md), conventions in
   otherwise chase a 302 into loopback); "Could not fetch this feed (...)" goes
   through `t()`; the Vite dev/preview middleware uses the same sanitizing
   headers as the app server. Accepted, not fixed: `RestartCount 3` on the login
-  task (a failing server already backs off one minute).
+  task (a failing server already backs off one minute); DNS rebinding between
+  the `lookup` and the `fetch` (closing it means pinning the connection to the
+  validated address through an undici dispatcher, a dependency this app does
+  not have).
 - **Local-only by design (owner decision 2026-11-23).** The sync-provider selector
   and its connection fields are gone: Services now states that there is no account,
   provider or server and that OPML or a full backup is how data moves. The

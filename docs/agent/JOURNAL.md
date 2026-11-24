@@ -28,6 +28,8 @@ Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
   hop goes through `validateFeedUrl` + the DNS guard; three tests cover a
   public redirect, a loopback target and an internal name. The blurred grid is
   `inert` on `.content-area` (stable node) instead of the re-rendered list.
+  Residual: DNS rebinding between the lookup and the fetch stays open; closing
+  it needs pinning the connection to the validated IP.
 - **0.14.0 pushed** (`bb8c911` + tag `v0.14.0`) with unit 145/145, e2e 180/180,
   build OK, desktop fmt/clippy plus 13 Rust tests, `test:pwa` 15/16 (the known
   Windows offline reload; one cold run read the precache before install
