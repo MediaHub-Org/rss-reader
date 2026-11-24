@@ -33,11 +33,13 @@ Updated: 2026-11-24. History in [`JOURNAL.md`](JOURNAL.md), conventions in
   `npm start` detects a taken port and a child that exits instead of waiting
   30 s; uninstall matches the server path case-insensitively; the `assets`
   prefix check requires the separator; proxied responses add
-  `frame-ancestors 'none'`; the proxy refuses IPv4-mapped IPv6, link-local/ULA
-  and hostnames that resolve to a private address; "Could not fetch this feed
-  (...)" goes through `t()`; the Vite dev/preview middleware uses the same
-  sanitizing headers as the app server. Accepted, not fixed: `RestartCount 3`
-  on the login task (a failing server already backs off one minute).
+  `frame-ancestors 'none'`; the proxy refuses IPv4-mapped IPv6, link-local/ULA,
+  6to4/Teredo and hostnames that resolve to a private address; **every redirect
+  hop is validated** (`redirect: 'manual'`, `5b1c06c`: a public feed could
+  otherwise chase a 302 into loopback); "Could not fetch this feed (...)" goes
+  through `t()`; the Vite dev/preview middleware uses the same sanitizing
+  headers as the app server. Accepted, not fixed: `RestartCount 3` on the login
+  task (a failing server already backs off one minute).
 - **Local-only by design (owner decision 2026-11-23).** The sync-provider selector
   and its connection fields are gone: Services now states that there is no account,
   provider or server and that OPML or a full backup is how data moves. The
@@ -85,7 +87,7 @@ Updated: 2026-11-24. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 Last verified on 2026-11-24 (0.14.0):
 
 - `npm run typecheck` OK.
-- `npm run test:unit`: 145 passed (25 files).
+- `npm run test:unit`: 150 passed (25 files).
 - `npm run test:e2e`: 180 passed against `http://127.0.0.1:5173`.
 - `npm run build` OK.
 - `npm run check:desktop`: fmt, clippy (`-D warnings`) and 13 Rust tests OK.
@@ -97,9 +99,10 @@ Last verified on 2026-11-24 (0.14.0):
 ## Next
 
 - Nothing is uncommitted or half-done.
-- Release 0.14.0 is prepared locally: version bumped, checks run, tag
-  `v0.14.0` created. **Not pushed yet**; the owner authorises the push and the
-  tag triggers CI (four installers plus `SHA256SUMS.txt`).
+- 0.14.0 was pushed on 2026-11-24 (`main` `bb8c911`, tag `v0.14.0`) before the
+  follow-up review found that the proxy still followed redirects unvalidated.
+  0.14.1 fixes it (`5b1c06c`) and is prepared locally; the push of `main` and
+  the new tag is the owner's call.
 - The owner chose **per-article reading position**, and it is in (see State). On
   2026-11-23 the owner decided the reader stays **local only**: no sync provider and
   no paid service. The selector and credentials are gone; do not reintroduce them.
