@@ -33,8 +33,10 @@ Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 - **0.14.0 pushed** (`bb8c911` + tag `v0.14.0`) with unit 145/145, e2e 180/180,
   build OK, desktop fmt/clippy plus 13 Rust tests, `test:pwa` 15/16 (the known
   Windows offline reload; one cold run read the precache before install
-  finished). 0.14.1 (`5b1c06c`, 150 unit, 180 e2e) is prepared locally with its
-  tag; the push is the owner's call.
+  finished).
+- **0.14.1 released.** `main` `1cd2f64` and tag `v0.14.1` pushed with the owner's
+  approval; both CI runs green, and the release published the four installers
+  plus `SHA256SUMS.txt` at 03:13 UTC. It supersedes 0.14.0.
 
 ## 2026-11-23
 

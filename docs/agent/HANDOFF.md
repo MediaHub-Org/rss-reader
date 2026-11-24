@@ -87,7 +87,7 @@ Updated: 2026-11-24. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## Checks
 
-Last verified on 2026-11-24 (0.14.0):
+Last verified on 2026-11-24 (0.14.1):
 
 - `npm run typecheck` OK.
 - `npm run test:unit`: 150 passed (25 files).
@@ -102,10 +102,11 @@ Last verified on 2026-11-24 (0.14.0):
 ## Next
 
 - Nothing is uncommitted or half-done.
-- 0.14.0 was pushed on 2026-11-24 (`main` `bb8c911`, tag `v0.14.0`) before the
-  follow-up review found that the proxy still followed redirects unvalidated.
-  0.14.1 fixes it (`5b1c06c`) and is prepared locally; the push of `main` and
-  the new tag is the owner's call.
+- 0.14.1 is released: `main` at `1cd2f64` and tag `v0.14.1` were pushed on
+  2026-11-24, both CI runs are green and the release published the four
+  installers (`x64-setup.exe`, `amd64.AppImage`, `aarch64.dmg`,
+  `android.apk`) plus `SHA256SUMS.txt`. It supersedes 0.14.0, which had gone
+  out before the review found the unvalidated redirect; nothing is pending.
 - The owner chose **per-article reading position**, and it is in (see State). On
   2026-11-23 the owner decided the reader stays **local only**: no sync provider and
   no paid service. The selector and credentials are gone; do not reintroduce them.
