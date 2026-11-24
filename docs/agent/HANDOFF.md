@@ -96,8 +96,11 @@ Last verified on 2026-11-24 (0.14.1):
 - `npm run check:desktop`: fmt, clippy (`-D warnings`) and 13 Rust tests OK.
 - `npm run test:pwa`: 15/16 on this Windows machine; the offline reload fails
   with `ERR_FAILED` after `setOffline`, the same environmental failure as
-  before (it passes in CI). One cold run read the precache cache before the
-  install finished and failed that assertion; the rerun passed it.
+  before (it passes in CI). **Cause found on 2026-11-24:** AdGuard for Windows
+  replaces the page's installed `sw.js` with its own content-script service
+  worker, so the app's worker never serves the cache. Pause the filtering or
+  exclude the origin. One cold run also read the precache cache before the
+  install finished; the rerun passed that assertion.
 
 ## Next
 

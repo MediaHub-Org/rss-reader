@@ -37,6 +37,10 @@ Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 - **0.14.1 released.** `main` `1cd2f64` and tag `v0.14.1` pushed with the owner's
   approval; both CI runs green, and the release published the four installers
   plus `SHA256SUMS.txt` at 03:13 UTC. It supersedes 0.14.0.
+- **The "environmental" offline failure has a name.** AdGuard for Windows
+  replaces the installed `sw.js` with its own content-script service worker
+  (`v3.3.1`), so a reload while offline fails even though the precache exists.
+  Same root cause as the `test:pwa` 15/16 recorded below.
 
 ## 2026-11-23
 
