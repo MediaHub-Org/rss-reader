@@ -2,6 +2,31 @@
 
 Newest entries first. The current state is in [`HANDOFF.md`](HANDOFF.md).
 
+## 2026-11-24
+
+- **Reader beside the dashboard.** The desktop reader is non-modal and scoped
+  to the news column: the backdrop is measured from `.content-area` at open and
+  on resize, blurs 22px with a darker scrim, and leaves the sidebar and top bar
+  crisp and usable. The covered list is `inert`, focus opens on the article
+  title (`aria-labelledby`), Tab can leave the dialog and Escape still closes.
+  Sidebar navigation closes the article through `setActiveFeed`; below 1100px
+  the sidebar is a drawer, so the reader keeps the full-screen modal. `Dialog`
+  gained `modal` and `backdropStyle`; `--article-overlay-shift` and the arrow
+  shift math are gone. The e2e assertions that required the old full-window
+  backdrop were inverted: 180/180.
+- **Deferred minors closed.** `/proxy` 404 only blames the local server when the
+  proxy is its own origin; `npm start` detects a taken port and a child that
+  exits; uninstall matches the server path case-insensitively; the `assets`
+  prefix needs the separator; proxied responses add `frame-ancestors 'none'`;
+  the proxy refuses IPv4-mapped IPv6, link-local/ULA and hostnames that resolve
+  to a private address; the fetch error goes through `t()`; the Vite dev and
+  preview middleware use the app server's sanitizing headers. New
+  `server/proxy-lib.test.ts`. `RestartCount 3` is accepted as is.
+- **0.14.0 prepared.** Version bumped in the four files; unit 145/145, e2e
+  180/180, build OK, desktop fmt/clippy plus 13 Rust tests, `test:pwa` 15/16
+  (the known Windows offline reload; one cold run also read the precache before
+  install finished). Tag `v0.14.0` is local, the push is the owner's call.
+
 ## 2026-11-23
 
 - **PWA without preview or third-party proxies** (branch `feat/pwa-local-server`,

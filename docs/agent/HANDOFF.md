@@ -1,10 +1,21 @@
 # Handoff — RSS Reader
 
-Updated: 2026-11-23. History in [`JOURNAL.md`](JOURNAL.md), conventions in
+Updated: 2026-11-24. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 [`AGENTS.md`](../../AGENTS.md).
 
 ## State
 
+- **Reader beside the dashboard (0.14.0).** On desktop the reader is
+  non-modal and scoped to the news column: the backdrop covers and blurs only
+  `.content-area` (22px, darker scrim), the sidebar and top bar stay crisp and
+  usable, and picking a feed/folder from the sidebar closes the article through
+  `setActiveFeed`. The covered list is `inert`, focus opens on the article title
+  (`aria-labelledby`), Tab can leave the dialog and Escape still closes. Below
+  1100px the sidebar is a drawer and the reader keeps the full-screen modal
+  (aria-modal, focus trap, both scrollers locked). `Dialog` gained `modal` and
+  `backdropStyle`; `--article-overlay-shift` and the arrow shift math are gone.
+  e2e asserts the backdrop box equals `.content-area` and no longer covers the
+  sidebar.
 - **PWA local server — in `main`, pushed as `3164127` on 2026-11-23; login
   task "RSS Reader app server" installed and running on this machine
   (2026-11-23, node `C:\nvm4w\nodejs\node.exe`).**
@@ -17,14 +28,16 @@ Updated: 2026-11-23. History in [`JOURNAL.md`](JOURNAL.md), conventions in
   task scripts in `scripts/windows/` (see its README). Spec and plan in
   `docs/superpowers/`. After pulling or editing, run `npm run build`: the task
   serves whatever is in `dist/`.
-- **Deferred minors from the final review:** misleading "server not running"
-  when the PWA is opened at `127.0.0.1` with `VITE_PROXY_URL` → `proxy.mjs`;
-  `npm start` hides the child's `EADDRINUSE` behind a 30 s generic message;
-  uninstall matches the server path case-sensitively; `RestartCount 3`;
-  `assets` prefix check without trailing separator; no `frame-ancestors`;
-  pre-existing proxy-lib SSRF gaps (IPv4-mapped IPv6, names resolving to
-  loopback); pre-existing untranslated "Could not fetch this feed (...)"; the
-  Vite dev middleware still passes upstream content types.
+- **Deferred minors from the final review — closed on 2026-11-24:** the
+  `/proxy` 404 only blames the local server when the proxy is its own origin;
+  `npm start` detects a taken port and a child that exits instead of waiting
+  30 s; uninstall matches the server path case-insensitively; the `assets`
+  prefix check requires the separator; proxied responses add
+  `frame-ancestors 'none'`; the proxy refuses IPv4-mapped IPv6, link-local/ULA
+  and hostnames that resolve to a private address; "Could not fetch this feed
+  (...)" goes through `t()`; the Vite dev/preview middleware uses the same
+  sanitizing headers as the app server. Accepted, not fixed: `RestartCount 3`
+  on the login task (a failing server already backs off one minute).
 - **Local-only by design (owner decision 2026-11-23).** The sync-provider selector
   and its connection fields are gone: Services now states that there is no account,
   provider or server and that OPML or a full backup is how data moves. The
@@ -69,24 +82,24 @@ Updated: 2026-11-23. History in [`JOURNAL.md`](JOURNAL.md), conventions in
 
 ## Checks
 
-Last verified on 2026-11-22 (reading position) and 2026-11-19 (release):
+Last verified on 2026-11-24 (0.14.0):
 
 - `npm run typecheck` OK.
-- `npm run test:unit`: 105 passed (22 files).
-- `npm run test:e2e`: 175 passed against `http://localhost:5173` (one cold-start
-  run timed out once; reruns pass).
+- `npm run test:unit`: 145 passed (25 files).
+- `npm run test:e2e`: 180 passed against `http://127.0.0.1:5173`.
 - `npm run build` OK.
 - `npm run check:desktop`: fmt, clippy (`-D warnings`) and 13 Rust tests OK.
-- Release `v0.13.21`: CI green on the tag (web plus the four desktop builds),
-  release published with four assets and `SHA256SUMS.txt`; the downloaded
-  Windows installer hash matches. The local `test:pwa` offline reload fails on
-  this Windows machine (`ERR_FAILED` after `setOffline`), the same test passes in
-  CI; `public/sw.js` and `src/main.tsx` are unchanged since v0.13.20, so it is
-  environmental, not a regression.
+- `npm run test:pwa`: 15/16 on this Windows machine; the offline reload fails
+  with `ERR_FAILED` after `setOffline`, the same environmental failure as
+  before (it passes in CI). One cold run read the precache cache before the
+  install finished and failed that assertion; the rerun passed it.
 
 ## Next
 
 - Nothing is uncommitted or half-done.
+- Release 0.14.0 is prepared locally: version bumped, checks run, tag
+  `v0.14.0` created. **Not pushed yet**; the owner authorises the push and the
+  tag triggers CI (four installers plus `SHA256SUMS.txt`).
 - The owner chose **per-article reading position**, and it is in (see State). On
   2026-11-23 the owner decided the reader stays **local only**: no sync provider and
   no paid service. The selector and credentials are gone; do not reintroduce them.
