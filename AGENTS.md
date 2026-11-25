@@ -42,6 +42,6 @@ cached articles stay in `localStorage`/IndexedDB on the device.
 
 ## State
 
-Current work, uncommitted changes and the exact next step live in
-[`docs/agent/HANDOFF.md`](docs/agent/HANDOFF.md). Append history to
-[`docs/agent/JOURNAL.md`](docs/agent/JOURNAL.md); newest entry first.
+Current work, uncommitted changes and the exact next step live in the AgenticHub
+central roadmap and handoff (`AgenticHub/projects/working/`); the repo's
+`docs/agent/` files are archive.
