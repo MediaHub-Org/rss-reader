@@ -43,5 +43,5 @@ cached articles stay in `localStorage`/IndexedDB on the device.
 ## State
 
 Current work, uncommitted changes and the exact next step live in the AgenticHub
-central roadmap and handoff (`AgenticHub/projects/working/`); the repo's
+central roadmap and handoff (`AgenticHub/workspace-panel/working/`); the repo's
 `docs/agent/` files are archive.
